@@ -1,1 +1,136 @@
 // app global css in SCSS form
+
+// Design System Colors
+:root {
+  // Primary Colors
+  --color-primary: #1e5bea;
+  --color-primary-action: #16a34a;
+  --color-secondary-action: #e7f0ff;
+  --color-destructive: #dc2626;
+
+  // Text Colors
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+
+  // Backgrounds
+  --color-bg-main: #f8fafc;
+  --color-bg-card: #ffffff;
+  --color-input-border: #cbd5e1;
+  --color-input-border-focused: #1e5bea;
+
+  // Summary Card
+  --color-summary-bg: #1e5bea;
+  --color-summary-text: #ffffff;
+}
+
+// Typography - Inter Font
+@import url('https://rsms.me/inter/inter.css');
+
+body,
+html {
+  font-family:
+    'Inter',
+    -apple-system,
+    blinkmacsystemfont,
+    'Segoe UI',
+    roboto,
+    oxygen,
+    ubuntu,
+    cantarell,
+    'Open Sans',
+    'Helvetica Neue',
+    sans-serif;
+}
+
+// Global Styles
+body {
+  background-color: var(--color-bg-main);
+  color: var(--color-text-primary);
+}
+
+// Text color utilities
+.text-primary {
+  color: var(--color-text-primary);
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+// Background utilities
+.bg-main {
+  background-color: var(--color-bg-main);
+}
+
+.bg-card {
+  background-color: var(--color-bg-card);
+}
+
+// Quasar Color Overrides
+.q-field__control {
+  color: var(--color-text-primary);
+}
+
+.q-field__label {
+  color: var(--color-text-secondary);
+}
+
+.q-field__native,
+.q-field__input {
+  color: var(--color-text-primary);
+
+  &::placeholder {
+    color: var(--color-text-muted);
+  }
+}
+
+.q-field--outlined .q-field__control::before {
+  border-color: var(--color-input-border);
+}
+
+.q-field--outlined.q-field--focused .q-field__control::before {
+  border-color: var(--color-input-border-focused);
+}
+
+// Quasar Button Color Overrides
+.q-btn {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+
+  &.bg-primary {
+    background-color: var(--color-primary);
+  }
+
+  &.bg-positive {
+    background-color: var(--color-primary-action);
+  }
+
+  &.bg-negative {
+    background-color: var(--color-destructive);
+  }
+}
+
+.q-btn--unelevated.bg-positive {
+  background-color: var(--color-primary-action);
+  color: white;
+}
+
+// Add more rounded borders
+.rounded-borders {
+  border-radius: 12px;
+}
+
+.q-btn--rounded {
+  border-radius: 12px;
+}
+
+// Summary card styling
+.summary-card {
+  background: var(--color-summary-bg);
+  color: var(--color-summary-text);
+}
