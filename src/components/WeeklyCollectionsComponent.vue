@@ -8,7 +8,7 @@
     <q-form @submit="saveCollection">
       <section class="form-section q-mb-lg">
         <div class="text-h6">Collection Date</div>
-        <q-separator class="q-mb-sm"></q-separator>
+        <q-separator class="q-mb-md"></q-separator>
         <div class="text-caption text-grey-7 q-mb-xs">Collection Date</div>
         <q-input v-model="formData.collectionDate" type="date" outlined dense class="full-width" />
       </section>
