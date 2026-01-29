@@ -19,8 +19,8 @@ export const migration: Migration = {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name NVARCHAR(255) NOT NULL UNIQUE,
       is_active BOOLEAN default 1,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      parent_id INTEGER NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      parent_id INTEGER NULL
     )`,
 
     // Transactions table - main transaction log
@@ -30,7 +30,7 @@ export const migration: Migration = {
       category_id INTEGER,
       type TEXT NOT NULL,
       amount REAL NOT NULL,
-      description TEXT DEFAULT,
+      description TEXT DEFAULT '',
       date DATE NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

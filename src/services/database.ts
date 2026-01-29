@@ -24,16 +24,11 @@ export async function initializeDatabase(): Promise<void> {
   try {
     sqlite = new SQLiteConnection(CapacitorSQLite);
 
-    // Check if database exists
-    const result = await sqlite.isDatabase(DATABASE_NAME);
-    const dbExists = result.result;
+    // Create connection (handles both new and existing databases)
+    console.log('[Database] Creating/opening connection to:', DATABASE_NAME);
+    await sqlite.createConnection(DATABASE_NAME, false, 'no-encryption', 1, false);
 
-    if (!dbExists) {
-      console.log('[Database] Creating new database:', DATABASE_NAME);
-      await sqlite.createConnection(DATABASE_NAME, false, 'no-encryption', 1, false);
-    }
-
-    // Get database connection
+    // Retrieve the connection
     db = await sqlite.retrieveConnection(DATABASE_NAME, false);
 
     if (!db) {

@@ -55,33 +55,22 @@ export async function runMigrations(db: SQLiteDBConnection): Promise<void> {
       try {
         console.log(`[Migrations] Executing migration ${migration.version}...`);
 
-        // Begin transaction for this migration
-        await db.execute('BEGIN TRANSACTION');
-
         // Get the up statements
         const upStatements = migration.up();
         const statements = Array.isArray(upStatements) ? upStatements : [upStatements];
 
-        // Execute each statement
+        // Execute each statement (no explicit transactions - SQLite handles commits automatically)
         for (const statement of statements) {
           await db.execute(statement);
         }
 
         // Record the migration
         const description = migration.description();
-        await db.run(`INSERT INTO migrations (version, description, status) VALUES (?, ?, ?)`, [
-          migration.version,
-          description,
-          'completed',
-        ]);
-
-        // Commit transaction
-        await db.execute('COMMIT');
+        const insertSql = `INSERT INTO migrations (version, description, status) VALUES (${migration.version}, '${description.replace(/'/g, "''")}', 'completed')`;
+        await db.execute(insertSql);
 
         console.log(`[Migrations] Migration ${migration.version} completed: ${description}`);
       } catch (error) {
-        // Rollback on error
-        await db.execute('ROLLBACK');
         console.error(`[Migrations] Migration ${migration.version} failed:`, error);
         throw new Error(
           `Migration ${migration.version} failed: ${

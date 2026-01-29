@@ -1,5 +1,27 @@
 {
   "appId": "org.capacitor.fcl.finance.app",
   "appName": "FCL Finance App",
-  "webDir": "www"
+  "webDir": "www",
+  "plugins": {
+    "CapacitorSQLite": {
+      "iosDatabaseLocation": "Library/Databases",
+      "iosEncryption": "default",
+      "iosKeychainPrefix": "angular-sqlite",
+      "iosBiometric": {
+        "biometricAuth": false,
+        "biometricTitle": "Biometric login for capacitor sqlite"
+      },
+      "androidEncryption": "default",
+      "androidBiometric": {
+        "biometricAuth": false,
+        "biometricTitle": "Biometric login for capacitor sqlite",
+        "biometricSubTitle": "Log in using your biometric"
+      },
+      "electronEncryption": "default",
+      "electronBiometric": {
+        "biometricAuth": false,
+        "biometricTitle": "Biometric login for capacitor sqlite"
+      }
+    }
+  }
 }
