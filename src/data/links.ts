@@ -4,11 +4,11 @@ export const linksList: EssentialLinkProps[] = [
   {
     title: 'FCL Weekly Collection',
     icon: 'money',
-    link: 'https://quasar.dev',
+    routeName: 'admin.weekly_collections',
   },
   {
     title: 'Expenses',
     icon: 'receipt',
-    link: 'https://quasar.dev',
+    routeName: 'admin.expenses',
   },
 ];
