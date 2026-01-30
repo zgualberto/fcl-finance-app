@@ -133,7 +133,7 @@
                 round
                 icon="delete"
                 color="negative"
-                size="sm"
+                size="md"
                 @click="removeTithe(index)"
               />
             </div>
@@ -213,7 +213,7 @@ function formatCurrency(amount: number): string {
   });
 }
 
-async function saveCollection() {
+function saveCollection() {
   console.log('Saving collection:', formData.value);
   // TODO: Implement database save
 }
