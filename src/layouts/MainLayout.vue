@@ -18,20 +18,20 @@
             <q-list style="min-width: 200px">
               <q-item clickable v-close-popup class="row items-center">
                 <q-icon name="fa-solid fa-list"></q-icon>
-                <q-item-section class="text-center">Categories</q-item-section>
+                <q-item-section class="text-center text-subtitle1">Categories</q-item-section>
               </q-item>
               <q-item clickable v-close-popup class="row items-center">
                 <q-icon name="fa-solid fa-user-cog"></q-icon>
-                <q-item-section class="text-center">Members</q-item-section>
+                <q-item-section class="text-center text-subtitle1">Members</q-item-section>
               </q-item>
               <q-item clickable v-close-popup class="row items-center">
                 <q-icon name="fa-solid fa-chart-line"></q-icon>
-                <q-item-section class="text-center">Reports</q-item-section>
+                <q-item-section class="text-center text-subtitle1">Reports</q-item-section>
               </q-item>
               <!-- backup -->
               <q-item clickable v-close-popup class="row items-center">
                 <q-icon name="fa-solid fa-database"></q-icon>
-                <q-item-section class="text-center">Backup</q-item-section>
+                <q-item-section class="text-center text-subtitle1">Backup</q-item-section>
               </q-item>
             </q-list>
           </q-menu>
