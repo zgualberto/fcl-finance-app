@@ -7,13 +7,18 @@ const routes: RouteRecordRaw[] = [
     children: [
       {
         path: 'weekly-collections',
-        name: 'admin.weekly_collections',
+        name: 'weekly_collections',
         component: () => import('pages/WeeklyCollectionsPage.vue'),
       },
       {
         path: 'expenses',
-        name: 'admin.expenses',
+        name: 'expenses',
         component: () => import('pages/ExpensesPage.vue'),
+      },
+      {
+        path: 'members',
+        name: 'admin.members',
+        component: () => import('pages/Admin/MembersPage.vue'),
       },
     ],
   },

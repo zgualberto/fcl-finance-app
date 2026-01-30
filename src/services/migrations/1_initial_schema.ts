@@ -7,11 +7,12 @@ export const migration: Migration = {
 
   up: () => [
     // Accounts table - for storing user's financial accounts
-    `CREATE TABLE IF NOT EXISTS accounts (
+    `CREATE TABLE IF NOT EXISTS members (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name NVARCHAR(50) NOT NULL UNIQUE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      is_active BOOLEAN default 1
     )`,
 
     // Categories table - for transaction categories
@@ -20,15 +21,16 @@ export const migration: Migration = {
       name NVARCHAR(255) NOT NULL UNIQUE,
       is_active BOOLEAN default 1,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      parent_id INTEGER NULL
+      parent_id INTEGER NULL,
+      is_expense BOOLEAN DEFAULT 1,
+      FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL
     )`,
 
     // Transactions table - main transaction log
     `CREATE TABLE IF NOT EXISTS transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      account_id INTEGER,
-      category_id INTEGER,
-      type TEXT NOT NULL,
+      account_id INTEGER NULL,
+      category_id INTEGER NULL,
       amount REAL NOT NULL,
       description TEXT DEFAULT '',
       date DATE NOT NULL,
@@ -39,7 +41,7 @@ export const migration: Migration = {
     )`,
 
     // Indexes for performance
-    `CREATE INDEX IF NOT EXISTS idx_accounts_name ON accounts(name)`,
+    `CREATE INDEX IF NOT EXISTS idx_members_name ON members(name)`,
     `CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name)`,
     `CREATE INDEX IF NOT EXISTS idx_transactions_account_id ON transactions(account_id)`,
     `CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)`,
@@ -48,7 +50,7 @@ export const migration: Migration = {
 
   down: () => [
     // Drop indexes
-    `DROP INDEX IF EXISTS idx_accounts_name`,
+    `DROP INDEX IF EXISTS idx_members_name`,
     `DROP INDEX IF EXISTS idx_categories_name`,
     `DROP INDEX IF EXISTS idx_transactions_category_id`,
     `DROP INDEX IF EXISTS idx_transactions_date`,

@@ -20,7 +20,12 @@
                 <q-icon name="fa-solid fa-list"></q-icon>
                 <q-item-section class="text-center text-subtitle1">Categories</q-item-section>
               </q-item>
-              <q-item clickable v-close-popup class="row items-center">
+              <q-item
+                clickable
+                v-close-popup
+                class="row items-center"
+                :to="{ name: 'admin.members' }"
+              >
                 <q-icon name="fa-solid fa-user-cog"></q-icon>
                 <q-item-section class="text-center text-subtitle1">Members</q-item-section>
               </q-item>

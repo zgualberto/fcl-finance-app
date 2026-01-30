@@ -93,7 +93,7 @@
               <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
               Add 5
             </q-btn>
-            <q-btn unelevated color="primary" @click="addTithes(1)" rounded no-caps>
+          <q-btn unelevated color="primary" @click="addTithes(1)" rounded no-caps>
               <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
               Add 1
             </q-btn>
