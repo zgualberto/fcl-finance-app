@@ -10,14 +10,12 @@ export class MemberRepository implements BaseRepository<Member> {
       member.name,
       member.is_active ? 1 : 0,
     ]);
-    console.log(result);
     return result.changes?.lastId ?? 0;
   }
 
   async findAll(): Promise<Member[]> {
-    const res = await database.run(`SELECT * FROM members`);
-    console.log(res);
-    return [] as Member[];
+    const res = await database.query(`SELECT * FROM members ORDER BY created_at DESC`);
+    return res.values as Member[];
   }
 
   async findById(id: number): Promise<Member | null> {
@@ -26,7 +24,7 @@ export class MemberRepository implements BaseRepository<Member> {
     return members[0] ?? null;
   }
 
-  async update(member: Member): Promise<void> {
+  async update(member: Partial<Member>): Promise<void> {
     await database.run(
       `UPDATE members SET name = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [member.name, member.is_active ? 1 : 0, member.id],

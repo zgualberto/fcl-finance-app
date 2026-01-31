@@ -26,12 +26,12 @@ export const useMembersStore = defineStore('members', {
       member.id = id;
       this.members.push(member);
     },
-    async updateMember(member: Member) {
+    async updateMember(member: Partial<Member>) {
       if (!this.memberRepository) throw new Error('Repository not initialized');
       await this.memberRepository.update(member);
       const index = this.members.findIndex((m) => m.id === member.id);
       if (index !== -1) {
-        this.members[index] = member;
+        this.members[index] = { ...this.members[index], ...member } as Member;
       }
     },
     async deleteMember(id: number) {

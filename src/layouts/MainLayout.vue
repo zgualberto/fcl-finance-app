@@ -16,7 +16,12 @@
         <q-btn flat dense round icon="fa-solid fa-gear" aria-label="Settings">
           <q-menu>
             <q-list style="min-width: 200px">
-              <q-item clickable v-close-popup class="row items-center">
+              <q-item
+                clickable
+                v-close-popup
+                class="row items-center"
+                :to="{ name: 'admin.categories' }"
+              >
                 <q-icon name="fa-solid fa-list"></q-icon>
                 <q-item-section class="text-center text-subtitle1">Categories</q-item-section>
               </q-item>

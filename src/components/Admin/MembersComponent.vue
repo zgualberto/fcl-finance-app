@@ -71,13 +71,10 @@ const openEditMemberDialog = (member: Member) => {
     },
     cancel: true,
     persistent: true,
-  })
-    .onOk((data) => {
-      console.log('Updating member', member, 'to new name', data);
-    })
-    .onCancel(() => {
-      console.log('Edit cancelled');
-    });
+  }).onOk((data) => {
+    console.log('Updating member', member, 'to new name', data);
+    void membersStore.updateMember({ ...member, name: data as string });
+  });
 };
 const confirmDeleteMember = (member: Member) => {
   $q.dialog({
@@ -85,13 +82,10 @@ const confirmDeleteMember = (member: Member) => {
     message: `Are you sure you want to delete member "${member.name}"?`,
     cancel: true,
     persistent: true,
-  })
-    .onOk(() => {
-      console.log('Deleting member', member);
-    })
-    .onCancel(() => {
-      console.log('Delete cancelled');
-    });
+  }).onOk(() => {
+    console.log('Deleting member', member);
+    void membersStore.deleteMember(member.id!);
+  });
 };
 
 onMounted(async () => {
