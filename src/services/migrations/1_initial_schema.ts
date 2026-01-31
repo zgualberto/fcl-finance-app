@@ -59,6 +59,6 @@ export const migration: Migration = {
     // Drop tables in reverse order (handle foreign keys)
     `DROP TABLE IF EXISTS transactions`,
     `DROP TABLE IF EXISTS categories`,
-    `DROP TABLE IF EXISTS accounts`,
+    `DROP TABLE IF EXISTS members`,
   ],
 };

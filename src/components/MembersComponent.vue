@@ -31,9 +31,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useMembersStore } from 'src/stores/members-store';
-import type { QTableColumn } from 'quasar';
+import { useQuasar, type QTableColumn } from 'quasar';
 import type { Member } from 'src/databases/entities/member';
 
 const membersStore = useMembersStore();
@@ -45,16 +45,56 @@ const columns: QTableColumn[] = [
 ];
 
 const members = computed(() => membersStore.memberList);
+const $q = useQuasar();
 
 const openAddMemberDialog = () => {
-  
+  $q.dialog({
+    title: 'New Member',
+    message: 'Please enter name:',
+    prompt: {
+      model: '',
+      type: 'text', // optional
+    },
+    cancel: true,
+    persistent: true,
+  }).onOk((data) => {
+    void membersStore.addMember(data as string);
+  });
 };
 const openEditMemberDialog = (member: Member) => {
-  // Logic to open edit member dialog with member data
-  console.log('Edit member:', member);
+  $q.dialog({
+    title: 'Edit Member',
+    message: 'Update name:',
+    prompt: {
+      model: member.name,
+      type: 'text', // optional
+    },
+    cancel: true,
+    persistent: true,
+  })
+    .onOk((data) => {
+      console.log('Updating member', member, 'to new name', data);
+    })
+    .onCancel(() => {
+      console.log('Edit cancelled');
+    });
 };
 const confirmDeleteMember = (member: Member) => {
-  // Logic to confirm and delete member
-  console.log('Delete member:', member);
+  $q.dialog({
+    title: 'Confirm',
+    message: `Are you sure you want to delete member "${member.name}"?`,
+    cancel: true,
+    persistent: true,
+  })
+    .onOk(() => {
+      console.log('Deleting member', member);
+    })
+    .onCancel(() => {
+      console.log('Delete cancelled');
+    });
 };
+
+onMounted(async () => {
+  await membersStore.init();
+});
 </script>

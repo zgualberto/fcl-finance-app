@@ -1,7 +1,7 @@
 export interface Member {
-  id: number;
+  id?: number;
   name: string;
-  created_at: Date;
-  updated_at: Date;
-  is_active: boolean;
+  created_at?: Date;
+  updated_at?: Date;
+  is_active?: boolean;
 }

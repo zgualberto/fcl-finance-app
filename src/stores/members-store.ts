@@ -1,6 +1,6 @@
 import { defineStore, acceptHMRUpdate } from 'pinia';
 import type { Member } from 'src/databases/entities/member';
-import type { MemberRepository } from 'src/databases/repositories/member.repository';
+import { MemberRepository } from 'src/databases/repositories/member.repository';
 
 export const useMembersStore = defineStore('members', {
   state: () => ({
@@ -15,12 +15,13 @@ export const useMembersStore = defineStore('members', {
   },
 
   actions: {
-    async init(repo: MemberRepository) {
-      this.memberRepository = repo;
+    async init() {
+      this.memberRepository = new MemberRepository();
       this.members = await this.memberRepository.findAll();
     },
-    async addMember(member: Member) {
+    async addMember(name: string) {
       if (!this.memberRepository) throw new Error('Repository not initialized');
+      const member: Member = { name, is_active: true };
       const id = await this.memberRepository.insert(member);
       member.id = id;
       this.members.push(member);
