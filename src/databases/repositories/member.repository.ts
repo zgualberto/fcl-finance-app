@@ -24,14 +24,14 @@ export class MemberRepository implements BaseRepository<Member> {
     return members[0] ?? null;
   }
 
-  async update(member: Partial<Member>): Promise<void> {
-    await database.run(
+  update(member: Partial<Member>): void {
+    void database.run(
       `UPDATE members SET name = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [member.name, member.is_active ? 1 : 0, member.id],
     );
   }
 
-  async delete(id: number): Promise<void> {
-    await database.run(`DELETE FROM members WHERE id = ?`, [id]);
+  delete(id: number): void {
+    void database.run(`DELETE FROM members WHERE id = ?`, [id]);
   }
 }

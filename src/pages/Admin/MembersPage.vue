@@ -10,5 +10,5 @@
 </template>
 
 <script setup lang="ts">
-import MembersComponent from 'components/MembersComponent.vue';
+import MembersComponent from 'components/Admin/MembersComponent.vue';
 </script>

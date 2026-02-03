@@ -1,11 +1,13 @@
 import { defineStore, acceptHMRUpdate } from 'pinia';
 import type { Category } from 'src/databases/entities/category';
 import { CategoryRepository } from 'src/databases/repositories/category.repository';
+import { ActivityLogService } from 'src/services/activity-log.service';
 
 export const useCategoriesStore = defineStore('categories', {
   state: () => ({
     categories: [] as Category[],
     categoryRepository: null as CategoryRepository | null,
+    activityLogService: null as ActivityLogService | null,
   }),
 
   getters: {
@@ -18,25 +20,38 @@ export const useCategoriesStore = defineStore('categories', {
     async init() {
       this.categoryRepository = new CategoryRepository();
       this.categories = await this.categoryRepository.findAll();
+      this.activityLogService = new ActivityLogService();
     },
-    async addCategory(data: Partial<Category>) {
+    async addCategory(data: Partial<Category>): Promise<void> {
       if (!this.categoryRepository) throw new Error('Repository not initialized');
-      const id = await this.categoryRepository.insert(data);
-      const category = { ...data, id } as Category;
-      this.categories.push(category);
-    },
-    async updateCategory(category: Partial<Category>) {
-      if (!this.categoryRepository) throw new Error('Repository not initialized');
-      await this.categoryRepository.update(category);
-      const index = this.categories.findIndex((m) => m.id === category.id);
-      if (index !== -1) {
-        this.categories[index] = { ...this.categories[index], ...category } as Category;
+      try {
+        const id = await this.categoryRepository.insert(data);
+        const category = { ...data, id } as Category;
+        this.categories.push(category);
+      } catch (error: unknown) {
+        this.activityLogService?.logErrActivity(error);
       }
     },
-    async deleteCategory(id: number) {
+    updateCategory(category: Partial<Category>) {
       if (!this.categoryRepository) throw new Error('Repository not initialized');
-      await this.categoryRepository.delete(id);
-      this.categories = this.categories.filter((m) => m.id !== id);
+      try {
+        void this.categoryRepository.update(category);
+        const index = this.categories.findIndex((m) => m.id === category.id);
+        if (index !== -1) {
+          this.categories[index] = { ...this.categories[index], ...category } as Category;
+        }
+      } catch (error: unknown) {
+        this.activityLogService?.logErrActivity(error);
+      }
+    },
+    deleteCategory(id: number) {
+      if (!this.categoryRepository) throw new Error('Repository not initialized');
+      try {
+        void this.categoryRepository.delete(id);
+        this.categories = this.categories.filter((m) => m.id !== id);
+      } catch (error: unknown) {
+        this.activityLogService?.logErrActivity(error);
+      }
     },
   },
 });

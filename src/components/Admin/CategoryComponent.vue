@@ -35,8 +35,9 @@ import { computed, onMounted } from 'vue';
 import { useCategoriesStore } from 'src/stores/categories-store';
 import { useQuasar, type QTableColumn } from 'quasar';
 import type { Category } from 'src/databases/entities/category';
+import CategoryFormModal from './partials/CategoryFormModal.vue';
 
-const useCategoryStore = useCategoriesStore();
+const categoryStore = useCategoriesStore();
 
 const columns: QTableColumn[] = [
   { name: 'id', label: 'ID', field: 'id', align: 'left' },
@@ -46,51 +47,53 @@ const columns: QTableColumn[] = [
   { name: 'actions', field: 'action', label: 'Actions', align: 'center' },
 ];
 
-const categories = computed(() => useCategoryStore.categoryList);
+const categories = computed(() => categoryStore.categoryList);
 const $q = useQuasar();
 
 const openAddCategoryDialog = () => {
   $q.dialog({
-    title: 'New Category',
-    message: 'Please enter name:',
-    prompt: {
-      model: '',
-      type: 'text', // optional
-    },
-    cancel: true,
+    component: CategoryFormModal,
     persistent: true,
-  }).onOk((data) => {
-    void useCategoryStore.addCategory({ name: data as string });
+  }).onOk((data: Partial<Category>) => {
+    void categoryStore.addCategory(data);
+    $q.notify({
+      type: 'positive',
+      message: `${data.name} has been created successfully`,
+      timeout: 2000,
+    });
   });
 };
 const openEditCategoryDialog = (category: Category) => {
   $q.dialog({
-    title: 'Edit Category',
-    message: 'Update name:',
-    prompt: {
-      model: category.name,
-      type: 'text', // optional
-    },
-    cancel: true,
+    component: CategoryFormModal,
+    componentProps: { category },
     persistent: true,
-  }).onOk((data) => {
-    console.log('Updating category', category, 'to new name', data);
-    void useCategoryStore.updateCategory({ ...category, name: data as string });
+  }).onOk((data: Category) => {
+    $q.notify({
+      type: 'positive',
+      message: `${data.name} has been updated successfully`,
+      timeout: 2000,
+    });
   });
 };
-const confirmDeleteCategory = (category: Category) => {
+
+const confirmDeleteCategory = (id: number) => {
   $q.dialog({
     title: 'Confirm',
-    message: `Are you sure you want to delete category "${category.name}"?`,
+    message: 'Are you sure you want to delete this category?',
     cancel: true,
     persistent: true,
   }).onOk(() => {
-    console.log('Deleting category', category);
-    void useCategoryStore.deleteCategory(category.id!);
+    void categoryStore.deleteCategory(id);
+    $q.notify({
+      type: 'positive',
+      message: `Category has been deleted successfully`,
+      timeout: 2000,
+    });
   });
 };
 
 onMounted(async () => {
-  await useCategoryStore.init();
+  await categoryStore.init();
 });
 </script>
