@@ -34,9 +34,15 @@
                 <q-icon name="fa-solid fa-user-cog"></q-icon>
                 <q-item-section class="text-center text-subtitle1">Members</q-item-section>
               </q-item>
-              <q-item clickable v-close-popup class="row items-center">
-                <q-icon name="fa-solid fa-chart-line"></q-icon>
-                <q-item-section class="text-center text-subtitle1">Reports</q-item-section>
+              <!-- activity logs -->
+              <q-item
+                clickable
+                v-close-popup
+                class="row items-center"
+                :to="{ name: 'admin.activity-logs' }"
+              >
+                <q-icon name="fa-solid fa-bug"></q-icon>
+                <q-item-section class="text-center text-subtitle1">Activity Logs</q-item-section>
               </q-item>
               <!-- backup -->
               <q-item clickable v-close-popup class="row items-center">

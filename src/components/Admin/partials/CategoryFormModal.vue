@@ -7,17 +7,21 @@
         </div>
       </q-card-section>
 
-      <q-form @submit.prevent="onSubmit" @reset.prevent="onReset">
+      <q-form @submit.prevent="onSubmit" @reset="onReset">
         <q-card-section class="q-gutter-md">
-          <q-input v-model="form.name" label="Name" filled required />
+          <q-input v-model="form.category_name" label="Name" filled required />
           <q-toggle v-model="form.isActive" label="Is Active" />
           <q-toggle v-model="form.isExpenses" label="Is Expenses" />
           <q-select
             filled
-            v-model="form.parentCategory"
+            v-model="form.parent_id"
             use-input
             input-debounce="200"
             label="Parent Category"
+            option-value="value"
+            option-label="label"
+            emit-value
+            map-options
             :options="parentOptions"
             clearable
           >
@@ -40,24 +44,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { Category } from 'src/databases/entities/category';
+import { useCategoriesStore } from 'src/stores/categories-store';
 
 const props = defineProps<{ category?: Category }>();
 const emit = defineEmits(['ok', 'cancel']);
 
 const form = ref({
-  name: '',
+  category_name: '',
   isActive: true,
   isExpenses: false,
-  parentCategory: null as number | null,
+  parent_id: null as number | null,
 });
 
-const parentOptions = ref([
-  { label: 'Category A', value: 1 },
-  { label: 'Category B', value: 2 },
-  { label: 'Category C', value: 3 },
-]);
+const categoryStore = useCategoriesStore();
+
+const parentOptions = computed(() =>
+  categoryStore.categories.map((c) => ({
+    value: c.id,
+    label: c.category_name,
+  })),
+);
 
 const showDialog = ref<boolean>(true);
 
@@ -66,10 +74,10 @@ watch(
   (cat) => {
     if (cat) {
       form.value = {
-        name: cat.name,
+        category_name: cat.category_name,
         isActive: cat.is_active ?? true,
         isExpenses: cat.is_expense,
-        parentCategory: cat.parent_id ?? null,
+        parent_id: cat.parent_id ?? null,
       };
     } else {
       resetForm();
@@ -81,10 +89,10 @@ watch(
 function onSubmit() {
   emit('ok', {
     ...props.category,
-    name: form.value.name,
+    category_name: form.value.category_name,
     is_active: form.value.isActive,
     is_expense: form.value.isExpenses,
-    parent_id: form.value.parentCategory ?? undefined,
+    parent_id: form.value.parent_id ?? undefined,
   });
   showDialog.value = false;
 }
@@ -98,12 +106,17 @@ function onReset() {
   resetForm();
 }
 
+function onCancel() {
+  emit('cancel');
+  showDialog.value = false;
+}
+
 function resetForm() {
   form.value = {
-    name: '',
+    category_name: '',
     isActive: true,
     isExpenses: false,
-    parentCategory: null,
+    parent_id: null,
   };
 }
 </script>

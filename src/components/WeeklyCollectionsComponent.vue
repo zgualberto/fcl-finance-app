@@ -93,7 +93,7 @@
               <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
               Add 5
             </q-btn>
-          <q-btn unelevated color="primary" @click="addTithes(1)" rounded no-caps>
+            <q-btn unelevated color="primary" @click="addTithes(1)" rounded no-caps>
               <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
               Add 1
             </q-btn>
@@ -174,7 +174,16 @@ const formData = ref<FormData>({
   sundayOffering: 0,
   midweekOffering: 0,
   sundaySchoolOffering: 0,
-  tithes: [],
+  tithes: [
+    {
+      memberName: '',
+      amount: 0,
+    },
+    {
+      memberName: '',
+      amount: 0,
+    },
+  ],
 });
 
 const totalAmount = ref(0);

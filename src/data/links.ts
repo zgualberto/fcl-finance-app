@@ -11,4 +11,9 @@ export const linksList: EssentialLinkProps[] = [
     icon: 'receipt',
     routeName: 'expenses',
   },
+  {
+    title: 'Reports',
+    icon: 'fa-solid fa-chart-line',
+    routeName: 'reports',
+  },
 ];

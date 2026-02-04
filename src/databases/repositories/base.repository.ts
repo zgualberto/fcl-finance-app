@@ -1,6 +1,7 @@
 export interface BaseRepository<T> {
   insert(entity: T): Promise<number>;
-  findAll(): Promise<T[]>;
+  findAll?(): Promise<T[]>;
+  findAllWithPagination?(page?: number, limit?: number): Promise<T[]>;
   findById?(id: number): Promise<T | null>;
   update?(entity: T): void;
   delete?(id: number): void;

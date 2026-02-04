@@ -23,7 +23,7 @@
           icon="fa-solid fa-trash"
           aria-label="Delete Category"
           color="negative"
-          @click="confirmDeleteCategory(props.row)"
+          @click="confirmDeleteCategory(props.row?.id)"
         />
       </q-td>
     </template>
@@ -41,7 +41,8 @@ const categoryStore = useCategoriesStore();
 
 const columns: QTableColumn[] = [
   { name: 'id', label: 'ID', field: 'id', align: 'left' },
-  { name: 'name', label: 'Name', field: 'name', align: 'left' },
+  { name: 'name', label: 'Name', field: 'category_name', align: 'left' },
+  { name: 'parent_name', label: 'Parent Name', field: 'parent_name', align: 'left' },
   { name: 'is_active', label: 'Active', field: 'is_active', align: 'center' },
   { name: 'is_expense', label: 'Expense', field: 'is_expense', align: 'center' },
   { name: 'actions', field: 'action', label: 'Actions', align: 'center' },
@@ -56,9 +57,10 @@ const openAddCategoryDialog = () => {
     persistent: true,
   }).onOk((data: Partial<Category>) => {
     void categoryStore.addCategory(data);
+    void categoryStore.init();
     $q.notify({
       type: 'positive',
-      message: `${data.name} has been created successfully`,
+      message: `${data.category_name} has been created successfully`,
       timeout: 2000,
     });
   });
@@ -71,19 +73,21 @@ const openEditCategoryDialog = (category: Category) => {
   }).onOk((data: Category) => {
     $q.notify({
       type: 'positive',
-      message: `${data.name} has been updated successfully`,
+      message: `${data.category_name} has been updated successfully`,
       timeout: 2000,
     });
   });
 };
 
 const confirmDeleteCategory = (id: number) => {
+  console.log(`Deleting category id: ${id}`);
   $q.dialog({
     title: 'Confirm',
     message: 'Are you sure you want to delete this category?',
     cancel: true,
     persistent: true,
   }).onOk(() => {
+    console.log(`Confirm deleted category id: ${id}`);
     void categoryStore.deleteCategory(id);
     $q.notify({
       type: 'positive',

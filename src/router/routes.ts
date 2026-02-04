@@ -16,6 +16,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/ExpensesPage.vue'),
       },
       {
+        path: 'reports',
+        name: 'reports',
+        component: () => import('pages/ReportsPage.vue'),
+      },
+      {
         path: 'members',
         name: 'admin.members',
         component: () => import('pages/Admin/MembersPage.vue'),
@@ -24,6 +29,11 @@ const routes: RouteRecordRaw[] = [
         path: 'categories',
         name: 'admin.categories',
         component: () => import('pages/Admin/CategoriesPage.vue'),
+      },
+      {
+        path: 'activity-logs',
+        name: 'admin.activity-logs',
+        component: () => import('pages/Admin/ActivityLogsPage.vue'),
       },
     ],
   },

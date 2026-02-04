@@ -13,8 +13,18 @@ export class ActivityLogRepository implements BaseRepository<ActivityLog> {
     return result.changes?.lastId ?? 0;
   }
 
-  async findAll(): Promise<ActivityLog[]> {
-    const res = await database.query(`SELECT * FROM activity_logs ORDER BY created_at DESC`);
+  async findAllWithPagination(page: number = 1, limit: number = 20): Promise<ActivityLog[]> {
+    const offset = (page - 1) * limit;
+
+    const res = await database.query(
+      `
+        SELECT *
+        FROM activity_logs
+        ORDER BY created_at DESC
+        LIMIT ? OFFSET ?
+      `,
+      [limit, offset],
+    );
     return res.values as ActivityLog[];
   }
 }
