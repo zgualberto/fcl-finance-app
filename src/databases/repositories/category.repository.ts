@@ -80,18 +80,44 @@ export class CategoryRepository implements BaseRepository<Category> {
   async findAllWithParentAndChildSorting(): Promise<Category[]> {
     const res = await database.query(
       `
+        WITH RECURSIVE category_tree AS (
+          -- root categories
+          SELECT
+            c.id,
+            c.name AS category_name,
+            c.parent_id,
+            c.is_active,
+            c.is_expense,
+            NULL AS parent_name,
+            c.name AS path
+          FROM categories c
+          WHERE c.parent_id IS NULL
+
+          UNION ALL
+
+          -- children
+          SELECT
+            child.id,
+            child.name AS category_name,
+            child.parent_id,
+            child.is_active,
+            child.is_expense,
+            parent.name AS parent_name,
+            ct.path || ' / ' || child.name AS path
+          FROM categories child
+          JOIN category_tree ct ON child.parent_id = ct.id
+          JOIN categories parent ON parent.id = child.parent_id
+        )
         SELECT
-          c.id,
-          c.name AS category_name,
-          p.name AS parent_name,
-          c.parent_id,
-          c.is_expense,
-          c.is_active
-        FROM categories c
-        LEFT JOIN categories p ON c.parent_id = p.id
-        ORDER BY
-          COALESCE(p.name, c.name),
-          c.name
+          id,
+          category_name,
+          parent_id,
+          is_active,
+          is_expense,
+          parent_name,
+          path
+        FROM category_tree
+        ORDER BY path;
       `,
     );
     return res.values as Category[];

@@ -1,10 +1,35 @@
 <template>
-  <q-table title="Categories" :rows="categories" :columns="columns" row-key="id" flat bordered>
+  <q-table
+    title="Categories"
+    :rows="categories"
+    :columns="columns"
+    row-key="id"
+    flat
+    bordered
+    :pagination="pagination"
+    :rows-per-page-options="[0, 20, 50, 100]"
+  >
     <template v-slot:top-right>
       <q-btn color="primary" @click="openAddCategoryDialog" rounded unelevated no-caps>
         <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
         Add Category
       </q-btn>
+    </template>
+    <template v-slot:body-cell-isActive="props">
+      <q-td :props="props">
+        <q-icon
+          :name="props.row.is_active ? 'check_circle' : 'cancel'"
+          :color="props.row.is_active ? `positive` : `negative`"
+        />
+      </q-td>
+    </template>
+    <template v-slot:body-cell-isExpense="props">
+      <q-td :props="props">
+        <q-icon
+          :name="props.row.is_expense ? 'check_circle' : 'cancel'"
+          :color="props.row.is_expense ? `positive` : `negative`"
+        />
+      </q-td>
     </template>
     <template v-slot:body-cell-actions="props">
       <q-td align="center">
@@ -42,11 +67,15 @@ const categoryStore = useCategoriesStore();
 const columns: QTableColumn[] = [
   { name: 'id', label: 'ID', field: 'id', align: 'left' },
   { name: 'name', label: 'Name', field: 'category_name', align: 'left' },
-  { name: 'parent_name', label: 'Parent Name', field: 'parent_name', align: 'left' },
-  { name: 'is_active', label: 'Active', field: 'is_active', align: 'center' },
-  { name: 'is_expense', label: 'Expense', field: 'is_expense', align: 'center' },
+  { name: 'parentName', label: 'Parent Name', field: 'parent_name', align: 'left' },
+  { name: 'isActive', label: 'Status', field: 'is_active', align: 'center' },
+  { name: 'isExpense', label: 'Is Expenses', field: 'is_expense', align: 'center' },
   { name: 'actions', field: 'action', label: 'Actions', align: 'center' },
 ];
+
+const pagination = {
+  rowsPerPage: 20,
+};
 
 const categories = computed(() => categoryStore.categoryList);
 const $q = useQuasar();
@@ -71,6 +100,7 @@ const openEditCategoryDialog = (category: Category) => {
     componentProps: { category },
     persistent: true,
   }).onOk((data: Category) => {
+    void categoryStore.updateCategory(data);
     $q.notify({
       type: 'positive',
       message: `${data.category_name} has been updated successfully`,
@@ -80,7 +110,6 @@ const openEditCategoryDialog = (category: Category) => {
 };
 
 const confirmDeleteCategory = (id: number) => {
-  console.log(`Deleting category id: ${id}`);
   $q.dialog({
     title: 'Confirm',
     message: 'Are you sure you want to delete this category?',
