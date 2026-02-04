@@ -23,14 +23,6 @@
         />
       </q-td>
     </template>
-    <template v-slot:body-cell-isExpense="props">
-      <q-td :props="props">
-        <q-icon
-          :name="props.row.is_expense ? 'check_circle' : 'cancel'"
-          :color="props.row.is_expense ? `positive` : `negative`"
-        />
-      </q-td>
-    </template>
     <template v-slot:body-cell-actions="props">
       <q-td align="center">
         <q-btn
@@ -69,7 +61,7 @@ const columns: QTableColumn[] = [
   { name: 'name', label: 'Name', field: 'category_name', align: 'left' },
   { name: 'parentName', label: 'Parent Name', field: 'parent_name', align: 'left' },
   { name: 'isActive', label: 'Status', field: 'is_active', align: 'center' },
-  { name: 'isExpense', label: 'Is Expenses', field: 'is_expense', align: 'center' },
+  { name: 'transactionType', label: 'Type', field: 'transaction_type', align: 'left' },
   { name: 'actions', field: 'action', label: 'Actions', align: 'center' },
 ];
 

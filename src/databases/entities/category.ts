@@ -4,7 +4,7 @@ export interface Category {
   is_active: number;
   created_at?: Date;
   parent_id?: number;
-  is_expense: number;
+  transaction_type: string;
   parent_name?: string;
   path?: string;
 }
