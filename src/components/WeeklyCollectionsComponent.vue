@@ -114,12 +114,21 @@
               class="row items-end q-gutter-sm"
             >
               <div class="col">
-                <q-input
-                  v-model="tithe.memberName"
-                  outlined
+                <q-select
+                  v-model="tithe.memberId"
+                  option-value="value"
+                  option-label="label"
+                  emit-value
+                  map-options
+                  required
+                  :options="filteredMemberOptions"
                   dense
-                  label="Member Name"
-                  @update:model-value="calculateTotal"
+                  outlined
+                  use-input
+                  @filter="memberFilterFn"
+                  :input-debounce="0"
+                  clearable
+                  label="Type search for name"
                 />
               </div>
               <div class="col-4 col-sm-3">
@@ -161,11 +170,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { date as dateUtils } from 'quasar';
+import { useMembersStore } from 'src/stores/members-store';
 
 interface Tithe {
-  memberName: string;
+  memberId: number | null;
   amount: number;
 }
 
@@ -184,11 +194,7 @@ const formData = ref<FormData>({
   sundaySchoolOffering: 0,
   tithes: [
     {
-      memberName: '',
-      amount: 0,
-    },
-    {
-      memberName: '',
+      memberId: null,
       amount: 0,
     },
   ],
@@ -199,7 +205,7 @@ const totalAmount = ref(0);
 function addTithes(count: number) {
   for (let i = 0; i < count; i++) {
     formData.value.tithes.push({
-      memberName: '',
+      memberId: null,
       amount: 0,
     });
   }
@@ -234,6 +240,38 @@ function saveCollection() {
   console.log('Saving collection:', formData.value);
   // TODO: Implement database save
 }
+
+const memberStore = useMembersStore();
+interface MemberOptions {
+  value: number | undefined;
+  label: string;
+}
+const memberOptions = computed(() =>
+  memberStore.memberList.map((member) => ({
+    value: member.id,
+    label: member.name,
+  })),
+);
+const filteredMemberOptions = ref<MemberOptions[]>([]);
+
+function memberFilterFn(val: string, update: (callback: () => void) => void) {
+  setTimeout(() => {
+    update(() => {
+      if (val.length > 3) {
+        filteredMemberOptions.value = memberOptions.value.map((v) => v);
+      } else {
+        const needle = val.toLowerCase();
+        filteredMemberOptions.value = memberOptions.value.filter(
+          (v) => v.label.toLowerCase().indexOf(needle) > -1,
+        );
+      }
+    });
+  }, 1500);
+}
+
+onMounted(() => {
+  void memberStore.init();
+});
 </script>
 
 <style scoped lang="scss">

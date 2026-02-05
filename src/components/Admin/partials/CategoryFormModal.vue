@@ -1,6 +1,6 @@
 <template>
   <q-dialog v-model="showDialog" @hide="handleDialogHide">
-    <q-card style="min-width: 400px">
+    <q-card style="min-width: 400px" class="q-pa-md">
       <q-card-section>
         <div class="text-h6">
           {{ category ? 'Edit Category' : 'New Category' }}
@@ -51,32 +51,39 @@
               dense
             />
           </div>
+          <div class="row justify-end">
+            <q-btn
+              flat
+              unelevated
+              rounded
+              no-caps
+              label="Cancel"
+              @click="onCancel"
+              class="bg-blue-1 q-px-lg"
+              color="primary"
+            />
+            <q-btn
+              v-if="!category"
+              unelevated
+              rounded
+              no-caps
+              flat
+              label="Reset"
+              type="reset"
+              class="bg-blue-1 q-px-lg q-mx-sm"
+              color="primary"
+            />
+            <q-btn
+              unelevated
+              rounded
+              no-caps
+              label="Save"
+              type="submit"
+              color="primary"
+              class="q-px-lg"
+            />
+          </div>
         </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn
-            flat
-            unelevated
-            rounded
-            no-caps
-            label="Cancel"
-            @click="onCancel"
-            class="bg-blue-1"
-            color="primary"
-          />
-          <q-btn
-            v-if="!category"
-            unelevated
-            rounded
-            no-caps
-            flat
-            label="Reset"
-            type="reset"
-            class="bg-blue-1 q-pa-xl"
-            color="primary"
-          />
-          <q-btn unelevated rounded no-caps label="Save" type="submit" color="primary" />
-        </q-card-actions>
       </q-form>
     </q-card>
   </q-dialog>
