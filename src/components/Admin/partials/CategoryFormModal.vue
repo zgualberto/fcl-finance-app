@@ -9,50 +9,71 @@
 
       <q-form @submit.prevent="onSubmit" @reset="onReset">
         <q-card-section class="q-gutter-md">
-          <q-input v-model="form.category_name" label="Name" filled required />
+          <div>
+            <div class="text-caption text-grey-7 q-mb-xs">Name</div>
+            <q-input v-model="form.category_name" filled required dense />
+          </div>
+          <div>
+            <div class="text-caption text-grey-7 q-mb-xs">Parent Category</div>
+            <q-select
+              filled
+              v-model="form.parent_id"
+              use-input
+              input-debounce="200"
+              option-value="value"
+              option-label="label"
+              emit-value
+              map-options
+              :options="parentOptions"
+              clearable
+              dense
+            >
+              <template v-slot:no-option>
+                <q-item>
+                  <q-item-section class="text-grey"> No results </q-item-section>
+                </q-item>
+              </template>
+            </q-select>
+          </div>
           <q-toggle v-model="form.is_active" label="Status" icon="check_circle" />
-          <q-select
-            v-model="form.transaction_type"
-            label="Transaction Type"
-            option-value="value"
-            option-label="label"
-            emit-value
-            map-options
-            filled
-            required
-            :options="transactionTypeOptions"
-          />
-          <q-select
-            filled
-            v-model="form.parent_id"
-            use-input
-            input-debounce="200"
-            label="Parent Category"
-            option-value="value"
-            option-label="label"
-            emit-value
-            map-options
-            :options="parentOptions"
-            clearable
-          >
-            <template v-slot:no-option>
-              <q-item>
-                <q-item-section class="text-grey"> No results </q-item-section>
-              </q-item>
-            </template>
-          </q-select>
+          <div>
+            <div class="text-caption text-grey-7 q-mb-xs">Type</div>
+            <q-select
+              v-model="form.transaction_type"
+              option-value="value"
+              option-label="label"
+              emit-value
+              map-options
+              filled
+              required
+              :options="transactionTypeOptions"
+              v-show="form.parent_id == null"
+              dense
+            />
+          </div>
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn unelevated rounded no-caps label="Cancel" @click="onCancel" color="primary" />
+          <q-btn
+            flat
+            unelevated
+            rounded
+            no-caps
+            label="Cancel"
+            @click="onCancel"
+            class="bg-blue-1"
+            color="primary"
+          />
           <q-btn
             v-if="!category"
             unelevated
             rounded
             no-caps
+            flat
             label="Reset"
             type="reset"
-            color="secondary"
+            class="bg-blue-1 q-pa-xl"
+            color="primary"
           />
           <q-btn unelevated rounded no-caps label="Save" type="submit" color="primary" />
         </q-card-actions>
