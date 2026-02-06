@@ -24,6 +24,15 @@ export class MemberRepository implements BaseRepository<Member> {
     return members[0] ?? null;
   }
 
+  async findByNameLike(searchTerm: string, limit = 25): Promise<Member[]> {
+    const likeTerm = `%${searchTerm}%`;
+    const res = await database.query(
+      `SELECT * FROM members WHERE name LIKE ? ORDER BY name ASC LIMIT ?`,
+      [likeTerm, limit],
+    );
+    return res.values as Member[];
+  }
+
   update(member: Partial<Member>): void {
     void database.run(
       `UPDATE members SET name = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,

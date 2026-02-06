@@ -134,11 +134,12 @@
                   emit-value
                   map-options
                   :options="filteredMemberOptions"
+                  :loading="isMembersLoading"
                   dense
                   outlined
                   use-input
                   @filter="memberFilterFn"
-                  :input-debounce="200"
+                  :input-debounce="300"
                   clearable
                   label="Member"
                   :rules="[(val) => !!val || 'Please select a member']"
@@ -191,7 +192,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { date as dateUtils } from 'quasar';
 import { useMembersStore } from 'src/stores/members-store';
 
@@ -267,29 +268,54 @@ interface MemberOptions {
   value: number | undefined;
   label: string;
 }
-const memberOptions = computed(() =>
-  memberStore.memberList.map((member) => ({
-    value: member.id,
-    label: member.name,
-  })),
-);
 const filteredMemberOptions = ref<MemberOptions[]>([]);
+const isMembersLoading = ref(false);
+let memberFilterRequestId = 0;
 
-function memberFilterFn(val: string, update: (callback: () => void) => void) {
-  update(() => {
-    if (val.length > 3) {
-      filteredMemberOptions.value = memberOptions.value.map((v) => v);
-    } else {
-      const needle = val.toLowerCase();
-      filteredMemberOptions.value = memberOptions.value.filter(
-        (v) => v.label.toLowerCase().indexOf(needle) > -1,
-      );
-    }
-  });
+function memberFilterFn(val: string, update: (callback: () => void) => void, abort: () => void) {
+  const searchTerm = val.trim();
+  if (searchTerm.length < 3) {
+    update(() => {
+      filteredMemberOptions.value = [];
+    });
+    return;
+  }
+
+  const requestId = (memberFilterRequestId += 1);
+  isMembersLoading.value = true;
+
+  void memberStore
+    .searchMembers(searchTerm, 25)
+    .then((members) => {
+      if (requestId !== memberFilterRequestId) {
+        abort();
+        return;
+      }
+      update(() => {
+        filteredMemberOptions.value = members.map((member) => ({
+          value: member.id,
+          label: member.name,
+        }));
+      });
+    })
+    .catch(() => {
+      if (requestId !== memberFilterRequestId) {
+        abort();
+        return;
+      }
+      update(() => {
+        filteredMemberOptions.value = [];
+      });
+    })
+    .finally(() => {
+      if (requestId === memberFilterRequestId) {
+        isMembersLoading.value = false;
+      }
+    });
 }
 
 onMounted(() => {
-  void memberStore.init();
+  void memberStore.init(false);
 });
 </script>
 

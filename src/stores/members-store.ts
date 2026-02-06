@@ -17,10 +17,21 @@ export const useMembersStore = defineStore('members', {
   },
 
   actions: {
-    async init() {
+    async init(loadAll = true) {
       this.memberRepository = new MemberRepository();
-      this.members = await this.memberRepository.findAll();
+      if (loadAll) {
+        this.members = await this.memberRepository.findAll();
+      }
       this.activityLogService = new ActivityLogService();
+    },
+    async searchMembers(searchTerm: string, limit = 25): Promise<Member[]> {
+      if (!this.memberRepository) throw new Error('Repository not initialized');
+      try {
+        return await this.memberRepository.findByNameLike(searchTerm, limit);
+      } catch (error: unknown) {
+        this.activityLogService?.logErrActivity(error);
+        return [];
+      }
     },
     async addMember(name: string): Promise<void> {
       if (!this.memberRepository) throw new Error('Repository not initialized');
