@@ -1,6 +1,6 @@
 <template>
   <div class="q-pa-lg">
-    <q-card class="q-pa-lg no-borders rounded-borders">
+    <q-card class="q-pa-lg">
       <div class="q-mb-md">
         <h1 class="q-my-none text-h5 text-weight-bold text-primary">FCL Weekly Collection</h1>
         <p class="q-my-xs text-caption text-grey-7">Finance Team - Church Collections</p>
@@ -17,6 +17,8 @@
             outlined
             dense
             class="full-width"
+            :rules="[(val) => !!val || 'This field is required']"
+            clearable
           />
         </section>
 
@@ -35,6 +37,10 @@
                   dense
                   prefix="₱"
                   @update:model-value="calculateTotal"
+                  :rules="[
+                    (val) =>
+                      (val !== null && val !== undefined && val !== '') || 'This field is required',
+                  ]"
                 />
               </div>
             </div>
@@ -48,6 +54,10 @@
                   dense
                   prefix="₱"
                   @update:model-value="calculateTotal"
+                  :rules="[
+                    (val) =>
+                      (val !== null && val !== undefined && val !== '') || 'This field is required',
+                  ]"
                 />
               </div>
             </div>
@@ -61,6 +71,10 @@
                   dense
                   prefix="₱"
                   @update:model-value="calculateTotal"
+                  :rules="[
+                    (val) =>
+                      (val !== null && val !== undefined && val !== '') || 'This field is required',
+                  ]"
                 />
               </div>
             </div>
@@ -111,7 +125,7 @@
             <div
               v-for="(tithe, index) in formData.tithes"
               :key="index"
-              class="row items-end q-gutter-sm"
+              class="row items-start q-gutter-sm rounded-borders"
             >
               <div class="col">
                 <q-select
@@ -120,15 +134,15 @@
                   option-label="label"
                   emit-value
                   map-options
-                  required
                   :options="filteredMemberOptions"
                   dense
                   outlined
                   use-input
                   @filter="memberFilterFn"
-                  :input-debounce="0"
+                  :input-debounce="200"
                   clearable
-                  label="Type search for name"
+                  label="Member"
+                  :rules="[(val) => !!val || 'Please select a member']"
                 />
               </div>
               <div class="col-4 col-sm-3">
@@ -140,6 +154,7 @@
                   prefix="₱"
                   label="Amount"
                   @update:model-value="calculateTotal"
+                  :rules="[(val) => !!val || 'This field should be a valid amount']"
                 />
               </div>
               <div class="col-auto">
@@ -156,13 +171,20 @@
             </div>
           </div>
           <!-- Save Button -->
-          <q-btn type="submit" label="Save Collection" color="positive" class="full-width" />
+          <q-btn
+            type="submit"
+            label="Save Collection"
+            color="positive"
+            class="full-width"
+            no-caps
+          />
         </section>
       </q-form>
 
+      <q-separator class="q-my-lg" />
       <!-- Total Display -->
       <div class="total-box q-mt-md q-pa-lg text-center text-white rounded-borders">
-        <p class="q-my-none text-caption op-70">Total Weekly Collection</p>
+        <p class="q-my-none text-caption">Total Weekly Collection</p>
         <h2 class="q-my-none text-h4 text-weight-bold">₱{{ formatCurrency(totalAmount) }}</h2>
       </div>
     </q-card>
@@ -255,18 +277,16 @@ const memberOptions = computed(() =>
 const filteredMemberOptions = ref<MemberOptions[]>([]);
 
 function memberFilterFn(val: string, update: (callback: () => void) => void) {
-  setTimeout(() => {
-    update(() => {
-      if (val.length > 3) {
-        filteredMemberOptions.value = memberOptions.value.map((v) => v);
-      } else {
-        const needle = val.toLowerCase();
-        filteredMemberOptions.value = memberOptions.value.filter(
-          (v) => v.label.toLowerCase().indexOf(needle) > -1,
-        );
-      }
-    });
-  }, 1500);
+  update(() => {
+    if (val.length > 3) {
+      filteredMemberOptions.value = memberOptions.value.map((v) => v);
+    } else {
+      const needle = val.toLowerCase();
+      filteredMemberOptions.value = memberOptions.value.filter(
+        (v) => v.label.toLowerCase().indexOf(needle) > -1,
+      );
+    }
+  });
 }
 
 onMounted(() => {
@@ -275,26 +295,14 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.header {
-  border-bottom: 1px solid #e0e0e0;
-}
-
 .form-section {
   h3 {
     margin: 0;
   }
 }
 
-.full-width {
-  width: 100%;
-}
-
 .border-bottom {
   border-bottom: 1px solid #e0e0e0;
-}
-
-.rounded-borders {
-  border-radius: 8px;
 }
 
 .op-70 {
