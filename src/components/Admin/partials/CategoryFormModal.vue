@@ -94,6 +94,7 @@ import { computed, ref, watch } from 'vue';
 import type { Category } from 'src/databases/entities/category';
 import { useCategoriesStore } from 'src/stores/categories-store';
 import { TransactionType } from 'src/enums/transaction_type';
+import { useQuasar } from 'quasar';
 
 const props = defineProps<{ category?: Category }>();
 const emit = defineEmits(['ok', 'cancel']);
@@ -105,6 +106,7 @@ const form = ref({
   parent_id: null as number | null,
 });
 
+const $q = useQuasar();
 const categoryStore = useCategoriesStore();
 
 const transactionTypeOptions = Object.values(TransactionType).map((type) => ({
@@ -139,6 +141,40 @@ watch(
 );
 
 function onSubmit() {
+  // check if category is already exist
+  if (props.category) {
+    if (
+      categoryStore.categories.some(
+        (c) =>
+          c.category_name.toLowerCase() == form.value.category_name.toLowerCase() &&
+          c.id != props.category?.id,
+      )
+    ) {
+      $q.notify({
+        color: 'negative',
+        message: 'Category already exists',
+        icon: 'warning',
+        timeout: 2000,
+      });
+
+      return false;
+    }
+  } else {
+    if (
+      categoryStore.categories.some(
+        (c) => c.category_name.toLowerCase() == form.value.category_name.toLowerCase(),
+      )
+    ) {
+      $q.notify({
+        color: 'negative',
+        message: 'Category already exists',
+        icon: 'warning',
+        timeout: 2000,
+      });
+
+      return false;
+    }
+  }
   emit('ok', {
     ...props.category,
     category_name: form.value.category_name,

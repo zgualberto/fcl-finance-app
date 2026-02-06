@@ -85,9 +85,7 @@
         <section class="form-section q-mt-lg">
           <div class="row items-center q-mb-sm">
             <div class="col">
-              <h3 class="q-my-none text-subtitle2 text-weight-bold">
-                Tithes ({{ formData.tithes.length }} entries)
-              </h3>
+              <div class="text-h6">Tithes ({{ formData.tithes.length }} entries)</div>
             </div>
             <div class="col-auto q-gutter-md">
               <q-btn
@@ -120,8 +118,9 @@
               </q-btn>
             </div>
           </div>
+          <q-separator class="q-mb-md"></q-separator>
 
-          <div class="q-gutter-sm q-my-md">
+          <div class="q-my-md">
             <div
               v-for="(tithe, index) in formData.tithes"
               :key="index"

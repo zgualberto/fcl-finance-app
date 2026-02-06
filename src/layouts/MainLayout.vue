@@ -13,9 +13,9 @@
 
         <q-toolbar-title> FCL Finance Portal </q-toolbar-title>
         <q-spacer></q-spacer>
-        <q-btn flat dense round icon="fa-solid fa-gear" aria-label="Settings">
+        <q-btn flat round icon="fa-solid fa-gear" aria-label="Settings">
           <q-menu>
-            <q-list style="min-width: 200px">
+            <q-list style="min-width: 250px">
               <q-item
                 clickable
                 v-close-popup
@@ -45,10 +45,10 @@
                 <q-item-section class="text-center text-subtitle1">Activity Logs</q-item-section>
               </q-item>
               <!-- backup -->
-              <q-item clickable v-close-popup class="row items-center">
+              <!-- <q-item clickable v-close-popup class="row items-center">
                 <q-icon name="fa-solid fa-database"></q-icon>
                 <q-item-section class="text-center text-subtitle1">Backup</q-item-section>
-              </q-item>
+              </q-item> -->
             </q-list>
           </q-menu>
         </q-btn>

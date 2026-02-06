@@ -58,6 +58,17 @@ const openAddMemberDialog = () => {
     cancel: true,
     persistent: true,
   }).onOk((data) => {
+    // check if member is already in the DB
+    if (members.value.some((m) => m.name.toLowerCase() == data.toLowerCase())) {
+      $q.notify({
+        color: 'negative',
+        message: 'Member already exists',
+        icon: 'warning',
+        timeout: 2000,
+      });
+
+      return false;
+    }
     void membersStore.addMember(data as string);
   });
 };
@@ -72,7 +83,19 @@ const openEditMemberDialog = (member: Member) => {
     cancel: true,
     persistent: true,
   }).onOk((data) => {
-    console.log('Updating member', member, 'to new name', data);
+    // check if name is already in use
+    if (
+      members.value.some((m) => m.name.toLowerCase() == data.toLowerCase() && m.id != member.id)
+    ) {
+      $q.notify({
+        color: 'negative',
+        message: 'Member already exists',
+        icon: 'warning',
+        timeout: 2000,
+      });
+
+      return false;
+    }
     void membersStore.updateMember({ ...member, name: data as string });
   });
 };
@@ -83,7 +106,6 @@ const confirmDeleteMember = (member: Member) => {
     cancel: true,
     persistent: true,
   }).onOk(() => {
-    console.log('Deleting member', member);
     void membersStore.deleteMember(member.id!);
   });
 };
