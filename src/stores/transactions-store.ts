@@ -25,6 +25,8 @@ export const useTransactionsStore = defineStore('transactions', {
     async addTransaction(data: Partial<Transaction>): Promise<void> {
       if (!this.transactionRepository) throw new Error('Repository not initialized');
       try {
+        // TODO: check if transaction is aleady in the DB by comparing category_id, member_id, date
+
         await this.transactionRepository.insert(data);
       } catch (error: unknown) {
         this.activityLogService?.logErrActivity(error);
