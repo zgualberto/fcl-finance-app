@@ -34,6 +34,9 @@ export const useMembersStore = defineStore('members', {
       }
     },
     async addMember(name: string): Promise<void> {
+      await this.createMember(name);
+    },
+    async createMember(name: string): Promise<Member | null> {
       if (!this.memberRepository) throw new Error('Repository not initialized');
       try {
         const id = await this.memberRepository.insert({
@@ -42,8 +45,10 @@ export const useMembersStore = defineStore('members', {
         });
         const member = { name, is_active: true, id } as Member;
         this.members.unshift(member);
+        return member;
       } catch (error: unknown) {
         this.activityLogService?.logErrActivity(error);
+        return null;
       }
     },
     updateMember(member: Partial<Member>) {

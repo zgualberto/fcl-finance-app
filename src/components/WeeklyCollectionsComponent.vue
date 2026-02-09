@@ -35,7 +35,6 @@
                   outlined
                   dense
                   prefix="₱"
-                  @update:model-value="calculateTotal"
                   :rules="[
                     (val) =>
                       (val !== null && val !== undefined && val !== '') || 'This field is required',
@@ -52,7 +51,6 @@
                   outlined
                   dense
                   prefix="₱"
-                  @update:model-value="calculateTotal"
                   :rules="[
                     (val) =>
                       (val !== null && val !== undefined && val !== '') || 'This field is required',
@@ -69,7 +67,6 @@
                   outlined
                   dense
                   prefix="₱"
-                  @update:model-value="calculateTotal"
                   :rules="[
                     (val) =>
                       (val !== null && val !== undefined && val !== '') || 'This field is required',
@@ -120,85 +117,15 @@
           <q-separator class="q-mb-md"></q-separator>
 
           <div class="q-my-md">
-            <div
+            <WeeklyCollectionsTitheRow
               v-for="(tithe, index) in formData.tithes"
               :key="index"
-              class="row items-start q-gutter-sm rounded-borders"
-            >
-              <div class="col">
-                <q-select
-                  v-model="tithe.memberId"
-                  v-model:input-value="tithe.searchTerm"
-                  option-value="value"
-                  option-label="label"
-                  emit-value
-                  map-options
-                  :options="filteredMemberOptions"
-                  :loading="isMembersLoading"
-                  dense
-                  outlined
-                  use-input
-                  @filter="(val, update, abort) => memberFilterFn(val, update, abort, tithe)"
-                  :input-debounce="0"
-                  label="Member"
-                  :rules="[(val) => !!val || 'Please select a member']"
-                  clearable
-                >
-                  <template v-slot:no-option>
-                    <q-item>
-                      <q-item-section class="text-grey"> No members found. </q-item-section>
-                    </q-item>
-                    <q-item v-if="(tithe.searchTerm?.length ?? 0) < 3">
-                      <q-item-section class="text-grey">
-                        Type at least 3 characters to search.
-                      </q-item-section>
-                    </q-item>
-                    <q-item v-else>
-                      <q-item-section>
-                        <q-btn
-                          flat
-                          no-caps
-                          color="primary"
-                          rounded
-                          :disable="isCreatingMember"
-                          @click="createMemberFromSearch(tithe)"
-                        >
-                          <q-icon
-                            name="fa-solid fa-arrow-right-to-bracket"
-                            size="xs"
-                            class="q-mr-md"
-                          />
-                          Create member "{{ tithe.searchTerm }}"
-                        </q-btn>
-                      </q-item-section>
-                    </q-item>
-                  </template>
-                </q-select>
-              </div>
-              <div class="col-4 col-sm-3">
-                <q-input
-                  v-model.number="tithe.amount"
-                  type="number"
-                  outlined
-                  dense
-                  prefix="₱"
-                  label="Amount"
-                  @update:model-value="calculateTotal"
-                  :rules="[(val) => !!val || 'This field should be a valid amount']"
-                />
-              </div>
-              <div class="col-auto">
-                <q-btn
-                  flat
-                  dense
-                  round
-                  icon="delete"
-                  color="negative"
-                  size="md"
-                  @click="removeTithe(index)"
-                />
-              </div>
-            </div>
+              v-model:member-id="tithe.memberId"
+              v-model:member-name="tithe.memberName"
+              v-model:search-term="tithe.searchTerm"
+              v-model:amount="tithe.amount"
+              @remove="removeTithe(index)"
+            />
           </div>
           <!-- Save Button -->
           <q-btn
@@ -226,7 +153,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { date as dateUtils, useQuasar } from 'quasar';
 import { useMembersStore } from 'src/stores/members-store';
 import { useCategoriesStore } from 'src/stores/categories-store';
@@ -234,11 +161,13 @@ import { useTransactionsStore } from 'src/stores/transactions-store';
 import { OfferingCategoryName } from 'src/enums/offering_category';
 import { TransactionType } from 'src/enums/transaction_type';
 import type { Transaction } from 'src/databases/entities/transaction';
+import WeeklyCollectionsTitheRow from './WeeklyCollectionsTitheRow.vue';
 
 interface Tithe {
   memberId: number | null;
+  memberName: string;
   amount: number;
-  searchTerm?: string;
+  searchTerm: string;
 }
 
 interface FormData {
@@ -249,38 +178,24 @@ interface FormData {
   tithes: Tithe[];
 }
 
-const formData = ref<FormData>({
+const createDefaultTithe = (): Tithe => ({
+  memberId: null,
+  memberName: '',
+  amount: 0,
+  searchTerm: '',
+});
+
+const createDefaultFormData = (): FormData => ({
   collectionDate: dateUtils.formatDate(new Date(), 'YYYY-MM-DD'),
   sundayOffering: 0,
   midweekOffering: 0,
   sundaySchoolOffering: 0,
-  tithes: [
-    {
-      memberId: null,
-      amount: 0,
-      searchTerm: '',
-    },
-  ],
+  tithes: [createDefaultTithe()],
 });
 
-const totalAmount = ref(0);
+const formData = ref<FormData>(createDefaultFormData());
 
-function addTithes(count: number) {
-  for (let i = 0; i < count; i++) {
-    formData.value.tithes.push({
-      memberId: null,
-      amount: 0,
-      searchTerm: '',
-    });
-  }
-}
-
-function removeTithe(index: number) {
-  formData.value.tithes.splice(index, 1);
-  calculateTotal();
-}
-
-function calculateTotal() {
+const totalAmount = computed(() => {
   const offerings =
     (formData.value.sundayOffering || 0) +
     (formData.value.midweekOffering || 0) +
@@ -290,7 +205,17 @@ function calculateTotal() {
     return sum + (tithe.amount || 0);
   }, 0);
 
-  totalAmount.value = offerings + tithesTotal;
+  return offerings + tithesTotal;
+});
+
+function addTithes(count: number) {
+  for (let i = 0; i < count; i++) {
+    formData.value.tithes.push(createDefaultTithe());
+  }
+}
+
+function removeTithe(index: number) {
+  formData.value.tithes.splice(index, 1);
 }
 
 function formatCurrency(amount: number): string {
@@ -311,15 +236,7 @@ const offeringCategoryNames = [
   OfferingCategoryName.TITHES,
 ];
 const offeringCategoryIds = ref<Record<string, number>>({});
-interface MemberOptions {
-  value: number | undefined;
-  label: string;
-}
-const filteredMemberOptions = ref<MemberOptions[]>([]);
-const isMembersLoading = ref(false);
 const isSaving = ref(false);
-const isCreatingMember = ref(false);
-let memberFilterRequestId = 0;
 
 function getMissingOfferingCategories(): OfferingCategoryName[] {
   return offeringCategoryNames.filter((name) => offeringCategoryIds.value[name] == null);
@@ -337,58 +254,14 @@ function handleOpenSummary() {
   console.log('Opening summary for:', formData.value);
 }
 
-function getMemberLabel(memberId: number): string | null {
-  const member = memberStore.member(memberId);
-  if (member?.name) {
-    return member.name;
+function resolveMemberLabel(tithe: Tithe): string | null {
+  if (tithe.memberName) {
+    return tithe.memberName;
   }
-  return filteredMemberOptions.value.find((option) => option.value === memberId)?.label ?? null;
-}
-
-function createMemberFromSearch(tithe: Tithe) {
-  const searchTerm = (tithe.searchTerm ?? '').trim();
-  if (!searchTerm) {
-    $q.notify({
-      type: 'negative',
-      message: 'Please enter a member name before creating.',
-      position: 'top-right',
-    });
-    return;
+  if (tithe.memberId == null) {
+    return null;
   }
-  if (isCreatingMember.value) {
-    return;
-  }
-
-  isCreatingMember.value = true;
-  void (async () => {
-    try {
-      await memberStore.addMember(searchTerm);
-      const matches = await memberStore.searchMembers(searchTerm, 1);
-      const newMember = matches[0];
-      if (newMember?.id) {
-        filteredMemberOptions.value = [
-          {
-            value: newMember.id,
-            label: newMember.name,
-          },
-        ];
-      }
-      $q.notify({
-        type: 'positive',
-        message: 'Member created successfully.',
-        position: 'top-right',
-      });
-      tithe.searchTerm = '';
-    } catch {
-      $q.notify({
-        type: 'negative',
-        message: 'Failed to create member. Please try again.',
-        position: 'top-right',
-      });
-    } finally {
-      isCreatingMember.value = false;
-    }
-  })();
+  return memberStore.member(tithe.memberId)?.name ?? null;
 }
 
 function buildTransactions(): Partial<Transaction>[] {
@@ -417,7 +290,7 @@ function buildTransactions(): Partial<Transaction>[] {
 
   formData.value.tithes.forEach((tithe) => {
     const memberId = tithe.memberId as number;
-    const memberLabel = getMemberLabel(memberId);
+    const memberLabel = resolveMemberLabel(tithe);
     const description = memberLabel ? `Tithe - ${memberLabel}` : `Tithe - Member ${memberId}`;
 
     transactions.push({
@@ -433,21 +306,7 @@ function buildTransactions(): Partial<Transaction>[] {
 }
 
 function resetForm() {
-  formData.value = {
-    collectionDate: dateUtils.formatDate(new Date(), 'YYYY-MM-DD'),
-    sundayOffering: 0,
-    midweekOffering: 0,
-    sundaySchoolOffering: 0,
-    tithes: [
-      {
-        memberId: null,
-        amount: 0,
-        searchTerm: '',
-      },
-    ],
-  };
-  totalAmount.value = 0;
-  filteredMemberOptions.value = [];
+  formData.value = createDefaultFormData();
 }
 
 async function saveCollection() {
@@ -470,9 +329,7 @@ async function saveCollection() {
   isSaving.value = true;
   try {
     const transactions = buildTransactions();
-    await Promise.all(
-      transactions.map((transaction) => transactionsStore.addTransaction(transaction)),
-    );
+    await transactionsStore.addTransactionsBatch(transactions);
 
     $q.notify({
       type: 'positive',
@@ -490,54 +347,6 @@ async function saveCollection() {
   } finally {
     isSaving.value = false;
   }
-}
-
-function memberFilterFn(
-  val: string,
-  update: (callback: () => void) => void,
-  abort: () => void,
-  tithe: Tithe,
-) {
-  const searchTerm = val.trim();
-  tithe.searchTerm = searchTerm;
-  if (searchTerm.length < 3) {
-    update(() => {
-      filteredMemberOptions.value = [];
-    });
-    return;
-  }
-
-  const requestId = (memberFilterRequestId += 1);
-  isMembersLoading.value = true;
-
-  void memberStore
-    .searchMembers(searchTerm, 25)
-    .then((members) => {
-      if (requestId !== memberFilterRequestId) {
-        abort();
-        return;
-      }
-      update(() => {
-        filteredMemberOptions.value = members.map((member) => ({
-          value: member.id,
-          label: member.name,
-        }));
-      });
-    })
-    .catch(() => {
-      if (requestId !== memberFilterRequestId) {
-        abort();
-        return;
-      }
-      update(() => {
-        filteredMemberOptions.value = [];
-      });
-    })
-    .finally(() => {
-      if (requestId === memberFilterRequestId) {
-        isMembersLoading.value = false;
-      }
-    });
 }
 
 async function createMissingOfferingCategories(names: OfferingCategoryName[]) {

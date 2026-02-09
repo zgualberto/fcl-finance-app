@@ -32,6 +32,14 @@ export const useTransactionsStore = defineStore('transactions', {
         this.activityLogService?.logErrActivity(error);
       }
     },
+    async addTransactionsBatch(data: Partial<Transaction>[]): Promise<void> {
+      if (!this.transactionRepository) throw new Error('Repository not initialized');
+      if (data.length === 0) return;
+
+      for (const transaction of data) {
+        await this.addTransaction(transaction);
+      }
+    },
     updateTransaction(transaction: Partial<Transaction>) {
       if (!this.transactionRepository) throw new Error('Repository not initialized');
       try {
