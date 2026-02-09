@@ -128,6 +128,7 @@
               <div class="col">
                 <q-select
                   v-model="tithe.memberId"
+                  v-model:input-value="tithe.searchTerm"
                   option-value="value"
                   option-label="label"
                   emit-value
@@ -137,7 +138,7 @@
                   dense
                   outlined
                   use-input
-                  @filter="memberFilterFn"
+                  @filter="(val, update, abort) => memberFilterFn(val, update, abort, tithe)"
                   :input-debounce="0"
                   label="Member"
                   :rules="[(val) => !!val || 'Please select a member']"
@@ -147,7 +148,7 @@
                     <q-item>
                       <q-item-section class="text-grey"> No members found. </q-item-section>
                     </q-item>
-                    <q-item v-if="memberSearchTerm.length < 3">
+                    <q-item v-if="(tithe.searchTerm?.length ?? 0) < 3">
                       <q-item-section class="text-grey">
                         Type at least 3 characters to search.
                       </q-item-section>
@@ -167,7 +168,7 @@
                             size="xs"
                             class="q-mr-md"
                           />
-                          Create member "{{ memberSearchTerm }}"
+                          Create member "{{ tithe.searchTerm }}"
                         </q-btn>
                       </q-item-section>
                     </q-item>
@@ -237,6 +238,7 @@ import type { Transaction } from 'src/databases/entities/transaction';
 interface Tithe {
   memberId: number | null;
   amount: number;
+  searchTerm?: string;
 }
 
 interface FormData {
@@ -256,6 +258,7 @@ const formData = ref<FormData>({
     {
       memberId: null,
       amount: 0,
+      searchTerm: '',
     },
   ],
 });
@@ -267,6 +270,7 @@ function addTithes(count: number) {
     formData.value.tithes.push({
       memberId: null,
       amount: 0,
+      searchTerm: '',
     });
   }
 }
@@ -315,7 +319,6 @@ const filteredMemberOptions = ref<MemberOptions[]>([]);
 const isMembersLoading = ref(false);
 const isSaving = ref(false);
 const isCreatingMember = ref(false);
-const memberSearchTerm = ref('');
 let memberFilterRequestId = 0;
 
 function getMissingOfferingCategories(): OfferingCategoryName[] {
@@ -343,7 +346,8 @@ function getMemberLabel(memberId: number): string | null {
 }
 
 function createMemberFromSearch(tithe: Tithe) {
-  if (!memberSearchTerm.value) {
+  const searchTerm = (tithe.searchTerm ?? '').trim();
+  if (!searchTerm) {
     $q.notify({
       type: 'negative',
       message: 'Please enter a member name before creating.',
@@ -358,11 +362,10 @@ function createMemberFromSearch(tithe: Tithe) {
   isCreatingMember.value = true;
   void (async () => {
     try {
-      await memberStore.addMember(memberSearchTerm.value);
-      const matches = await memberStore.searchMembers(memberSearchTerm.value, 1);
+      await memberStore.addMember(searchTerm);
+      const matches = await memberStore.searchMembers(searchTerm, 1);
       const newMember = matches[0];
       if (newMember?.id) {
-        tithe.memberId = newMember.id;
         filteredMemberOptions.value = [
           {
             value: newMember.id,
@@ -375,7 +378,7 @@ function createMemberFromSearch(tithe: Tithe) {
         message: 'Member created successfully.',
         position: 'top-right',
       });
-      memberSearchTerm.value = '';
+      tithe.searchTerm = '';
     } catch {
       $q.notify({
         type: 'negative',
@@ -439,6 +442,7 @@ function resetForm() {
       {
         memberId: null,
         amount: 0,
+        searchTerm: '',
       },
     ],
   };
@@ -488,9 +492,14 @@ async function saveCollection() {
   }
 }
 
-function memberFilterFn(val: string, update: (callback: () => void) => void, abort: () => void) {
+function memberFilterFn(
+  val: string,
+  update: (callback: () => void) => void,
+  abort: () => void,
+  tithe: Tithe,
+) {
   const searchTerm = val.trim();
-  memberSearchTerm.value = searchTerm;
+  tithe.searchTerm = searchTerm;
   if (searchTerm.length < 3) {
     update(() => {
       filteredMemberOptions.value = [];
