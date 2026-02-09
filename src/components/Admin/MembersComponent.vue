@@ -61,6 +61,7 @@ const openAddMemberDialog = () => {
     // check if member is already in the DB
     if (members.value.some((m) => m.name.toLowerCase() == data.toLowerCase())) {
       $q.notify({
+        position: 'top-right',
         color: 'negative',
         message: 'Member already exists',
         icon: 'warning',
@@ -88,6 +89,7 @@ const openEditMemberDialog = (member: Member) => {
       members.value.some((m) => m.name.toLowerCase() == data.toLowerCase() && m.id != member.id)
     ) {
       $q.notify({
+        position: 'top-right',
         color: 'negative',
         message: 'Member already exists',
         icon: 'warning',

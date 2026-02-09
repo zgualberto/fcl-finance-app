@@ -80,6 +80,7 @@ const openAddCategoryDialog = () => {
     void categoryStore.addCategory(data);
     void categoryStore.init();
     $q.notify({
+      position: 'top-right',
       type: 'positive',
       message: `${data.category_name} has been created successfully`,
       timeout: 2000,
@@ -94,6 +95,7 @@ const openEditCategoryDialog = (category: Category) => {
   }).onOk((data: Category) => {
     void categoryStore.updateCategory(data);
     $q.notify({
+      position: 'top-right',
       type: 'positive',
       message: `${data.category_name} has been updated successfully`,
       timeout: 2000,
@@ -111,6 +113,7 @@ const confirmDeleteCategory = (id: number) => {
     console.log(`Confirm deleted category id: ${id}`);
     void categoryStore.deleteCategory(id);
     $q.notify({
+      position: 'top-right',
       type: 'positive',
       message: `Category has been deleted successfully`,
       timeout: 2000,

@@ -35,7 +35,7 @@ export const migration: Migration = {
       date DATE NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (member_id) REFERENCES accounts(id) ON DELETE SET NULL,
+      FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE SET NULL,
       FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
     )`,
 

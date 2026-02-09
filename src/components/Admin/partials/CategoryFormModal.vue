@@ -151,6 +151,7 @@ function onSubmit() {
       )
     ) {
       $q.notify({
+        position: 'top-right',
         color: 'negative',
         message: 'Category already exists',
         icon: 'warning',
@@ -166,6 +167,7 @@ function onSubmit() {
       )
     ) {
       $q.notify({
+        position: 'top-right',
         color: 'negative',
         message: 'Category already exists',
         icon: 'warning',

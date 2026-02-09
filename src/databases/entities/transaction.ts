@@ -7,7 +7,4 @@ export interface Transaction {
   date: string;
   created_at?: Date;
   updated_at?: Date;
-  category_name?: string;
-  transaction_type?: string;
-  member_name?: string;
 }
