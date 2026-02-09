@@ -15,7 +15,9 @@ export class ActivityLogService {
   logErrActivity(log: unknown) {
     console.log('Error activity logged');
     void this.activityLogRepository.insert({
-      log: JSON.stringify(log),
+      log: JSON.stringify(
+        log instanceof Error ? { name: log.name, message: log.message, stack: log.stack } : log,
+      ),
       is_error: true,
     });
   }
