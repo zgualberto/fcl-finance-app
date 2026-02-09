@@ -52,6 +52,31 @@ export class CategoryRepository implements BaseRepository<Category> {
     return category[0] ?? null;
   }
 
+  async findByNames(names: string[]): Promise<Category[]> {
+    if (!names.length) {
+      return [];
+    }
+
+    const normalizedNames = names.map((name) => name.trim().toLowerCase());
+    const placeholders = normalizedNames.map(() => '?').join(', ');
+    const res = await database.query(
+      `
+        SELECT
+          id,
+          name as category_name,
+          is_active,
+          created_at,
+          parent_id,
+          transaction_type
+        FROM categories
+        WHERE LOWER(name) IN (${placeholders})
+        ORDER BY name ASC
+      `,
+      normalizedNames,
+    );
+    return res.values as Category[];
+  }
+
   update(member: Partial<Category>): void {
     void database.run(
       `

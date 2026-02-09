@@ -139,7 +139,7 @@
                   outlined
                   use-input
                   @filter="memberFilterFn"
-                  :input-debounce="300"
+                  :input-debounce="0"
                   clearable
                   label="Member"
                   :rules="[(val) => !!val || 'Please select a member']"
@@ -195,6 +195,8 @@
 import { onMounted, ref } from 'vue';
 import { date as dateUtils } from 'quasar';
 import { useMembersStore } from 'src/stores/members-store';
+import { useCategoriesStore } from 'src/stores/categories-store';
+import { OfferingCategoryName } from 'src/enums/offering_category';
 
 interface Tithe {
   memberId: number | null;
@@ -258,12 +260,14 @@ function formatCurrency(amount: number): string {
   });
 }
 
-function saveCollection() {
-  console.log('Saving collection:', formData.value);
-  // TODO: Implement database save
-}
-
 const memberStore = useMembersStore();
+const categoriesStore = useCategoriesStore();
+const offeringCategoryNames = [
+  OfferingCategoryName.MIDWEEK_SERVICE_OFFERING,
+  OfferingCategoryName.SUNDAY_SCHOOL_OFFERING,
+  OfferingCategoryName.SUNDAY_SERVICE_OFFERING,
+];
+const offeringCategoryIds = ref<Record<string, number>>({});
 interface MemberOptions {
   value: number | undefined;
   label: string;
@@ -271,6 +275,24 @@ interface MemberOptions {
 const filteredMemberOptions = ref<MemberOptions[]>([]);
 const isMembersLoading = ref(false);
 let memberFilterRequestId = 0;
+
+function saveCollection() {
+  const offeringCategoryIdMap = offeringCategoryIds.value;
+  const offeringCategoryIdsPayload = {
+    sundayServiceOfferingCategoryId:
+      offeringCategoryIdMap[OfferingCategoryName.SUNDAY_SERVICE_OFFERING] ?? null,
+    midweekServiceOfferingCategoryId:
+      offeringCategoryIdMap[OfferingCategoryName.MIDWEEK_SERVICE_OFFERING] ?? null,
+    sundaySchoolOfferingCategoryId:
+      offeringCategoryIdMap[OfferingCategoryName.SUNDAY_SCHOOL_OFFERING] ?? null,
+  };
+
+  console.log('Saving collection:', {
+    ...formData.value,
+    offeringCategoryIds: offeringCategoryIdsPayload,
+  });
+  // TODO: Implement database save
+}
 
 function memberFilterFn(val: string, update: (callback: () => void) => void, abort: () => void) {
   const searchTerm = val.trim();
@@ -314,8 +336,19 @@ function memberFilterFn(val: string, update: (callback: () => void) => void, abo
     });
 }
 
+async function loadOfferingCategories() {
+  const categories = await categoriesStore.fetchCategoriesByNames(offeringCategoryNames);
+  offeringCategoryIds.value = categories.reduce<Record<string, number>>((acc, category) => {
+    if (category.id) {
+      acc[category.category_name] = category.id;
+    }
+    return acc;
+  }, {});
+}
+
 onMounted(() => {
   void memberStore.init(false);
+  void loadOfferingCategories();
 });
 </script>
 

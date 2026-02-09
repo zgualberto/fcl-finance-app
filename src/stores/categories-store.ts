@@ -17,10 +17,24 @@ export const useCategoriesStore = defineStore('categories', {
   },
 
   actions: {
-    async init() {
+    async init(loadAll = true) {
       this.categoryRepository = new CategoryRepository();
-      this.categories = await this.categoryRepository.findAllWithParentAndChildSorting();
+      if (loadAll) {
+        this.categories = await this.categoryRepository.findAllWithParentAndChildSorting();
+      }
       this.activityLogService = new ActivityLogService();
+    },
+    async fetchCategoriesByNames(names: string[]): Promise<Category[]> {
+      if (!this.categoryRepository) {
+        await this.init(false);
+      }
+      if (!this.categoryRepository) throw new Error('Repository not initialized');
+      try {
+        return await this.categoryRepository.findByNames(names);
+      } catch (error: unknown) {
+        this.activityLogService?.logErrActivity(error);
+        return [];
+      }
     },
     async addCategory(data: Partial<Category>): Promise<void> {
       if (!this.categoryRepository) throw new Error('Repository not initialized');
