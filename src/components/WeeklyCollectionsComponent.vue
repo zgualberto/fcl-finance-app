@@ -25,56 +25,11 @@
         <section class="form-section">
           <div class="text-h6">Service Offerings</div>
           <q-separator class="q-mb-md"></q-separator>
-          <div class="row q-col-gutter-md">
-            <div class="col-12 col-sm-6 col-md-4">
-              <div>
-                <div class="text-caption text-grey-7 q-mb-xs">Sunday Service Offering</div>
-                <q-input
-                  v-model.number="formData.sundayOffering"
-                  type="number"
-                  outlined
-                  dense
-                  prefix="₱"
-                  :rules="[
-                    (val) =>
-                      (val !== null && val !== undefined && val !== '') || 'This field is required',
-                  ]"
-                />
-              </div>
-            </div>
-            <div class="col-12 col-sm-6 col-md-4">
-              <div>
-                <div class="text-caption text-grey-7 q-mb-xs">Midweek Service Offering</div>
-                <q-input
-                  v-model.number="formData.midweekOffering"
-                  type="number"
-                  outlined
-                  dense
-                  prefix="₱"
-                  :rules="[
-                    (val) =>
-                      (val !== null && val !== undefined && val !== '') || 'This field is required',
-                  ]"
-                />
-              </div>
-            </div>
-            <div class="col-12 col-sm-6 col-md-4">
-              <div>
-                <div class="text-caption text-grey-7 q-mb-xs">Sunday School Offering</div>
-                <q-input
-                  v-model.number="formData.sundaySchoolOffering"
-                  type="number"
-                  outlined
-                  dense
-                  prefix="₱"
-                  :rules="[
-                    (val) =>
-                      (val !== null && val !== undefined && val !== '') || 'This field is required',
-                  ]"
-                />
-              </div>
-            </div>
-          </div>
+          <ServiceOfferingsRow
+            v-model:sunday-offering="formData.sundayOffering"
+            v-model:midweek-offering="formData.midweekOffering"
+            v-model:sunday-school-offering="formData.sundaySchoolOffering"
+          />
         </section>
 
         <!-- Tithes -->
@@ -169,6 +124,7 @@ import { OfferingCategoryName } from 'src/enums/offering_category';
 import { TransactionType } from 'src/enums/transaction_type';
 import type { Transaction } from 'src/databases/entities/transaction';
 import WeeklyCollectionsTitheRow from './WeeklyCollectionsTitheRow.vue';
+import ServiceOfferingsRow from './ServiceOfferingsRow.vue';
 import CollectionSummaryDialog from './CollectionSummaryDialog.vue';
 
 interface Tithe {
