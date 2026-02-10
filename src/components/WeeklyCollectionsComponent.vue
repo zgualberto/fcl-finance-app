@@ -6,7 +6,7 @@
         <p class="q-my-xs text-caption text-grey-7">Finance Team - Church Collections</p>
       </div>
 
-      <q-form @submit="saveCollection">
+      <q-form ref="formRef" @submit="saveCollection">
         <section class="form-section q-mb-lg">
           <div class="text-h6">Collection Date</div>
           <q-separator class="q-mb-md"></q-separator>
@@ -153,8 +153,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { date as dateUtils, useQuasar } from 'quasar';
+import { computed, nextTick, onMounted, ref } from 'vue';
+import { date as dateUtils, type QForm, useQuasar } from 'quasar';
 import { useMembersStore } from 'src/stores/members-store';
 import { useCategoriesStore } from 'src/stores/categories-store';
 import { useTransactionsStore } from 'src/stores/transactions-store';
@@ -195,6 +195,7 @@ const createDefaultFormData = (): FormData => ({
 });
 
 const formData = ref<FormData>(createDefaultFormData());
+const formRef = ref<QForm | null>(null);
 
 const totalAmount = computed(() => {
   const offerings =
@@ -315,6 +316,9 @@ function buildTransactions(): Partial<Transaction>[] {
 
 function resetForm() {
   formData.value = createDefaultFormData();
+  void nextTick(() => {
+    formRef.value?.resetValidation();
+  });
 }
 
 async function saveCollection() {
