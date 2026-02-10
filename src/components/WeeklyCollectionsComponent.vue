@@ -140,9 +140,16 @@
 
       <q-separator class="q-my-lg" />
       <!-- Total Display -->
-      <div class="total-box q-mt-md q-pa-lg text-center text-white rounded-borders">
+      <div class="total-box q-mt-md q-pa-lg text-white rounded-borders">
         <p class="q-my-none text-caption">Total Weekly Collection</p>
-        <h2 class="q-my-none text-h4 text-weight-bold">₱{{ formatCurrency(totalAmount) }}</h2>
+        <div class="row items-end">
+          <div class="col">
+            <h2 class="q-my-none text-h4 text-weight-bold">₱{{ formatCurrency(totalAmount) }}</h2>
+          </div>
+          <div class="col-auto">
+            <q-icon name="payments" size="36px" class="opacity-40" />
+          </div>
+        </div>
       </div>
 
       <q-inner-loading :showing="isSaving">
