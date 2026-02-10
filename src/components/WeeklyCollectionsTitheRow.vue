@@ -39,7 +39,7 @@
                 :disable="isCreatingMember"
                 @click="createMemberFromSearch"
               >
-                <q-icon name="fa-solid fa-arrow-right-to-bracket" size="xs" class="q-mr-md" />
+                <q-icon name="add" size="xs" class="q-mr-md" />
                 Create member "{{ localSearchTerm }}"
               </q-btn>
             </q-item-section>

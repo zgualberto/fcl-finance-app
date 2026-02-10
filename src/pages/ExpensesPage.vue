@@ -1,5 +1,7 @@
 <template>
-  <div class="q-pa-md">
-    <h2>Expenses Page</h2>
-  </div>
+  <ExpensesComponent />
 </template>
+
+<script setup lang="ts">
+import ExpensesComponent from 'src/components/ExpensesComponent.vue';
+</script>

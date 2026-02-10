@@ -7,7 +7,7 @@ export const linksList: EssentialLinkProps[] = [
     routeName: 'weekly_collections',
   },
   {
-    title: 'Expenses',
+    title: 'FCL Weekly Expenses',
     icon: 'receipt',
     routeName: 'expenses',
   },
