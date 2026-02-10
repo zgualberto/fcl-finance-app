@@ -3,7 +3,7 @@ import type { EssentialLinkProps } from 'components/EssentialLink.vue';
 export const linksList: EssentialLinkProps[] = [
   {
     title: 'FCL Weekly Collection',
-    icon: 'money',
+    icon: 'fa-solid fa-dollar-sign',
     routeName: 'weekly_collections',
   },
   {

@@ -162,6 +162,7 @@ import { OfferingCategoryName } from 'src/enums/offering_category';
 import { TransactionType } from 'src/enums/transaction_type';
 import type { Transaction } from 'src/databases/entities/transaction';
 import WeeklyCollectionsTitheRow from './WeeklyCollectionsTitheRow.vue';
+import CollectionSummaryDialog from './CollectionSummaryDialog.vue';
 
 interface Tithe {
   memberId: number | null;
@@ -252,6 +253,13 @@ function getOfferingCategoryId(name: OfferingCategoryName): number {
 
 function handleOpenSummary() {
   console.log('Opening summary for:', formData.value);
+  // Open $q.dialog with QTable showing summary of transactions just added.
+  $q.dialog({
+    component: CollectionSummaryDialog,
+    componentProps: {
+      rows: buildTransactions(),
+    },
+  });
 }
 
 function resolveMemberLabel(tithe: Tithe): string | null {
@@ -336,8 +344,8 @@ async function saveCollection() {
       message: 'Weekly collection saved successfully.',
       position: 'top-right',
     });
-    resetForm();
     handleOpenSummary();
+    resetForm();
   } catch {
     $q.notify({
       type: 'negative',
