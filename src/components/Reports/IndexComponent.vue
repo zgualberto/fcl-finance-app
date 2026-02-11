@@ -95,7 +95,6 @@ import { ref, computed, onMounted } from 'vue';
 import { date as dateUtils, useQuasar } from 'quasar';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 import type { Transaction } from 'src/databases/entities/transaction';
-import ReportPeriodDialog from './ReportPeriodDialog.vue';
 
 interface GroupedTransaction {
   id: string;
@@ -215,10 +214,14 @@ function formatMonthYear(dateStr: string): string {
 
 function openReportDialog() {
   $q.dialog({
-    component: ReportPeriodDialog,
-    componentProps: {
-      modelValue: selectedDate.value,
+    title: 'Select Report Period',
+    message: 'Please select the month and year for the report:',
+    prompt: {
+      model: selectedDate.value,
+      type: 'month',
     },
+    cancel: true,
+    persistent: true,
   }).onOk((value: string) => {
     if (!value) {
       return;
