@@ -92,4 +92,28 @@ export class TransactionRepository implements BaseRepository<Transaction> {
   delete(id: number): void {
     void database.run(`DELETE FROM transactions WHERE id = ?`, [id]);
   }
+
+  async findByDateRange(startDate: string, endDate: string): Promise<Transaction[]> {
+    const res = await database.query(
+      `SELECT
+         t.id,
+         t.member_id,
+         t.category_id,
+         t.amount,
+         t.description,
+         t.date,
+         t.created_at,
+         t.updated_at,
+         c.name AS category_name,
+         c.transaction_type,
+         m.name AS member_name
+       FROM transactions t
+       LEFT JOIN categories c ON c.id = t.category_id
+       LEFT JOIN members m ON m.id = t.member_id
+       WHERE t.date >= ? AND t.date <= ?
+       ORDER BY t.date ASC, t.created_at ASC`,
+      [startDate, endDate],
+    );
+    return res.values as Transaction[];
+  }
 }

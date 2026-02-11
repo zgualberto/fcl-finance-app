@@ -61,6 +61,18 @@ export const useTransactionsStore = defineStore('transactions', {
         this.activityLogService?.logErrActivity(error);
       }
     },
+    async fetchTransactionsByDateRange(startDate: string, endDate: string): Promise<Transaction[]> {
+      if (!this.transactionRepository) {
+        await this.init();
+      }
+      if (!this.transactionRepository) throw new Error('Repository not initialized');
+      try {
+        return await this.transactionRepository.findByDateRange(startDate, endDate);
+      } catch (error: unknown) {
+        this.activityLogService?.logErrActivity(error);
+        return [];
+      }
+    },
   },
 });
 

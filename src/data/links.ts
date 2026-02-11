@@ -14,6 +14,17 @@ export const linksList: EssentialLinkProps[] = [
   {
     title: 'Reports',
     icon: 'fa-solid fa-chart-line',
-    routeName: 'reports',
+    children: [
+      {
+        title: 'Monthly Report',
+        icon: 'fa-solid fa-calendar-days',
+        routeName: 'reports.monthly',
+      },
+      {
+        title: 'Annual Report',
+        icon: 'fa-solid fa-calendar',
+        routeName: 'reports.annual',
+      },
+    ],
   },
 ];
