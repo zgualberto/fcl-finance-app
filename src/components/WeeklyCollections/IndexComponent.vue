@@ -395,7 +395,7 @@ async function saveCollection() {
       message:
         'Please select a member for each tithe entry before saving. All fields are required.',
       caption: `Missing member on tithe entry #${missingMemberIndex + 1}`,
-      position: 'top-right',
+      position: 'bottom-right',
     });
     return;
   }
@@ -408,7 +408,7 @@ async function saveCollection() {
     $q.notify({
       type: 'positive',
       message: 'Weekly collection saved successfully.',
-      position: 'top-right',
+      position: 'bottom-right',
     });
     handleOpenSummary();
     resetForm();
@@ -416,7 +416,7 @@ async function saveCollection() {
     $q.notify({
       type: 'negative',
       message: 'Failed to save weekly collection. Please try again.',
-      position: 'top-right',
+      position: 'bottom-right',
     });
   } finally {
     isSaving.value = false;
@@ -534,7 +534,7 @@ async function loadOfferingCategories(skipDialog = false) {
           $q.notify({
             type: 'negative',
             message: 'Failed to create missing categories. Please try again.',
-            position: 'top-right',
+            position: 'bottom-right',
           });
         }
       })();

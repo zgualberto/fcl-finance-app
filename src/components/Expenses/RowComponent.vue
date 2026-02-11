@@ -164,7 +164,7 @@ async function createCategoryFromSearch() {
     $q.notify({
       type: 'negative',
       message: 'Please enter a category name before creating.',
-      position: 'top-right',
+      position: 'bottom-right',
     });
     return;
   }
@@ -182,7 +182,7 @@ async function createCategoryFromSearch() {
     $q.notify({
       type: 'positive',
       message: 'Category created successfully.',
-      position: 'top-right',
+      position: 'bottom-right',
     });
     localSearchTerm.value = '';
     applyFilter('');
@@ -190,7 +190,7 @@ async function createCategoryFromSearch() {
     $q.notify({
       type: 'negative',
       message: 'Failed to create category. Please try again.',
-      position: 'top-right',
+      position: 'bottom-right',
     });
   } finally {
     isCreatingCategory.value = false;

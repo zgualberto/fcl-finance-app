@@ -261,7 +261,7 @@ async function saveExpenses() {
       type: 'negative',
       message: 'Please select a category for each expense entry before saving.',
       caption: `Missing category on expense entry #${missingCategoryIndex + 1}`,
-      position: 'top-right',
+      position: 'bottom-right',
     });
     return;
   }
@@ -274,7 +274,7 @@ async function saveExpenses() {
       type: 'negative',
       message: 'Please enter a valid amount for each expense entry before saving.',
       caption: `Invalid amount on expense entry #${invalidAmountIndex + 1}`,
-      position: 'top-right',
+      position: 'bottom-right',
     });
     return;
   }
@@ -287,7 +287,7 @@ async function saveExpenses() {
     $q.notify({
       type: 'positive',
       message: 'Weekly expenses saved successfully.',
-      position: 'top-right',
+      position: 'bottom-right',
     });
 
     const summaryRows = buildSummaryRows();
@@ -297,7 +297,7 @@ async function saveExpenses() {
     $q.notify({
       type: 'negative',
       message: 'Failed to save weekly expenses. Please try again.',
-      position: 'top-right',
+      position: 'bottom-right',
     });
   } finally {
     isSaving.value = false;

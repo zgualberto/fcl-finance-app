@@ -188,7 +188,7 @@ function createMemberFromSearch() {
     $q.notify({
       type: 'negative',
       message: 'Please enter a member name before creating.',
-      position: 'top-right',
+      position: 'bottom-right',
     });
     return;
   }
@@ -216,14 +216,14 @@ function createMemberFromSearch() {
       $q.notify({
         type: 'positive',
         message: 'Member created successfully.',
-        position: 'top-right',
+        position: 'bottom-right',
       });
       localSearchTerm.value = '';
     } catch {
       $q.notify({
         type: 'negative',
         message: 'Failed to create member. Please try again.',
-        position: 'top-right',
+        position: 'bottom-right',
       });
     } finally {
       isCreatingMember.value = false;

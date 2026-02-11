@@ -220,7 +220,19 @@ function openReportDialog() {
       model: selectedDate.value,
       type: 'month',
     },
-    cancel: true,
+    ok: {
+      color: 'primary',
+      unelevated: true,
+      rounded: true,
+      noCaps: true,
+    },
+    cancel: {
+      label: 'Cancel',
+      flat: true,
+      class: 'bg-blue-1',
+      rounded: true,
+      noCaps: true,
+    },
     persistent: true,
   }).onOk((value: string) => {
     if (!value) {
@@ -257,14 +269,14 @@ async function loadReport() {
       $q.notify({
         type: 'info',
         message: 'No transactions found for the selected period.',
-        position: 'top-right',
+        position: 'bottom-right',
       });
     }
   } catch {
     $q.notify({
       type: 'negative',
       message: 'Failed to load report. Please try again.',
-      position: 'top-right',
+      position: 'bottom-right',
     });
   } finally {
     isLoading.value = false;
