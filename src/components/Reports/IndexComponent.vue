@@ -26,7 +26,7 @@
         <div class="col-12 col-md-6">
           <q-card class="rounded-borders" style="border: 2px solid #e3f2fd">
             <q-card-section class="bg-blue-1">
-              <h3 class="q-my-0 text-h6" style="color: #1976d2; font-weight: 700">Collections</h3>
+              <div class="text-h6" style="color: #1976d2; font-weight: 700">Collections</div>
             </q-card-section>
 
             <q-card-section>
@@ -34,7 +34,7 @@
                 <div class="text-subtitle2 q-mb-sm" style="font-weight: 600; color: #1976d2">
                   {{ categoryGroup.name }}
                 </div>
-                <div class="q-mb-md" style="border-bottom: 2px solid #bbdefb; padding-bottom: 12px">
+                <div class="q-mb-md">
                   <div
                     v-for="item in categoryGroup.items"
                     :key="`${item.id}`"
@@ -45,6 +45,7 @@
                       >₱{{ formatCurrency(item.total) }}</span
                     >
                   </div>
+                  <q-separator></q-separator>
                   <div class="row justify-between q-mt-sm" style="font-weight: 700; color: #1565c0">
                     <span>Total</span>
                     <span>₱{{ formatCurrency(categoryGroup.subtotal) }}</span>
@@ -59,7 +60,7 @@
         <div class="col-12 col-md-6">
           <q-card class="rounded-borders" style="border: 2px solid #ffebee">
             <q-card-section class="bg-red-1">
-              <h3 class="q-my-0 text-h6" style="color: #c41c3b; font-weight: 700">Expenses</h3>
+              <div class="text-h6" style="color: #c41c3b; font-weight: 700">Expenses</div>
             </q-card-section>
 
             <q-card-section>
@@ -67,7 +68,7 @@
                 <div class="text-subtitle2 q-mb-sm" style="font-weight: 600; color: #c41c3b">
                   {{ categoryGroup.name }}
                 </div>
-                <div class="q-mb-md" style="border-bottom: 2px solid #ffcdd2; padding-bottom: 12px">
+                <div class="q-mb-md">
                   <div
                     v-for="item in categoryGroup.items"
                     :key="`${item.id}`"
@@ -78,6 +79,7 @@
                       >₱{{ formatCurrency(item.total) }}</span
                     >
                   </div>
+                  <q-separator></q-separator>
                   <div class="row justify-between q-mt-sm" style="font-weight: 700; color: #b71c1c">
                     <span>Total</span>
                     <span>₱{{ formatCurrency(categoryGroup.subtotal) }}</span>
