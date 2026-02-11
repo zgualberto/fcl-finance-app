@@ -106,9 +106,12 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          t.updated_at,
          c.name AS category_name,
          c.transaction_type,
+         c.parent_id,
+         COALESCE(pc.name, c.name) AS parent_name,
          m.name AS member_name
        FROM transactions t
        LEFT JOIN categories c ON c.id = t.category_id
+       LEFT JOIN categories pc ON pc.id = c.parent_id
        LEFT JOIN members m ON m.id = t.member_id
        WHERE t.date >= ? AND t.date <= ?
        ORDER BY t.date ASC, t.created_at ASC`,

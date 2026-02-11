@@ -11,4 +11,6 @@ export interface Transaction {
   category_name?: string;
   transaction_type?: string;
   member_name?: string;
+  parent_id?: number | null;
+  parent_name?: string;
 }
