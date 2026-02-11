@@ -15,6 +15,11 @@
         Add Category
       </q-btn>
     </template>
+    <template v-slot:body-cell-transactionType="props">
+      <q-td :props="props">
+        <q-badge>{{ props.row.transaction_type }}</q-badge>
+      </q-td>
+    </template>
     <template v-slot:body-cell-isActive="props">
       <q-td :props="props">
         <q-icon

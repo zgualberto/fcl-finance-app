@@ -32,6 +32,16 @@
           />
         </section>
 
+        <!-- Other Offerings -->
+        <section class="form-section q-mt-lg">
+          <div class="text-h6">Other Offerings</div>
+          <q-separator class="q-mb-md"></q-separator>
+          <OtherOfferingsRow
+            v-model:everybodys-birthday="formData.everybodysBirthday"
+            v-model:special-funding="formData.specialFunding"
+          />
+        </section>
+
         <!-- Tithes -->
         <section class="form-section q-mt-lg">
           <div class="row items-center q-mb-sm">
@@ -121,12 +131,16 @@ import { date as dateUtils, type QForm, useQuasar } from 'quasar';
 import { useMembersStore } from 'src/stores/members-store';
 import { useCategoriesStore } from 'src/stores/categories-store';
 import { useTransactionsStore } from 'src/stores/transactions-store';
-import { OfferingCategoryName } from 'src/enums/offering_category';
+import { WeeklyOfferingCategoryName } from 'src/enums/weekly_offering_category';
+import { CollectionsCategoryName } from 'src/enums/collections_category';
+import { OtherOfferingCategoryName } from 'src/enums/other_offering_category';
 import { TransactionType } from 'src/enums/transaction_type';
 import type { Transaction } from 'src/databases/entities/transaction';
+import type { Category } from 'src/databases/entities/category';
 
 import WeeklyCollectionsTitheRow from './Tithes/RowComponent.vue';
 import ServiceOfferingsRow from './ServiceOfferings/RowComponent.vue';
+import OtherOfferingsRow from './OtherOfferings/RowComponent.vue';
 import CollectionSummaryDialog from './SummaryDialogComponent.vue';
 
 interface Tithe {
@@ -141,6 +155,8 @@ interface FormData {
   sundayOffering: number;
   midweekOffering: number;
   sundaySchoolOffering: number;
+  everybodysBirthday: number;
+  specialFunding: number;
   tithes: Tithe[];
 }
 
@@ -156,6 +172,8 @@ const createDefaultFormData = (): FormData => ({
   sundayOffering: 0,
   midweekOffering: 0,
   sundaySchoolOffering: 0,
+  everybodysBirthday: 0,
+  specialFunding: 0,
   tithes: [createDefaultTithe()],
 });
 
@@ -166,7 +184,9 @@ const totalAmount = computed(() => {
   const offerings =
     (formData.value.sundayOffering || 0) +
     (formData.value.midweekOffering || 0) +
-    (formData.value.sundaySchoolOffering || 0);
+    (formData.value.sundaySchoolOffering || 0) +
+    (formData.value.everybodysBirthday || 0) +
+    (formData.value.specialFunding || 0);
 
   const tithesTotal = formData.value.tithes.reduce((sum, tithe) => {
     return sum + (tithe.amount || 0);
@@ -196,23 +216,88 @@ const memberStore = useMembersStore();
 const categoriesStore = useCategoriesStore();
 const transactionsStore = useTransactionsStore();
 const $q = useQuasar();
-const offeringCategoryNames = [
-  OfferingCategoryName.MIDWEEK_SERVICE_OFFERING,
-  OfferingCategoryName.SUNDAY_SCHOOL_OFFERING,
-  OfferingCategoryName.SUNDAY_SERVICE_OFFERING,
-  OfferingCategoryName.TITHES,
+const offeringCategoryNames: WeeklyOfferingCategoryName[] = [
+  WeeklyOfferingCategoryName.MIDWEEK_SERVICE_OFFERING,
+  WeeklyOfferingCategoryName.SUNDAY_SCHOOL_OFFERING,
+  WeeklyOfferingCategoryName.SUNDAY_SERVICE_OFFERING,
+  WeeklyOfferingCategoryName.TITHES,
+];
+const otherOfferingCategoryNames: OtherOfferingCategoryName[] = [
+  OtherOfferingCategoryName.EVERYBODYS_BIRTHDAY,
+  OtherOfferingCategoryName.SPECIAL_FUNDING,
+];
+type HierarchyGroup = {
+  parentName: CollectionsCategoryName;
+  childNames: string[];
+};
+
+const categoryHierarchyGroups: HierarchyGroup[] = [
+  {
+    parentName: CollectionsCategoryName.SERVICE_OFFERINGS,
+    childNames: [...offeringCategoryNames],
+  },
+  {
+    parentName: CollectionsCategoryName.OTHER_COLLECTIONS,
+    childNames: [...otherOfferingCategoryNames],
+  },
+];
+const allCategoryNames: string[] = [
+  ...categoryHierarchyGroups.map((group) => group.parentName),
+  ...categoryHierarchyGroups.flatMap((group) => group.childNames),
 ];
 const offeringCategoryIds = ref<Record<string, number>>({});
+const otherOfferingCategoryIds = ref<Record<string, number>>({});
 const isSaving = ref(false);
 
-function getMissingOfferingCategories(): OfferingCategoryName[] {
-  return offeringCategoryNames.filter((name) => offeringCategoryIds.value[name] == null);
+function buildCategoryMap(categories: Category[]): Record<string, Category> {
+  return categories.reduce<Record<string, Category>>((acc, category) => {
+    acc[category.category_name] = category;
+    return acc;
+  }, {});
 }
 
-function getOfferingCategoryId(name: OfferingCategoryName): number {
+function getHierarchyIssues(categoryMap: Record<string, Category>) {
+  const missingParents: string[] = [];
+  const missingChildren: string[] = [];
+  const mismatchedChildren: Category[] = [];
+
+  categoryHierarchyGroups.forEach((group) => {
+    const parent = categoryMap[group.parentName];
+    if (!parent?.id) {
+      missingParents.push(group.parentName);
+      return;
+    }
+
+    const parentId = parent.id;
+
+    group.childNames.forEach((childName) => {
+      const child = categoryMap[childName];
+      if (!child?.id) {
+        missingChildren.push(childName);
+        return;
+      }
+
+      if (child.parent_id !== parentId) {
+        mismatchedChildren.push(child);
+      }
+    });
+  });
+
+  return { missingParents, missingChildren, mismatchedChildren };
+}
+
+function getOfferingCategoryId(name: WeeklyOfferingCategoryName): number {
   const id = offeringCategoryIds.value[name];
   if (id == null) {
     throw new Error(`Missing offering category: ${name}`);
+  }
+  return id;
+}
+
+function getOtherOfferingCategoryId(name: OtherOfferingCategoryName): number {
+  const id = otherOfferingCategoryIds.value[name];
+  if (id == null) {
+    throw new Error(`Missing other offering category: ${name}`);
   }
   return id;
 }
@@ -239,25 +324,37 @@ function resolveMemberLabel(tithe: Tithe): string | null {
 }
 
 function buildTransactions(): Partial<Transaction>[] {
-  const tithesCategoryId = getOfferingCategoryId(OfferingCategoryName.TITHES);
+  const tithesCategoryId = getOfferingCategoryId(WeeklyOfferingCategoryName.TITHES);
   const collectionDate = formData.value.collectionDate;
   const transactions: Partial<Transaction>[] = [
     {
-      category_id: getOfferingCategoryId(OfferingCategoryName.SUNDAY_SERVICE_OFFERING),
+      category_id: getOfferingCategoryId(WeeklyOfferingCategoryName.SUNDAY_SERVICE_OFFERING),
       amount: formData.value.sundayOffering,
-      description: OfferingCategoryName.SUNDAY_SERVICE_OFFERING,
+      description: WeeklyOfferingCategoryName.SUNDAY_SERVICE_OFFERING,
       date: collectionDate,
     },
     {
-      category_id: getOfferingCategoryId(OfferingCategoryName.MIDWEEK_SERVICE_OFFERING),
+      category_id: getOfferingCategoryId(WeeklyOfferingCategoryName.MIDWEEK_SERVICE_OFFERING),
       amount: formData.value.midweekOffering,
-      description: OfferingCategoryName.MIDWEEK_SERVICE_OFFERING,
+      description: WeeklyOfferingCategoryName.MIDWEEK_SERVICE_OFFERING,
       date: collectionDate,
     },
     {
-      category_id: getOfferingCategoryId(OfferingCategoryName.SUNDAY_SCHOOL_OFFERING),
+      category_id: getOfferingCategoryId(WeeklyOfferingCategoryName.SUNDAY_SCHOOL_OFFERING),
       amount: formData.value.sundaySchoolOffering,
-      description: OfferingCategoryName.SUNDAY_SCHOOL_OFFERING,
+      description: WeeklyOfferingCategoryName.SUNDAY_SCHOOL_OFFERING,
+      date: collectionDate,
+    },
+    {
+      category_id: getOtherOfferingCategoryId(OtherOfferingCategoryName.EVERYBODYS_BIRTHDAY),
+      amount: formData.value.everybodysBirthday,
+      description: OtherOfferingCategoryName.EVERYBODYS_BIRTHDAY,
+      date: collectionDate,
+    },
+    {
+      category_id: getOtherOfferingCategoryId(OtherOfferingCategoryName.SPECIAL_FUNDING),
+      amount: formData.value.specialFunding,
+      description: OtherOfferingCategoryName.SPECIAL_FUNDING,
       date: collectionDate,
     },
   ];
@@ -326,34 +423,100 @@ async function saveCollection() {
   }
 }
 
-async function createMissingOfferingCategories(names: OfferingCategoryName[]) {
+async function ensureCategoryHierarchy(): Promise<void> {
   await categoriesStore.init(false);
-  await Promise.all(
-    names.map((name) =>
-      categoriesStore.addCategory({
-        category_name: name,
-        is_active: 1,
-        transaction_type: TransactionType.COLLECTIONS,
-      }),
-    ),
-  );
+
+  let categories = await categoriesStore.fetchCategoriesByNames(allCategoryNames);
+  let categoryMap = buildCategoryMap(categories);
+  const { missingParents } = getHierarchyIssues(categoryMap);
+
+  if (missingParents.length > 0) {
+    await Promise.all(
+      missingParents.map((name) =>
+        categoriesStore.addCategory({
+          category_name: name,
+          is_active: 1,
+          transaction_type: TransactionType.COLLECTIONS,
+        }),
+      ),
+    );
+  }
+
+  categories = await categoriesStore.fetchCategoriesByNames(allCategoryNames);
+  categoryMap = buildCategoryMap(categories);
+
+  const createChildPromises: Promise<void>[] = [];
+  categoryHierarchyGroups.forEach((group) => {
+    const parent = categoryMap[group.parentName];
+    if (!parent?.id) {
+      return;
+    }
+
+    const parentId = parent.id;
+
+    group.childNames.forEach((childName) => {
+      const child = categoryMap[childName];
+      if (!child?.id) {
+        createChildPromises.push(
+          categoriesStore.addCategory({
+            category_name: childName,
+            is_active: 1,
+            transaction_type: TransactionType.COLLECTIONS,
+            parent_id: parentId,
+          }),
+        );
+        return;
+      }
+
+      if (child.parent_id !== parentId) {
+        categoriesStore.updateCategory({
+          id: child.id,
+          category_name: child.category_name,
+          is_active: child.is_active,
+          transaction_type: child.transaction_type,
+          parent_id: parentId,
+        });
+      }
+    });
+  });
+
+  if (createChildPromises.length > 0) {
+    await Promise.all(createChildPromises);
+  }
 }
 
 async function loadOfferingCategories(skipDialog = false) {
-  const categories = await categoriesStore.fetchCategoriesByNames(offeringCategoryNames);
-  offeringCategoryIds.value = categories.reduce<Record<string, number>>((acc, category) => {
-    if (category.id) {
-      acc[category.category_name] = category.id;
+  await categoriesStore.init(false);
+  const categories = await categoriesStore.fetchCategoriesByNames(allCategoryNames);
+  const categoryMap = buildCategoryMap(categories);
+  const { missingParents, missingChildren, mismatchedChildren } = getHierarchyIssues(categoryMap);
+
+  offeringCategoryIds.value = offeringCategoryNames.reduce<Record<string, number>>((acc, name) => {
+    const category = categoryMap[name];
+    if (category?.id) {
+      acc[name] = category.id;
     }
     return acc;
   }, {});
 
-  const missingCategories = getMissingOfferingCategories();
-  if (missingCategories.length > 0 && !skipDialog) {
+  otherOfferingCategoryIds.value = otherOfferingCategoryNames.reduce<Record<string, number>>(
+    (acc, name) => {
+      const category = categoryMap[name];
+      if (category?.id) {
+        acc[name] = category.id;
+      }
+      return acc;
+    },
+    {},
+  );
+
+  const hasIssues =
+    missingParents.length > 0 || missingChildren.length > 0 || mismatchedChildren.length > 0;
+  if (hasIssues && !skipDialog) {
     $q.dialog({
       title: 'Missing Categories',
       message:
-        'One or more offering categories are missing. Would you like to create them now using the standard names?',
+        'One or more categories are missing or not linked to their parent. Would you like to fix them now?',
       ok: {
         label: 'Fix',
         color: 'primary',
@@ -365,7 +528,7 @@ async function loadOfferingCategories(skipDialog = false) {
     }).onOk(() => {
       void (async () => {
         try {
-          await createMissingOfferingCategories(missingCategories);
+          await ensureCategoryHierarchy();
           await loadOfferingCategories(true);
         } catch {
           $q.notify({
