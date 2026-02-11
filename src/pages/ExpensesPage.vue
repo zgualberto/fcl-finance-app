@@ -3,5 +3,5 @@
 </template>
 
 <script setup lang="ts">
-import ExpensesComponent from 'src/components/ExpensesComponent.vue';
+import ExpensesComponent from 'src/components/Expenses/IndexComponent.vue';
 </script>

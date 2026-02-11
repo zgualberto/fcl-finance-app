@@ -95,8 +95,8 @@ import { useTransactionsStore } from 'src/stores/transactions-store';
 import { TransactionType } from 'src/enums/transaction_type';
 import type { Category } from 'src/databases/entities/category';
 import type { Transaction } from 'src/databases/entities/transaction';
-import ExpensesRow from './ExpensesRow.vue';
-import ExpensesSummaryDialog from './ExpensesSummaryDialog.vue';
+import ExpensesRow from './RowComponent.vue';
+import ExpensesSummaryDialog from './SummaryDialogComponent.vue';
 
 interface ExpenseItem {
   categoryId: number | null;

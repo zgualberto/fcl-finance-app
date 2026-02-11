@@ -117,15 +117,17 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue';
 import { date as dateUtils, type QForm, useQuasar } from 'quasar';
+
 import { useMembersStore } from 'src/stores/members-store';
 import { useCategoriesStore } from 'src/stores/categories-store';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 import { OfferingCategoryName } from 'src/enums/offering_category';
 import { TransactionType } from 'src/enums/transaction_type';
 import type { Transaction } from 'src/databases/entities/transaction';
-import WeeklyCollectionsTitheRow from './WeeklyCollectionsTitheRow.vue';
-import ServiceOfferingsRow from './ServiceOfferingsRow.vue';
-import CollectionSummaryDialog from './CollectionSummaryDialog.vue';
+
+import WeeklyCollectionsTitheRow from './Tithes/RowComponent.vue';
+import ServiceOfferingsRow from './ServiceOfferings/RowComponent.vue';
+import CollectionSummaryDialog from './SummaryDialogComponent.vue';
 
 interface Tithe {
   memberId: number | null;

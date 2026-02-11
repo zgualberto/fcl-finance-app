@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import WeeklyCollectionsComponent from 'src/components/WeeklyCollectionsComponent.vue';
+import WeeklyCollectionsComponent from 'src/components/WeeklyCollections/IndexComponent.vue';
 </script>
 
 <template>
