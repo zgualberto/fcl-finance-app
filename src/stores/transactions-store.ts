@@ -29,7 +29,8 @@ export const useTransactionsStore = defineStore('transactions', {
 
         await this.transactionRepository.insert(data);
       } catch (error: unknown) {
-        this.activityLogService?.logErrActivity(error);
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
       }
     },
     async addTransactionsBatch(data: Partial<Transaction>[]): Promise<void> {
@@ -49,7 +50,8 @@ export const useTransactionsStore = defineStore('transactions', {
           this.transactions[index] = { ...this.transactions[index], ...transaction } as Transaction;
         }
       } catch (error: unknown) {
-        this.activityLogService?.logErrActivity(error);
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
       }
     },
     deleteTransaction(id: number) {
@@ -58,7 +60,8 @@ export const useTransactionsStore = defineStore('transactions', {
         void this.transactionRepository.delete(id);
         this.transactions = this.transactions.filter((t) => t.id !== id);
       } catch (error: unknown) {
-        this.activityLogService?.logErrActivity(error);
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
       }
     },
     async fetchTransactionsByDateRange(startDate: string, endDate: string): Promise<Transaction[]> {
@@ -69,7 +72,8 @@ export const useTransactionsStore = defineStore('transactions', {
       try {
         return await this.transactionRepository.findByDateRange(startDate, endDate);
       } catch (error: unknown) {
-        this.activityLogService?.logErrActivity(error);
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
         return [];
       }
     },

@@ -29,7 +29,8 @@ export const useMembersStore = defineStore('members', {
       try {
         return await this.memberRepository.findByNameLike(searchTerm, limit);
       } catch (error: unknown) {
-        this.activityLogService?.logErrActivity(error);
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
         return [];
       }
     },
@@ -47,7 +48,8 @@ export const useMembersStore = defineStore('members', {
         this.members.unshift(member);
         return member;
       } catch (error: unknown) {
-        this.activityLogService?.logErrActivity(error);
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
         return null;
       }
     },
@@ -60,7 +62,8 @@ export const useMembersStore = defineStore('members', {
           this.members[index] = { ...this.members[index], ...member } as Member;
         }
       } catch (error: unknown) {
-        this.activityLogService?.logErrActivity(error);
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
       }
     },
     deleteMember(id: number) {
@@ -69,7 +72,8 @@ export const useMembersStore = defineStore('members', {
         void this.memberRepository.delete(id);
         this.members = this.members.filter((m) => m.id !== id);
       } catch (error: unknown) {
-        this.activityLogService?.logErrActivity(error);
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
       }
     },
   },

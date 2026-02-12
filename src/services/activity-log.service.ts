@@ -12,12 +12,10 @@ export class ActivityLogService {
       log: JSON.stringify(log),
     });
   }
-  logErrActivity(log: unknown) {
+  logErrActivity(message: string) {
     console.log('Error activity logged');
     void this.activityLogRepository.insert({
-      log: JSON.stringify(
-        log instanceof Error ? { name: log.name, message: log.message, stack: log.stack } : log,
-      ),
+      log: message,
       is_error: true,
     });
   }

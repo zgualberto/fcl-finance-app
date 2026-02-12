@@ -32,7 +32,8 @@ export const useCategoriesStore = defineStore('categories', {
       try {
         return await this.categoryRepository.findByNames(names);
       } catch (error: unknown) {
-        this.activityLogService?.logErrActivity(error);
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
         return [];
       }
     },
@@ -41,7 +42,8 @@ export const useCategoriesStore = defineStore('categories', {
       try {
         await this.categoryRepository.insert(data);
       } catch (error: unknown) {
-        this.activityLogService?.logErrActivity(error);
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
       }
     },
     async updateCategory(category: Partial<Category>) {
@@ -50,7 +52,8 @@ export const useCategoriesStore = defineStore('categories', {
         void this.categoryRepository.update(category);
         this.categories = await this.categoryRepository.findAllWithParentAndChildSorting();
       } catch (error: unknown) {
-        this.activityLogService?.logErrActivity(error);
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
       }
     },
     deleteCategory(id: number) {
@@ -59,7 +62,8 @@ export const useCategoriesStore = defineStore('categories', {
         void this.categoryRepository.delete(id);
         this.categories = this.categories.filter((m) => m.id !== id);
       } catch (error: unknown) {
-        this.activityLogService?.logErrActivity(error);
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
       }
     },
   },
