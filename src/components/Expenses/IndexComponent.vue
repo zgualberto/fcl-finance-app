@@ -163,11 +163,18 @@ function formatCurrency(amount: number): string {
 function mapCategoriesToOptions(categories: Category[]): CategoryOption[] {
   const expenseType = String(TransactionType.EXPENSES);
   return categories
-    .filter((category) => category.transaction_type === expenseType)
+    .filter((category) => {
+      // Find child categories whose parent has transaction_type === EXPENSES
+      if (category.parent_id) {
+        const parent = categories.find((c) => c.id === category.parent_id);
+        return parent?.transaction_type === expenseType;
+      }
+      return false;
+    })
     .filter((category) => category.is_active)
     .map((category) => ({
       value: category.id as number,
-      label: category.path || category.category_name,
+      label: category.category_name,
     }));
 }
 
