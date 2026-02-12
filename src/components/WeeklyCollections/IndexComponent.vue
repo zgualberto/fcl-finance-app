@@ -469,7 +469,7 @@ async function ensureCategoryHierarchy(): Promise<void> {
       }
 
       if (child.parent_id !== parentId) {
-        categoriesStore.updateCategory({
+        void categoriesStore.updateCategory({
           id: child.id,
           category_name: child.category_name,
           is_active: child.is_active,

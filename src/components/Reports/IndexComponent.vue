@@ -1,14 +1,18 @@
 <template>
-  <div class="q-pa-lg">
+  <div>
     <!-- Date Selection -->
-    <div class="q-mb-lg text-center">
+    <div class="q-mb-lg text-right">
       <q-btn
-        color="primary"
-        label="Select Month/Year"
-        icon="event"
-        @click="openReportDialog"
+        rounded
         unelevated
+        flat
+        @click="openReportDialog"
+        no-caps
+        class="bg-blue-1"
+        color="black"
+        icon="event"
       />
+      <!-- <q-btn color="primary" rounded unelevated flat icon="event" dense @click="openReportDialog" /> -->
     </div>
 
     <div v-if="rawTransactions.length > 0">
@@ -24,28 +28,28 @@
       <div class="row q-col-gutter-lg q-mb-lg">
         <!-- Collections Card -->
         <div class="col-12 col-md-6">
-          <q-card class="rounded-borders" style="border: 2px solid #e3f2fd">
-            <q-card-section class="bg-blue-1">
-              <div class="text-h6" style="color: #1976d2; font-weight: 700">Collections</div>
-            </q-card-section>
-
+          <q-card class="rounded-borders collection-container" flat bordered>
             <q-card-section>
+              <div class="text-h6 q-mb-md" style="color: #1976d2; font-weight: 700">
+                Collections
+              </div>
               <div v-for="categoryGroup in collectionsGroups" :key="`col-${categoryGroup.name}`">
                 <div class="text-subtitle2 q-mb-sm" style="font-weight: 600; color: #1976d2">
                   {{ categoryGroup.name }}
                 </div>
+                <q-separator class="q-mb-md" />
                 <div class="q-mb-md">
                   <div
                     v-for="item in categoryGroup.items"
                     :key="`${item.id}`"
-                    class="row justify-between q-mb-xs"
+                    class="row justify-between q-my-xs"
                   >
                     <span style="color: #1565c0">{{ item.category_name }}</span>
                     <span style="color: #1565c0; font-weight: 500"
                       >₱{{ formatCurrency(item.total) }}</span
                     >
                   </div>
-                  <q-separator></q-separator>
+                  <q-separator class="q-mb-md" />
                   <div class="row justify-between q-mt-sm" style="font-weight: 700; color: #1565c0">
                     <span>Total</span>
                     <span>₱{{ formatCurrency(categoryGroup.subtotal) }}</span>
@@ -58,16 +62,14 @@
 
         <!-- Expenses Card -->
         <div class="col-12 col-md-6">
-          <q-card class="rounded-borders" style="border: 2px solid #ffebee">
-            <q-card-section class="bg-red-1">
-              <div class="text-h6" style="color: #c41c3b; font-weight: 700">Expenses</div>
-            </q-card-section>
-
+          <q-card class="rounded-borders expense-container" flat bordered>
             <q-card-section>
+              <div class="text-h6 q-mb-md" style="color: #c41c3b; font-weight: 700">Expenses</div>
               <div v-for="categoryGroup in expensesGroups" :key="`exp-${categoryGroup.name}`">
                 <div class="text-subtitle2 q-mb-sm" style="font-weight: 600; color: #c41c3b">
                   {{ categoryGroup.name }}
                 </div>
+                <q-separator class="q-mb-md" />
                 <div class="q-mb-md">
                   <div
                     v-for="item in categoryGroup.items"
@@ -95,7 +97,12 @@
       <div class="row q-col-gutter-lg q-mb-lg">
         <!-- Total Collection Card -->
         <div class="col-12 col-md-6">
-          <q-card class="bg-primary text-white rounded-borders" style="min-height: 100px">
+          <q-card
+            class="bg-primary text-white rounded-borders"
+            style="min-height: 100px"
+            bordered
+            flat
+          >
             <q-card-section class="column justify-between full-height">
               <div class="row justify-between items-center full-width">
                 <div>
@@ -104,7 +111,7 @@
                     ₱{{ formatCurrency(summaryTotals.collections) }}
                   </div>
                 </div>
-                <q-icon name="attach_money" size="64px" style="opacity: 0.3" />
+                <q-icon name="payments" size="36px" class="opacity-40" />
               </div>
             </q-card-section>
           </q-card>
@@ -115,6 +122,8 @@
           <q-card
             class="text-white rounded-borders"
             style="background-color: #d32f2f; min-height: 100px"
+            bordered
+            flat
           >
             <q-card-section class="column justify-between full-height">
               <div class="row justify-between items-center full-width">
@@ -124,7 +133,7 @@
                     ₱{{ formatCurrency(summaryTotals.expenses) }}
                   </div>
                 </div>
-                <q-icon name="attach_money" size="64px" style="opacity: 0.3" />
+                <q-icon name="payments" size="36px" class="opacity-40" />
               </div>
             </q-card-section>
           </q-card>
@@ -132,69 +141,68 @@
       </div>
 
       <!-- GROSS Collection Card -->
-      <div class="q-mb-lg">
-        <q-card
-          class="text-white rounded-borders"
-          style="background-color: #7b1fa2; min-height: 100px"
-        >
-          <q-card-section class="column justify-between full-height">
-            <div class="row justify-between items-center full-width">
-              <div>
-                <div class="text-subtitle2 q-mb-sm">GROSS Collection</div>
-                <div class="text-caption q-mb-sm">(Total Collection - Total Expenses)</div>
-                <div class="text-h4" style="font-weight: 700">
-                  ₱{{ formatCurrency(summaryTotals.gross) }}
-                </div>
+      <q-card
+        class="text-white rounded-borders q-mb-lg"
+        style="background-color: #7b1fa2; min-height: 100px"
+        bordered
+        flat
+      >
+        <q-card-section class="column justify-between full-height">
+          <div class="row justify-between items-center full-width">
+            <div>
+              <div class="text-subtitle2 q-mb-sm">GROSS Collection</div>
+              <div class="text-caption q-mb-sm">(Total Collection - Total Expenses)</div>
+              <div class="text-h4" style="font-weight: 700">
+                ₱{{ formatCurrency(summaryTotals.gross) }}
               </div>
-              <q-icon name="attach_money" size="64px" style="opacity: 0.3" />
             </div>
-          </q-card-section>
-        </q-card>
-      </div>
+            <q-icon name="payments" size="36px" class="opacity-40" />
+          </div>
+        </q-card-section>
+      </q-card>
 
       <!-- Deductions Section -->
-      <div class="q-mb-lg">
-        <q-card class="rounded-borders">
-          <q-card-section>
-            <h4 class="q-my-0 q-mb-md" style="font-weight: 700; color: #1a237e">Deductions</h4>
-            <div
-              v-for="deduction in deductions"
-              :key="deduction.name"
-              class="row justify-between items-center q-pa-md"
-              style="border-bottom: 1px solid #e0e0e0"
-            >
-              <div>
-                <div style="font-weight: 600; color: #1a237e">{{ deduction.name }}</div>
-                <div class="text-caption" style="color: #616161">{{ deduction.description }}</div>
-              </div>
-              <div style="font-weight: 600; color: #d32f2f">
-                ₱{{ formatCurrency(deduction.amount) }}
-              </div>
+      <q-card class="rounded-borders q-mb-lg" bordered flat style="background-color: #fcf9fa">
+        <q-card-section class="q-px-lg">
+          <div class="text-h6 q-mb-md" style="font-weight: 700">Deductions</div>
+          <q-card
+            v-for="deduction in deductions"
+            :key="deduction.name"
+            class="row justify-between items-center q-my-md q-pa-md"
+            flat
+            bordered
+          >
+            <div>
+              <div style="font-weight: 600">{{ deduction.name }}</div>
+              <div class="text-caption">{{ deduction.description }}</div>
             </div>
-          </q-card-section>
-        </q-card>
-      </div>
+            <div style="font-weight: 600; color: #d32f2f">
+              ₱{{ formatCurrency(deduction.amount) }}
+            </div>
+          </q-card>
+        </q-card-section>
+      </q-card>
 
       <!-- NET Collection Card -->
-      <div>
-        <q-card
-          class="text-white rounded-borders"
-          style="background-color: #388e3c; min-height: 100px"
-        >
-          <q-card-section class="column justify-between full-height">
-            <div class="row justify-between items-center full-width">
-              <div>
-                <div class="text-subtitle2 q-mb-sm">NET Collection</div>
-                <div class="text-caption q-mb-sm">(GROSS - National 15% - District 3%)</div>
-                <div class="text-h4" style="font-weight: 700">
-                  ₱{{ formatCurrency(summaryTotals.net) }}
-                </div>
+      <q-card
+        class="text-white rounded-borders"
+        style="background-color: #388e3c; min-height: 100px"
+        bordered
+        flat
+      >
+        <q-card-section class="column justify-between full-height">
+          <div class="row justify-between items-center full-width">
+            <div>
+              <div class="text-subtitle2 q-mb-sm">NET Collection</div>
+              <div class="text-caption q-mb-sm">(GROSS - National 15% - District 3%)</div>
+              <div class="text-h4" style="font-weight: 700">
+                ₱{{ formatCurrency(summaryTotals.net) }}
               </div>
-              <q-icon name="attach_money" size="64px" style="opacity: 0.3" />
             </div>
-          </q-card-section>
-        </q-card>
-      </div>
+            <q-icon name="payments" size="36px" class="opacity-40" />
+          </div>
+        </q-card-section>
+      </q-card>
     </div>
 
     <q-card v-else-if="!isLoading && selectedDate" class="text-center q-pa-lg">
@@ -410,3 +418,13 @@ onMounted(() => {
   openReportDialog();
 });
 </script>
+
+<style scoped lang="scss">
+.collection-container {
+  background-color: #eff6ff;
+}
+
+.expense-container {
+  background-color: #fef2f2;
+}
+</style>

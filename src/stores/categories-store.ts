@@ -44,14 +44,11 @@ export const useCategoriesStore = defineStore('categories', {
         this.activityLogService?.logErrActivity(error);
       }
     },
-    updateCategory(category: Partial<Category>) {
+    async updateCategory(category: Partial<Category>) {
       if (!this.categoryRepository) throw new Error('Repository not initialized');
       try {
         void this.categoryRepository.update(category);
-        const index = this.categories.findIndex((m) => m.id === category.id);
-        if (index !== -1) {
-          this.categories[index] = { ...this.categories[index], ...category } as Category;
-        }
+        this.categories = await this.categoryRepository.findAllWithParentAndChildSorting();
       } catch (error: unknown) {
         this.activityLogService?.logErrActivity(error);
       }

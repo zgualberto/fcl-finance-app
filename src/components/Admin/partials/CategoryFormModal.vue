@@ -36,7 +36,7 @@
             </q-select>
           </div>
           <q-toggle v-model="form.is_active" label="Status" icon="check_circle" />
-          <div>
+          <div v-show="form.parent_id == null">
             <div class="text-caption text-grey-7 q-mb-xs">Type</div>
             <q-select
               v-model="form.transaction_type"
@@ -47,7 +47,6 @@
               filled
               required
               :options="transactionTypeOptions"
-              v-show="form.parent_id == null"
               dense
             />
           </div>

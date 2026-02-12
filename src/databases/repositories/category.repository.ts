@@ -84,8 +84,7 @@ export class CategoryRepository implements BaseRepository<Category> {
           name = ?,
           is_active = ?,
           parent_id = ?,
-          transaction_type = ?,
-          updated_at = CURRENT_TIMESTAMP
+          transaction_type = ?
         WHERE id = ?
       `,
       [
