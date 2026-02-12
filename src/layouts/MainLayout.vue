@@ -14,14 +14,32 @@
             no-caps
             rounded
             :class="{ 'text-black': link.routeName !== $router.currentRoute.value.name }"
-            :flat="link.routeName !== $router.currentRoute.value.name"
-            :color="link.routeName === $router.currentRoute.value.name ? 'primary' : 'dark'"
-            :unelevated="link.routeName === $router.currentRoute.value.name"
-            class="q-py-sm q-px-md text-subtitle1"
+            :flat="
+              (link.children && link.children.length > 0) ||
+              (link.routeName !== $router.currentRoute.value.name &&
+                (!link.children || link.children.length === 0))
+            "
+            :color="
+              link.routeName === $router.currentRoute.value.name &&
+              (!link.children || link.children.length === 0)
+                ? 'primary'
+                : 'dark'
+            "
+            :unelevated="
+              link.routeName === $router.currentRoute.value.name &&
+              (!link.children || link.children.length === 0)
+            "
+            class="q-py-sm q-px-md text-subtitle1 text-weight-medium"
           >
-            <q-icon v-if="link.icon" :name="link.icon" size="sm" class="q-mr-md" />
+            <q-icon v-if="link.icon" :name="link.icon" size="xs" class="q-mr-md" />
             {{ link.title }}
-            <q-menu v-if="link.children && link.children.length > 0">
+            <q-icon
+              v-if="link.children && link.children.length > 0"
+              name="fa-solid fa-angle-down"
+              size="xs"
+              class="q-ml-sm"
+            />
+            <q-menu v-if="link.children && link.children.length > 0" style="width: 200px">
               <q-list>
                 <q-item
                   v-for="child in link.children"
@@ -30,10 +48,10 @@
                   :to="{ name: child.routeName }"
                 >
                   <q-item-section v-if="child.icon" avatar>
-                    <q-icon :name="child.icon" />
+                    <q-icon :name="child.icon" size="xs" />
                   </q-item-section>
                   <q-item-section>
-                    <q-item-label>{{ child.title }}</q-item-label>
+                    <q-item-label class="text-left">{{ child.title }}</q-item-label>
                   </q-item-section>
                 </q-item>
               </q-list>
