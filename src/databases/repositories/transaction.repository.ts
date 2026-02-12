@@ -34,7 +34,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          t.created_at,
          t.updated_at,
          c.name AS category_name,
-         c.transaction_type,
+         COALESCE(pc.transaction_type, c.transaction_type) AS transaction_type,
          c.parent_id,
          pc.name AS parent_name,
          m.name AS member_name
@@ -59,7 +59,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          t.created_at,
          t.updated_at,
          c.name AS category_name,
-         c.transaction_type,
+         COALESCE(pc.transaction_type, c.transaction_type) AS transaction_type,
          c.parent_id,
          pc.name AS parent_name,
          m.name AS member_name
@@ -111,7 +111,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          t.created_at,
          t.updated_at,
          c.name AS category_name,
-         c.transaction_type,
+         COALESCE(pc.transaction_type, c.transaction_type) AS transaction_type,
          c.parent_id,
          COALESCE(pc.name, c.name) AS parent_name,
          m.name AS member_name

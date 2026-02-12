@@ -435,11 +435,17 @@ async function exportPdf() {
         },
       ],
     });
-  } catch {
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'An unexpected error occurred while exporting the PDF.';
     $q.notify({
       type: 'negative',
-      message: 'Failed to export PDF. Please try again.',
+      message: 'Failed to export PDF. Please try again: ' + message,
       position: 'bottom-right',
+      timeout: 0,
+      closeBtn: true,
     });
   } finally {
     isExporting.value = false;
