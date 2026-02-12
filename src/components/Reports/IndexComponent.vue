@@ -207,7 +207,7 @@
       </q-card>
     </div>
 
-    <q-card v-else-if="!isLoading && selectedDate" class="text-center q-pa-lg">
+    <q-card v-else-if="!isLoading && selectedDate" class="text-center q-pa-lg" flat bordered>
       <q-card-section>
         <q-icon name="info" size="64px" color="grey-5" />
         <div class="text-h6 text-grey-7 q-mt-md">No transactions found for this period</div>
