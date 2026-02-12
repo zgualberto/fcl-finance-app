@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Date Selection -->
-    <div class="q-mb-lg text-right">
+    <div class="q-mb-lg row justify-end q-gutter-sm">
       <q-btn
         rounded
         unelevated
@@ -12,10 +12,21 @@
         color="black"
         icon="event"
       />
+      <q-btn
+        rounded
+        unelevated
+        no-caps
+        color="primary"
+        icon="print"
+        label="Print PDF"
+        :loading="isExporting"
+        :disable="isLoading || isExporting || rawTransactions.length === 0"
+        @click="exportPdf"
+      />
       <!-- <q-btn color="primary" rounded unelevated flat icon="event" dense @click="openReportDialog" /> -->
     </div>
 
-    <div v-if="rawTransactions.length > 0">
+    <div v-if="rawTransactions.length > 0" ref="reportRef">
       <!-- Report Header -->
       <div class="text-center q-mb-lg">
         <h1 class="text-h4 q-mb-sm" style="font-weight: 700">
@@ -219,6 +230,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { date as dateUtils, useQuasar } from 'quasar';
+import { Share } from '@capacitor/share';
+import { exportElementToPdf } from 'src/services/report-pdf';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 import type { Transaction } from 'src/databases/entities/transaction';
 
@@ -245,6 +258,8 @@ const $q = useQuasar();
 const selectedDate = ref(dateUtils.formatDate(new Date(), 'YYYY-MM'));
 const isLoading = ref(false);
 const rawTransactions = ref<Transaction[]>([]);
+const reportRef = ref<HTMLElement | null>(null);
+const isExporting = ref(false);
 
 function formatCurrency(amount: number): string {
   return amount.toLocaleString('en-US', {
@@ -272,23 +287,26 @@ function buildCategoryGroups(transactionType: string): CategoryGroup[] {
     .filter((t) => t.transaction_type === transactionType)
     .forEach((transaction) => {
       const parentName = transaction.parent_name || transaction.category_name || 'Uncategorized';
+      const parentKey = String(
+        transaction.parent_id ?? transaction.category_id ?? `uncategorized-${transactionType}`,
+      );
 
-      if (!groupMap.has(parentName)) {
-        groupMap.set(parentName, {
+      if (!groupMap.has(parentKey)) {
+        groupMap.set(parentKey, {
           name: parentName,
           subtotal: 0,
           items: [],
         });
       }
 
-      const group = groupMap.get(parentName)!;
+      const group = groupMap.get(parentKey)!;
       const categoryName = transaction.category_name || 'Uncategorized';
 
       // Find or create item in this group
       let item = group.items.find((i) => i.category_name === categoryName);
       if (!item) {
         item = {
-          id: `${transactionType}-${parentName}-${categoryName}`,
+          id: `${transactionType}-${parentKey}-${categoryName}`,
           category_name: categoryName,
           total: 0,
         };
@@ -374,6 +392,58 @@ function openReportDialog() {
     selectedDate.value = value;
     void loadReport();
   });
+}
+
+async function sharePdf(uri: string) {
+  try {
+    await Share.share({
+      title: 'Financial Report',
+      text: 'Monthly collections and expenses report.',
+      files: [uri],
+      dialogTitle: 'Share report',
+    });
+  } catch {
+    $q.notify({
+      type: 'negative',
+      message: 'Unable to share the PDF on this device.',
+      position: 'bottom-right',
+    });
+  }
+}
+
+async function exportPdf() {
+  if (!reportRef.value || isExporting.value) {
+    return;
+  }
+
+  isExporting.value = true;
+  try {
+    const fileName = `Financial-Report-${selectedDate.value}`;
+    const result = await exportElementToPdf(reportRef.value, fileName);
+
+    $q.notify({
+      type: 'positive',
+      message: `PDF saved as ${result.fileName}`,
+      position: 'bottom-right',
+      actions: [
+        {
+          label: 'Share',
+          color: 'white',
+          handler: () => {
+            void sharePdf(result.uri);
+          },
+        },
+      ],
+    });
+  } catch {
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to export PDF. Please try again.',
+      position: 'bottom-right',
+    });
+  } finally {
+    isExporting.value = false;
+  }
 }
 
 async function loadReport() {

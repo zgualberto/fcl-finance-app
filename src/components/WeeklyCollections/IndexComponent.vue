@@ -461,7 +461,6 @@ async function ensureCategoryHierarchy(): Promise<void> {
           categoriesStore.addCategory({
             category_name: childName,
             is_active: 1,
-            transaction_type: TransactionType.COLLECTIONS,
             parent_id: parentId,
           }),
         );
@@ -473,7 +472,6 @@ async function ensureCategoryHierarchy(): Promise<void> {
           id: child.id,
           category_name: child.category_name,
           is_active: child.is_active,
-          transaction_type: child.transaction_type,
           parent_id: parentId,
         });
       }

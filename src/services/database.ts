@@ -6,6 +6,7 @@ const DATABASE_NAME = 'fcl';
 
 let db: SQLiteDBConnection | null = null;
 let sqlite: SQLiteConnection | null = null;
+let initPromise: Promise<void> | null = null;
 
 /**
  * Get the SQLite database connection instance
@@ -21,37 +22,62 @@ export function getDatabase(): SQLiteDBConnection {
  * Initialize the SQLite database with schema and migrations
  */
 export async function initializeDatabase(): Promise<void> {
-  try {
-    sqlite = new SQLiteConnection(CapacitorSQLite);
+  if (initPromise) {
+    await initPromise;
+    return;
+  }
 
-    // Create connection (handles both new and existing databases)
-    console.log('[Database] Creating/opening connection to:', DATABASE_NAME);
-    await sqlite.createConnection(DATABASE_NAME, false, 'no-encryption', 1, false);
+  initPromise = (async () => {
+    try {
+      if (!sqlite) {
+        sqlite = new SQLiteConnection(CapacitorSQLite);
+      }
 
-    // Retrieve the connection
-    db = await sqlite.retrieveConnection(DATABASE_NAME, false);
+      // Reuse existing connection if available (e.g., HMR or app resume)
+      const isConn = await sqlite.isConnection(DATABASE_NAME, false);
+      const hasConn = typeof isConn === 'boolean' ? isConn : isConn.result;
+      if (!hasConn) {
+        console.log('[Database] Creating/opening connection to:', DATABASE_NAME);
+        await sqlite.createConnection(DATABASE_NAME, false, 'no-encryption', 1, false);
+      } else {
+        console.log('[Database] Reusing existing connection to:', DATABASE_NAME);
+      }
 
-    if (!db) {
-      throw new Error('Failed to retrieve database connection');
+      // Retrieve the connection
+      db = await sqlite.retrieveConnection(DATABASE_NAME, false);
+
+      if (!db) {
+        throw new Error('Failed to retrieve database connection');
+      }
+
+      // Open database if not already open
+      const isOpen = await db.isDBOpen();
+      const openResult = typeof isOpen === 'boolean' ? isOpen : isOpen.result;
+      if (!openResult) {
+        await db.open();
+      }
+
+      // Enable foreign keys enforcement
+      await db.execute('PRAGMA foreign_keys = ON');
+
+      console.log('[Database] Database opened successfully');
+
+      // Run any pending migrations
+      console.log('[Database] Running migrations...');
+      await runMigrations(db);
+
+      const currentVersion = await getCurrentVersion(db);
+      console.log('[Database] Database version:', currentVersion);
+    } catch (error) {
+      console.error('[Database] Initialization error:', error);
+      throw error;
     }
+  })();
 
-    // Open database
-    await db.open();
-
-    // Enable foreign keys enforcement
-    await db.execute('PRAGMA foreign_keys = ON');
-
-    console.log('[Database] Database opened successfully');
-
-    // Run any pending migrations
-    console.log('[Database] Running migrations...');
-    await runMigrations(db);
-
-    const currentVersion = await getCurrentVersion(db);
-    console.log('[Database] Database version:', currentVersion);
-  } catch (error) {
-    console.error('[Database] Initialization error:', error);
-    throw error;
+  try {
+    await initPromise;
+  } finally {
+    initPromise = null;
   }
 }
 
