@@ -228,7 +228,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import { date as dateUtils, useQuasar } from 'quasar';
 import { Share } from '@capacitor/share';
 import { exportElementToPdf } from 'src/services/report-pdf';
@@ -491,10 +491,6 @@ async function loadReport() {
     isLoading.value = false;
   }
 }
-
-onMounted(() => {
-  openReportDialog();
-});
 </script>
 
 <style scoped lang="scss">
