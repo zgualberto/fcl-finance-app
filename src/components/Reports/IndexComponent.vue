@@ -421,28 +421,42 @@ async function exportPdf() {
     const fileName = `Financial-Report-${selectedDate.value}`;
     const result = await exportElementToPdf(reportRef.value, fileName);
 
-    $q.notify({
-      type: 'positive',
-      message: `PDF saved as ${result.fileName}`,
-      position: 'bottom-right',
-      actions: [
-        {
-          label: 'Share',
-          color: 'white',
-          handler: () => {
-            void sharePdf(result.uri);
+    if (result.uri) {
+      $q.notify({
+        type: 'positive',
+        message: 'PDF saved successfully!',
+        caption: `Saved to Downloads folder`,
+        position: 'bottom-right',
+        timeout: 3000,
+        actions: [
+          {
+            label: 'Share',
+            color: 'white',
+            handler: () => {
+              void sharePdf(result.uri);
+            },
           },
-        },
-      ],
-    });
+        ],
+      });
+    } else {
+      $q.notify({
+        type: 'positive',
+        message: `PDF saved as ${result.fileName}`,
+        position: 'bottom-right',
+      });
+    }
   } catch (error: unknown) {
     const message =
       error instanceof Error
         ? error.message
         : 'An unexpected error occurred while exporting the PDF.';
+
+    console.error('Export error:', error);
+
     $q.notify({
       type: 'negative',
-      message: 'Failed to export PDF. Please try again: ' + message,
+      message: 'Failed to export PDF',
+      caption: message,
       position: 'bottom-right',
       timeout: 0,
       closeBtn: true,
