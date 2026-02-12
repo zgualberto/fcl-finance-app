@@ -21,7 +21,7 @@ export const migration: Migration = {
       is_active BOOLEAN default 1,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       parent_id INTEGER NULL,
-      transaction_type NVARCHAR(100) NOT NULL,
+      transaction_type NVARCHAR(100) NULL,
       FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL
     )`,
 

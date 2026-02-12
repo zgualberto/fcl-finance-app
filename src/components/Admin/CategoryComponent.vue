@@ -17,7 +17,8 @@
     </template>
     <template v-slot:body-cell-transactionType="props">
       <q-td :props="props">
-        <q-badge>{{ props.row.transaction_type }}</q-badge>
+        <q-badge v-if="props.row.transaction_type">{{ props.row.transaction_type }}</q-badge>
+        <q-badge v-else color="grey">N/A</q-badge>
       </q-td>
     </template>
     <template v-slot:body-cell-isActive="props">
