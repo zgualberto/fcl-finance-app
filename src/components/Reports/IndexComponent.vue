@@ -93,6 +93,8 @@
         </div>
       </div>
 
+      <q-separator class="q-my-lg" />
+
       <!-- Summary Cards -->
       <div class="row q-col-gutter-lg q-mb-lg">
         <!-- Total Collection Card -->
