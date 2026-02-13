@@ -12,21 +12,10 @@
         color="black"
         icon="event"
       />
-      <q-btn
-        rounded
-        unelevated
-        no-caps
-        color="primary"
-        icon="print"
-        label="Print PDF"
-        :loading="isExporting"
-        :disable="isLoading || isExporting || rawTransactions.length === 0"
-        @click="exportPdf"
-      />
       <!-- <q-btn color="primary" rounded unelevated flat icon="event" dense @click="openReportDialog" /> -->
     </div>
 
-    <div v-if="rawTransactions.length > 0" ref="reportRef">
+    <div v-if="rawTransactions.length > 0">
       <!-- Report Header -->
       <div class="text-center q-mb-lg">
         <h1 class="text-h4 q-mb-sm" style="font-weight: 700">
@@ -230,8 +219,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { date as dateUtils, useQuasar } from 'quasar';
-import { Share } from '@capacitor/share';
-import { exportElementToPdf } from 'src/services/report-pdf';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 import type { Transaction } from 'src/databases/entities/transaction';
 
@@ -258,8 +245,6 @@ const $q = useQuasar();
 const selectedDate = ref(dateUtils.formatDate(new Date(), 'YYYY-MM'));
 const isLoading = ref(false);
 const rawTransactions = ref<Transaction[]>([]);
-const reportRef = ref<HTMLElement | null>(null);
-const isExporting = ref(false);
 
 function formatCurrency(amount: number): string {
   return amount.toLocaleString('en-US', {
@@ -392,78 +377,6 @@ function openReportDialog() {
     selectedDate.value = value;
     void loadReport();
   });
-}
-
-async function sharePdf(uri: string) {
-  try {
-    await Share.share({
-      title: 'Financial Report',
-      text: 'Monthly collections and expenses report.',
-      files: [uri],
-      dialogTitle: 'Share report',
-    });
-  } catch {
-    $q.notify({
-      type: 'negative',
-      message: 'Unable to share the PDF on this device.',
-      position: 'bottom-right',
-    });
-  }
-}
-
-async function exportPdf() {
-  if (!reportRef.value || isExporting.value) {
-    return;
-  }
-
-  isExporting.value = true;
-  try {
-    const fileName = `Financial-Report-${selectedDate.value}`;
-    const result = await exportElementToPdf(reportRef.value, fileName);
-
-    if (result.uri) {
-      $q.notify({
-        type: 'positive',
-        message: 'PDF saved successfully!',
-        caption: `Saved to Downloads folder`,
-        position: 'bottom-right',
-        timeout: 3000,
-        actions: [
-          {
-            label: 'Share',
-            color: 'white',
-            handler: () => {
-              void sharePdf(result.uri);
-            },
-          },
-        ],
-      });
-    } else {
-      $q.notify({
-        type: 'positive',
-        message: `PDF saved as ${result.fileName}`,
-        position: 'bottom-right',
-      });
-    }
-  } catch (error: unknown) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'An unexpected error occurred while exporting the PDF.';
-
-    console.error('Export error:', error);
-
-    $q.notify({
-      type: 'negative',
-      message: 'Failed to export PDF',
-      caption: message,
-      position: 'bottom-right',
-      timeout: 0,
-      closeBtn: true,
-    });
-  } finally {
-    isExporting.value = false;
-  }
 }
 
 async function loadReport() {
