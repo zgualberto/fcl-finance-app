@@ -33,12 +33,27 @@ export async function initializeDatabase(): Promise<void> {
         sqlite = new SQLiteConnection(CapacitorSQLite);
       }
 
+      try {
+        await sqlite.checkConnectionsConsistency();
+      } catch (error) {
+        console.warn('[Database] Connection consistency check failed:', error);
+      }
+
       // Reuse existing connection if available (e.g., HMR or app resume)
       const isConn = await sqlite.isConnection(DATABASE_NAME, false);
-      const hasConn = typeof isConn === 'boolean' ? isConn : isConn.result;
+      let hasConn = typeof isConn === 'boolean' ? isConn : isConn.result;
       if (!hasConn) {
         console.log('[Database] Creating/opening connection to:', DATABASE_NAME);
-        await sqlite.createConnection(DATABASE_NAME, false, 'no-encryption', 1, false);
+        try {
+          await sqlite.createConnection(DATABASE_NAME, false, 'no-encryption', 1, false);
+        } catch (error) {
+          if (String(error).includes('already exists')) {
+            console.warn('[Database] Connection already exists, reusing:', DATABASE_NAME);
+            hasConn = true;
+          } else {
+            throw error;
+          }
+        }
       } else {
         console.log('[Database] Reusing existing connection to:', DATABASE_NAME);
       }
