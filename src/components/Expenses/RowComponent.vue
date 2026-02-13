@@ -30,18 +30,8 @@
             </q-item-section>
           </q-item>
           <q-item v-else>
-            <q-item-section>
-              <q-btn
-                flat
-                no-caps
-                color="primary"
-                rounded
-                :disable="isCreatingCategory"
-                @click="createCategoryFromSearch"
-              >
-                <q-icon name="add" size="xs" class="q-mr-sm" />
-                Create category "{{ localSearchTerm }}"
-              </q-btn>
+            <q-item-section class="text-grey">
+              No matching categories.
             </q-item-section>
           </q-item>
         </template>
@@ -69,7 +59,6 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useQuasar } from 'quasar';
 
 export type CategoryOption = {
   value: number;
@@ -84,7 +73,6 @@ const props = defineProps<{
   searchTerm: string;
   options: CategoryOption[];
   isLoading: boolean;
-  onCreateCategory?: (name: string) => Promise<CategoryOption | null>;
 }>();
 
 const emit = defineEmits<{
@@ -96,9 +84,7 @@ const emit = defineEmits<{
   (event: 'remove'): void;
 }>();
 
-const $q = useQuasar();
 const filteredOptions = ref<CategoryOption[]>([]);
-const isCreatingCategory = ref(false);
 
 const localCategoryId = computed({
   get: () => props.categoryId,
@@ -158,42 +144,4 @@ function categoryFilterFn(val: string, update: (callback: () => void) => void) {
   });
 }
 
-async function createCategoryFromSearch() {
-  const searchTerm = localSearchTerm.value.trim();
-  if (!searchTerm) {
-    $q.notify({
-      type: 'negative',
-      message: 'Please enter a category name before creating.',
-      position: 'bottom-right',
-    });
-    return;
-  }
-  if (!props.onCreateCategory || isCreatingCategory.value) {
-    return;
-  }
-
-  isCreatingCategory.value = true;
-  try {
-    const newOption = await props.onCreateCategory(searchTerm);
-    if (!newOption) {
-      throw new Error('Failed to create category');
-    }
-    emit('update:categoryName', newOption.label);
-    $q.notify({
-      type: 'positive',
-      message: 'Category created successfully.',
-      position: 'bottom-right',
-    });
-    localSearchTerm.value = '';
-    applyFilter('');
-  } catch {
-    $q.notify({
-      type: 'negative',
-      message: 'Failed to create category. Please try again.',
-      position: 'bottom-right',
-    });
-  } finally {
-    isCreatingCategory.value = false;
-  }
-}
 </script>
