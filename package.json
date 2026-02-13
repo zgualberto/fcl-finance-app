@@ -12,6 +12,9 @@
     "test": "echo \"No test specified\" && exit 0",
     "dev": "quasar dev",
     "dev:android": "quasar dev -m capacitor -T android",
+    "cap": "cd src-capacitor && npx cap",
+    "cap:sync:android": "cd src-capacitor && npx cap sync android",
+    "cap:open:android": "cd src-capacitor && npx cap open android",
     "build": "quasar build",
     "postinstall": "quasar prepare"
   },

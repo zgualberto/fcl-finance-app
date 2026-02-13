@@ -472,13 +472,17 @@ async function shareReport() {
 
     // Convert canvas to blob
     const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(blob);
-        } else {
-          reject(new Error('Failed to convert canvas to blob'));
-        }
-      }, 'image/png', 0.95);
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('Failed to convert canvas to blob'));
+          }
+        },
+        'image/png',
+        0.95,
+      );
     });
 
     // Convert blob to base64

@@ -38,6 +38,18 @@ npm run format
 quasar build
 ```
 
+### Capacitor (Android) workflow
+
+Use `src-capacitor` as the single Capacitor source of truth.
+
+```bash
+yarn dev:android
+yarn cap sync android
+yarn cap open android
+```
+
+These root scripts forward to `src-capacitor` so plugin sync/registration always happens in the same Android project.
+
 ### Customize the configuration
 
 See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-config-js).
