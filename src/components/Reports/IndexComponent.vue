@@ -12,10 +12,22 @@
         color="black"
         icon="event"
       />
+      <q-btn
+        rounded
+        unelevated
+        flat
+        @click="printReport"
+        no-caps
+        class="bg-blue-1"
+        color="black"
+        icon="print"
+        :loading="isPrinting"
+        :disable="!rawTransactions.length || isLoading"
+      />
       <!-- <q-btn color="primary" rounded unelevated flat icon="event" dense @click="openReportDialog" /> -->
     </div>
 
-    <div v-if="rawTransactions.length > 0">
+    <div v-if="rawTransactions.length > 0" ref="reportRef">
       <!-- Report Header -->
       <div class="text-center q-mb-lg">
         <h1 class="text-h4 q-mb-sm" style="font-weight: 700">
@@ -217,7 +229,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed, nextTick, ref } from 'vue';
+import { Printer } from '@capgo/capacitor-printer';
 import { date as dateUtils, useQuasar } from 'quasar';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 import type { Transaction } from 'src/databases/entities/transaction';
@@ -244,7 +257,9 @@ const $q = useQuasar();
 
 const selectedDate = ref(dateUtils.formatDate(new Date(), 'YYYY-MM'));
 const isLoading = ref(false);
+const isPrinting = ref(false);
 const rawTransactions = ref<Transaction[]>([]);
+const reportRef = ref<HTMLElement | null>(null);
 
 function formatCurrency(amount: number): string {
   return amount.toLocaleString('en-US', {
@@ -416,6 +431,49 @@ async function loadReport() {
     });
   } finally {
     isLoading.value = false;
+  }
+}
+
+async function printReport() {
+  if (!rawTransactions.value.length) {
+    $q.notify({
+      type: 'info',
+      message: 'No report data to print.',
+      position: 'bottom-right',
+    });
+    return;
+  }
+
+  if (!reportRef.value) {
+    $q.notify({
+      type: 'negative',
+      message: 'Report content is not ready yet.',
+      position: 'bottom-right',
+    });
+    return;
+  }
+
+  if (isPrinting.value) {
+    return;
+  }
+
+  isPrinting.value = true;
+  try {
+    await nextTick();
+    const html = `<!doctype html><html><head><meta charset="utf-8" /></head><body>${reportRef.value.outerHTML}</body></html>`;
+    await Printer.printHtml({
+      name: `Report ${formatMonthYear(selectedDate.value)}`,
+      html,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    $q.notify({
+      type: 'negative',
+      message: `Failed to print report. ${errorMessage}`,
+      position: 'bottom-right',
+    });
+  } finally {
+    isPrinting.value = false;
   }
 }
 </script>

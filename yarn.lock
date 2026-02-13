@@ -124,6 +124,11 @@
   dependencies:
     tslib "^2.1.0"
 
+"@capgo/capacitor-printer@^8.0.9":
+  version "8.0.9"
+  resolved "https://registry.yarnpkg.com/@capgo/capacitor-printer/-/capacitor-printer-8.0.9.tgz#ceb81a696d9de301219bf0b195dd7047988ca05b"
+  integrity sha512-xnLOQLLG/eN1pBOUyg6N6BfGAO+YX1RGNxK//6S2DyngcoxQO++VquTxs+uPRmTwZRdJblP6WRYXdsEBPyHrgQ==
+
 "@cspotcode/source-map-support@^0.8.0":
   version "0.8.1"
   resolved "https://registry.npmjs.org/@cspotcode/source-map-support/-/source-map-support-0.8.1.tgz"
