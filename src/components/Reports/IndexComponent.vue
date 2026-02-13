@@ -16,15 +16,14 @@
         rounded
         unelevated
         flat
-        @click="printReport"
+        @click="shareReportPdf"
         no-caps
         class="bg-blue-1"
         color="black"
         icon="print"
-        :loading="isPrinting"
+        :loading="isSharingReport"
         :disable="!rawTransactions.length || isLoading"
       />
-      <!-- <q-btn color="primary" rounded unelevated flat icon="event" dense @click="openReportDialog" /> -->
     </div>
 
     <div v-if="rawTransactions.length > 0" ref="reportRef">
@@ -257,7 +256,7 @@ const $q = useQuasar();
 
 const selectedDate = ref(dateUtils.formatDate(new Date(), 'YYYY-MM'));
 const isLoading = ref(false);
-const isPrinting = ref(false);
+const isSharingReport = ref(false);
 const rawTransactions = ref<Transaction[]>([]);
 const reportRef = ref<HTMLElement | null>(null);
 
@@ -434,11 +433,11 @@ async function loadReport() {
   }
 }
 
-async function printReport() {
+async function shareReportPdf() {
   if (!rawTransactions.value.length) {
     $q.notify({
       type: 'info',
-      message: 'No report data to print.',
+      message: 'No report data available to export.',
       position: 'bottom-right',
     });
     return;
@@ -447,31 +446,31 @@ async function printReport() {
   if (!reportRef.value) {
     $q.notify({
       type: 'negative',
-      message: 'Report content is not ready yet.',
+      message: 'Report content is not ready to export yet.',
       position: 'bottom-right',
     });
     return;
   }
 
-  if (isPrinting.value) {
+  if (isSharingReport.value) {
     return;
   }
 
-  isPrinting.value = true;
+  isSharingReport.value = true;
   try {
     await nextTick();
 
     await printReportAsPdf({
       reportElement: reportRef.value,
       selectedMonth: dateUtils.formatDate(selectedDate.value + '-01', 'YYYY-MM'),
-      shareTitle: 'Financial Report',
-      shareText: `Financial Report for ${formatMonthYear(selectedDate.value)}`,
-      dialogTitle: 'Share Report',
+      shareTitle: 'Monthly Financial Report (PDF)',
+      shareText: `Monthly Financial Report PDF for ${formatMonthYear(selectedDate.value)}`,
+      dialogTitle: 'Share or Print Report',
     });
 
     $q.notify({
       type: 'positive',
-      message: 'Report shared successfully.',
+      message: 'Report PDF is ready to share or print.',
       position: 'bottom-right',
     });
   } catch (error) {
@@ -479,13 +478,13 @@ async function printReport() {
     console.log(JSON.stringify(error));
     $q.notify({
       type: 'negative',
-      message: `Failed to share report. ${errorMessage}`,
+      message: `Failed to export report PDF. ${errorMessage}`,
       position: 'bottom-right',
       timeout: 0,
       closeBtn: true,
     });
   } finally {
-    isPrinting.value = false;
+    isSharingReport.value = false;
   }
 }
 </script>
