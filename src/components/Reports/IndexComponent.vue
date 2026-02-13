@@ -16,12 +16,12 @@
         rounded
         unelevated
         flat
-        @click="shareReport"
+        @click="printReport"
         no-caps
         class="bg-blue-1"
         color="black"
-        icon="share"
-        :loading="isSharing"
+        icon="print"
+        :loading="isPrinting"
         :disable="!rawTransactions.length || isLoading"
       />
       <!-- <q-btn color="primary" rounded unelevated flat icon="event" dense @click="openReportDialog" /> -->
@@ -230,10 +230,8 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue';
-import { Filesystem, Directory } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
-import html2canvas from 'html2canvas';
 import { date as dateUtils, useQuasar } from 'quasar';
+import { printReportAsPdf } from 'src/services/print.service';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 import type { Transaction } from 'src/databases/entities/transaction';
 
@@ -259,7 +257,7 @@ const $q = useQuasar();
 
 const selectedDate = ref(dateUtils.formatDate(new Date(), 'YYYY-MM'));
 const isLoading = ref(false);
-const isSharing = ref(false);
+const isPrinting = ref(false);
 const rawTransactions = ref<Transaction[]>([]);
 const reportRef = ref<HTMLElement | null>(null);
 
@@ -436,11 +434,11 @@ async function loadReport() {
   }
 }
 
-async function shareReport() {
+async function printReport() {
   if (!rawTransactions.value.length) {
     $q.notify({
       type: 'info',
-      message: 'No report data to share.',
+      message: 'No report data to print.',
       position: 'bottom-right',
     });
     return;
@@ -455,91 +453,39 @@ async function shareReport() {
     return;
   }
 
-  if (isSharing.value) {
+  if (isPrinting.value) {
     return;
   }
 
-  isSharing.value = true;
+  isPrinting.value = true;
   try {
     await nextTick();
 
-    // Convert report to canvas image
-    const canvas = await html2canvas(reportRef.value, {
-      scale: 2,
-      backgroundColor: '#ffffff',
-      useCORS: true,
+    await printReportAsPdf({
+      reportElement: reportRef.value,
+      selectedMonth: dateUtils.formatDate(selectedDate.value + '-01', 'YYYY-MM'),
+      shareTitle: 'Financial Report',
+      shareText: `Financial Report for ${formatMonthYear(selectedDate.value)}`,
+      dialogTitle: 'Share Report',
     });
 
-    // Convert canvas to blob
-    const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            resolve(blob);
-          } else {
-            reject(new Error('Failed to convert canvas to blob'));
-          }
-        },
-        'image/png',
-        0.95,
-      );
-    });
-
-    // Convert blob to base64
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const result = reader.result as string;
-      const base64 = result.split(',')[1] ?? result;
-      const fileName = `report-${selectedDate.value}.png`;
-      const filePath = `reports/${fileName}`;
-
-      try {
-        // Save to filesystem cache
-        await Filesystem.writeFile({
-          path: filePath,
-          data: base64,
-          directory: Directory.Cache,
-        });
-
-        // Get the file URI
-        const fileUri = await Filesystem.getUri({
-          path: filePath,
-          directory: Directory.Cache,
-        });
-
-        // Share the file
-        await Share.share({
-          title: 'Financial Report',
-          text: `Financial Report for ${formatMonthYear(selectedDate.value)}`,
-          url: fileUri.uri,
-          dialogTitle: 'Share Report',
-        });
-
-        $q.notify({
-          type: 'positive',
-          message: 'Report shared successfully.',
-          position: 'bottom-right',
-        });
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.log(JSON.stringify(error));
-        $q.notify({
-          type: 'negative',
-          message: `Failed to share report. ${errorMessage}`,
-          position: 'bottom-right',
-        });
-      }
-    };
-    reader.readAsDataURL(blob);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     $q.notify({
-      type: 'negative',
-      message: `Failed to process report. ${errorMessage}`,
+      type: 'positive',
+      message: 'Report shared successfully.',
       position: 'bottom-right',
     });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.log(JSON.stringify(error));
+    $q.notify({
+      type: 'negative',
+      message: `Failed to share report. ${errorMessage}`,
+      position: 'bottom-right',
+      timeout: 0,
+      closeBtn: true,
+    });
   } finally {
-    isSharing.value = false;
+    isPrinting.value = false;
   }
 }
 </script>
