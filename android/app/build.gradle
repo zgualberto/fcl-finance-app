@@ -16,9 +16,9 @@ def getKeystoreProp = { String key ->
 
 def keystorePath = getKeystoreProp('KEYSTORE_PATH')
 def keystorePassword = getKeystoreProp('KEYSTORE_PASSWORD')
-def keyAlias = getKeystoreProp('KEY_ALIAS')
-def keyPassword = getKeystoreProp('KEY_PASSWORD')
-def hasReleaseSigning = keystorePath && keystorePassword && keyAlias && keyPassword
+def releaseKeyAlias = getKeystoreProp('KEY_ALIAS')
+def releaseKeyPassword = getKeystoreProp('KEY_PASSWORD')
+def hasReleaseSigning = keystorePath && keystorePassword && releaseKeyAlias && releaseKeyPassword
 
 android {
     namespace = "org.capacitor.fcl.finance.app"
@@ -41,8 +41,8 @@ android {
             release {
                 storeFile file(keystorePath)
                 storePassword keystorePassword
-                keyAlias keyAlias
-                keyPassword keyPassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
             }
         }
     }
