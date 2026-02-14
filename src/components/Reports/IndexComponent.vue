@@ -1,5 +1,11 @@
 <template>
   <div>
+    <div v-if="isSharingReport" class="report-loading-overlay">
+      <div class="report-loading-content">
+        <q-spinner size="56px" color="primary" />
+        <div class="q-mt-md text-body2">Preparing report...</div>
+      </div>
+    </div>
     <div ref="reportRef">
       <!-- Report Header -->
       <div class="text-center q-mb-lg">
@@ -9,7 +15,7 @@
         <p class="text-body2">Monthly Collections and Expenses Summary</p>
       </div>
 
-      <q-card flat bordered class="report-filter-card q-mb-lg">
+      <q-card v-show="!isSharingReport" flat bordered class="report-filter-card q-mb-lg">
         <div class="report-filter-inner">
           <div class="report-filter-icon">
             <q-icon name="event" size="22px" />
@@ -239,7 +245,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { date as dateUtils, useQuasar } from 'quasar';
 import { printReportAsPdf } from 'src/services/print.service';
 import { useTransactionsStore } from 'src/stores/transactions-store';
@@ -292,6 +298,9 @@ const selectedDate = computed(() => {
   }
   return `${selectedYear.value}-${selectedMonth.value}`;
 });
+
+const loadReportDelayMs = 300;
+const loadReportTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 
 const isLoading = ref(false);
 const isSharingReport = ref(false);
@@ -462,10 +471,6 @@ async function shareReportPdf() {
     return;
   }
 
-  if (isSharingReport.value) {
-    return;
-  }
-
   const selectedDateValue = selectedDate.value;
   if (!selectedDateValue) {
     $q.notify({
@@ -473,6 +478,10 @@ async function shareReportPdf() {
       message: 'Please select a month and year to export.',
       position: 'bottom-right',
     });
+    return;
+  }
+
+  if (isSharingReport.value) {
     return;
   }
 
@@ -511,12 +520,24 @@ async function shareReportPdf() {
 watch(
   [selectedMonth, selectedYear],
   () => {
-    void loadReport();
+    if (loadReportTimeout.value) {
+      clearTimeout(loadReportTimeout.value);
+    }
+    loadReportTimeout.value = setTimeout(() => {
+      void loadReport();
+      loadReportTimeout.value = null;
+    }, loadReportDelayMs);
   },
   {
     immediate: true,
   },
 );
+
+onBeforeUnmount(() => {
+  if (loadReportTimeout.value) {
+    clearTimeout(loadReportTimeout.value);
+  }
+});
 </script>
 
 <style scoped lang="scss">
@@ -573,6 +594,22 @@ watch(
 .report-filter-button {
   min-height: 40px;
   padding: 0 18px;
+}
+
+.report-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(255, 255, 255, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.report-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 @media (max-width: 600px) {
