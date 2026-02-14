@@ -1,39 +1,57 @@
 <template>
   <div>
-    <!-- Date Selection -->
-    <div class="q-mb-lg row justify-end q-gutter-sm">
-      <q-btn
-        rounded
-        unelevated
-        flat
-        @click="openReportDialog"
-        no-caps
-        class="bg-blue-1"
-        color="black"
-        icon="event"
-      />
-      <q-btn
-        rounded
-        unelevated
-        flat
-        @click="shareReportPdf"
-        no-caps
-        class="bg-blue-1"
-        color="black"
-        icon="print"
-        :loading="isSharingReport"
-        :disable="!rawTransactions.length || isLoading"
-      />
-    </div>
-
-    <div v-if="rawTransactions.length > 0" ref="reportRef">
+    <div ref="reportRef">
       <!-- Report Header -->
       <div class="text-center q-mb-lg">
         <h1 class="text-h4 q-mb-sm" style="font-weight: 700">
-          Financial Report for {{ formatMonthYear(selectedDate) }}
+          Financial Report for {{ formatMonthYear(`${selectedYear}-${selectedMonth}`) }}
         </h1>
         <p class="text-subtitle2 text-primary">Monthly Collections and Expenses Summary</p>
       </div>
+
+      <q-card flat bordered class="report-filter-card q-mb-lg">
+        <div class="report-filter-inner">
+          <div class="report-filter-icon">
+            <q-icon name="event" size="22px" />
+          </div>
+          <div class="report-filter-field">
+            <div class="report-filter-label">Month:</div>
+            <q-select
+              v-model="selectedMonth"
+              :options="monthsOptions"
+              dense
+              outlined
+              emit-value
+              map-options
+              class="report-filter-select"
+            />
+          </div>
+          <div class="report-filter-field">
+            <div class="report-filter-label">Year:</div>
+            <q-select
+              v-model="selectedYear"
+              :options="yearsOptions"
+              dense
+              outlined
+              emit-value
+              map-options
+              class="report-filter-select"
+            />
+          </div>
+          <q-btn
+            color="positive"
+            icon="download"
+            label="Download Report"
+            unelevated
+            rounded
+            @click="shareReportPdf"
+            :loading="isSharingReport"
+            :disable="!rawTransactions.length || isLoading"
+            class="report-filter-button"
+            no-caps
+          />
+        </div>
+      </q-card>
 
       <!-- Collections and Expenses Cards -->
       <div class="row q-col-gutter-lg q-mb-lg">
@@ -217,18 +235,11 @@
         </q-card-section>
       </q-card>
     </div>
-
-    <q-card v-else-if="!isLoading && selectedDate" class="text-center q-pa-lg" flat bordered>
-      <q-card-section>
-        <q-icon name="info" size="64px" color="grey-5" />
-        <div class="text-h6 text-grey-7 q-mt-md">No transactions found for this period</div>
-      </q-card-section>
-    </q-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { date as dateUtils, useQuasar } from 'quasar';
 import { printReportAsPdf } from 'src/services/print.service';
 import { useTransactionsStore } from 'src/stores/transactions-store';
@@ -254,7 +265,29 @@ interface Deduction {
 const transactionsStore = useTransactionsStore();
 const $q = useQuasar();
 
-const selectedDate = ref(dateUtils.formatDate(new Date(), 'YYYY-MM'));
+const monthsOptions = [
+  { label: 'January', value: '01' },
+  { label: 'February', value: '02' },
+  { label: 'March', value: '03' },
+  { label: 'April', value: '04' },
+  { label: 'May', value: '05' },
+  { label: 'June', value: '06' },
+  { label: 'July', value: '07' },
+  { label: 'August', value: '08' },
+  { label: 'September', value: '09' },
+  { label: 'October', value: '10' },
+  { label: 'November', value: '11' },
+  { label: 'December', value: '12' },
+];
+
+const yearsOptions = Array.from({ length: 50 }, (_, i) => {
+  const year = new Date().getFullYear() - i;
+  return { label: String(year), value: String(year) };
+});
+const selectedMonth = ref(dateUtils.formatDate(new Date(), 'MM'));
+const selectedYear = ref(dateUtils.formatDate(new Date(), 'YYYY'));
+const selectedDate = computed(() => `${selectedYear.value}-${selectedMonth.value}`);
+
 const isLoading = ref(false);
 const isSharingReport = ref(false);
 const rawTransactions = ref<Transaction[]>([]);
@@ -362,50 +395,15 @@ const deductions = computed((): Deduction[] => {
   ];
 });
 
-function openReportDialog() {
-  $q.dialog({
-    title: 'Select Report Period',
-    message: 'Please select the month and year for the report:',
-    prompt: {
-      model: selectedDate.value,
-      type: 'month',
-    },
-    ok: {
-      color: 'primary',
-      unelevated: true,
-      rounded: true,
-      noCaps: true,
-    },
-    cancel: {
-      label: 'Cancel',
-      flat: true,
-      class: 'bg-blue-1',
-      rounded: true,
-      noCaps: true,
-    },
-    persistent: true,
-  }).onOk((value: string) => {
-    if (!value) {
-      return;
-    }
-    selectedDate.value = value;
-    void loadReport();
-  });
-}
-
 async function loadReport() {
-  if (!selectedDate.value) {
+  if (!selectedMonth.value || !selectedYear.value) {
     return;
   }
 
   isLoading.value = true;
   try {
-    const parts = selectedDate.value.split('-');
-    if (parts.length < 2 || !parts[0] || !parts[1]) {
-      throw new Error('Invalid date format');
-    }
-    const year = parts[0];
-    const month = parts[1];
+    const year = selectedYear.value;
+    const month = selectedMonth.value;
     const startDate = `${year}-${month}-01`;
     const lastDay = new Date(parseInt(year, 10), parseInt(month, 10), 0).getDate();
     const endDate = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
@@ -487,6 +485,16 @@ async function shareReportPdf() {
     isSharingReport.value = false;
   }
 }
+
+watch(
+  [selectedMonth, selectedYear],
+  () => {
+    void loadReport();
+  },
+  {
+    immediate: true,
+  },
+);
 </script>
 
 <style scoped lang="scss">
@@ -496,5 +504,67 @@ async function shareReportPdf() {
 
 .expense-container {
   background-color: #fef2f2;
+}
+
+.report-filter-card {
+  background-color: #f8fafc;
+  border-radius: 16px;
+  border-color: #d7dde7;
+  padding: 16px 18px;
+}
+
+.report-filter-inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.report-filter-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid #d7dde7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4b5563;
+  background-color: #ffffff;
+}
+
+.report-filter-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.report-filter-label {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.report-filter-select {
+  min-width: 140px;
+}
+
+.report-filter-button {
+  min-height: 40px;
+  padding: 0 18px;
+}
+
+@media (max-width: 600px) {
+  .report-filter-inner {
+    justify-content: stretch;
+  }
+
+  .report-filter-field,
+  .report-filter-button {
+    width: 100%;
+  }
+
+  .report-filter-select {
+    width: 100%;
+  }
 }
 </style>
