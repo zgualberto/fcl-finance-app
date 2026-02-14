@@ -1,48 +1,57 @@
 <template>
-  <q-card class="q-pa-md">
-    <q-card-section>
-      <div class="text-h6">
-        {{ category ? 'Edit Category' : 'Add New Category' }}
+  <q-card class="q-pa-sm rounded-borders" flat bordered>
+    <q-card-section class="q-py-md">
+      <div class="row items-center">
+        <div class="col text-h6">
+          {{ category ? 'Edit Category' : 'Add New Category' }}
+        </div>
+        <div class="col-auto">
+          <q-btn flat dense round icon="close" aria-label="Close form" @click="onCancel" />
+        </div>
       </div>
     </q-card-section>
 
     <q-form @submit.prevent="onSubmit">
       <q-card-section class="q-gutter-md">
         <div>
-          <div class="text-caption text-grey-7 q-mb-xs">Category Name</div>
+          <div class="text-body1 text-grey-7 q-mb-xs">Category Name</div>
           <q-input v-model="form.category_name" filled required dense />
         </div>
         <div class="row no-wrap">
-          <div class="col-6">
-            <div class="text-caption text-grey-7 q-mb-xs">Status</div>
-            <q-select
-              v-model="form.is_active"
-              option-value="value"
-              option-label="label"
-              emit-value
-              map-options
-              filled
-              :options="statusOptions"
-              dense
-            />
+          <div class="col">
+            <div :class="{ 'q-pr-sm': form.parent_id == null }">
+              <div class="text-body1 text-grey-7 q-mb-xs">Status</div>
+              <q-select
+                v-model="form.is_active"
+                option-value="value"
+                option-label="label"
+                emit-value
+                map-options
+                filled
+                :options="statusOptions"
+                dense
+              />
+            </div>
           </div>
-          <div class="col-12 col-sm-6" v-show="form.parent_id == null">
-            <div class="text-caption text-grey-7 q-mb-xs">Transaction Type</div>
-            <q-select
-              v-model="form.transaction_type"
-              option-value="value"
-              option-label="label"
-              emit-value
-              map-options
-              filled
-              required
-              :options="transactionTypeOptions"
-              dense
-            />
+          <div class="col-6" v-show="form.parent_id == null">
+            <div class="q-pl-sm">
+              <div class="text-body1 text-grey-7 q-mb-xs">Transaction Type</div>
+              <q-select
+                v-model="form.transaction_type"
+                option-value="value"
+                option-label="label"
+                emit-value
+                map-options
+                filled
+                required
+                :options="transactionTypeOptions"
+                dense
+              />
+            </div>
           </div>
         </div>
         <div>
-          <div class="text-caption text-grey-7 q-mb-xs">Parent Category (Optional)</div>
+          <div class="text-body1 text-grey-7 q-mb-xs">Parent Category (Optional)</div>
           <q-select
             filled
             v-model="form.parent_id"

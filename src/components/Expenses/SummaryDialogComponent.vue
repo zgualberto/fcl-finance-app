@@ -3,9 +3,7 @@
     <q-card class="summary-card bg-white text-dark">
       <q-card-section>
         <div class="text-h6">Expense Summary</div>
-        <div class="text-caption text-grey-7">
-          Here is a summary of the expenses you just added:
-        </div>
+        <div class="text-body1 text-grey-7">Here is a summary of the expenses you just added:</div>
       </q-card-section>
 
       <q-card-section class="q-pt-none">

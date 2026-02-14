@@ -1,70 +1,90 @@
 <template>
-  <q-table
-    :rows="categories"
-    :columns="columns"
-    row-key="id"
-    flat
-    :pagination="pagination"
-    :rows-per-page-options="[0, 20, 50, 100]"
-  >
-    <template v-slot:top>
-      <div class="row full-width">
-        <div class="col">
-          <div class="text-h5 text-weight-bold">Category Dashboard</div>
-          <div class="text-caption text-grey-7">Manage collection and expense categories</div>
+  <q-card class="q-pa-lg shadow-box shadow-3 rounded-borders">
+    <q-table
+      :rows="categories"
+      :columns="columns"
+      row-key="id"
+      flat
+      :pagination="pagination"
+      :rows-per-page-options="[0, 20, 50, 100]"
+    >
+      <template v-slot:top>
+        <div class="row full-width">
+          <div class="col">
+            <div class="text-h5 text-weight-bold">Category Dashboard</div>
+            <div class="text-body1 text-grey-7">Manage collection and expense categories</div>
+          </div>
+          <div class="col-auto">
+            <q-btn color="primary" @click="openAddCategoryDialog" rounded unelevated no-caps>
+              <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
+              Add New Category
+            </q-btn>
+          </div>
         </div>
-        <div class="col-auto">
-          <q-btn color="primary" @click="openAddCategoryDialog" rounded unelevated no-caps>
-            <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
-            Add New Category
-          </q-btn>
-        </div>
-      </div>
 
-      <div v-if="showForm" class="q-mt-md full-width">
-        <CategoryFormModal
-          v-bind="editingCategory ? { category: editingCategory } : {}"
-          @ok="handleFormOk"
-          @cancel="handleFormCancel"
-        />
-      </div>
-    </template>
-    <template v-slot:body-cell-transactionType="props">
-      <q-td :props="props">
-        <q-badge v-if="props.row.transaction_type">{{ props.row.transaction_type }}</q-badge>
-        <div v-else>-</div>
-      </q-td>
-    </template>
-    <template v-slot:body-cell-isActive="props">
-      <q-td :props="props">
-        <q-icon
-          :name="props.row.is_active ? 'check_circle' : 'cancel'"
-          :color="props.row.is_active ? `positive` : `negative`"
-        />
-      </q-td>
-    </template>
-    <template v-slot:body-cell-actions="props">
-      <q-td align="center">
-        <q-btn
-          flat
-          dense
-          round
-          icon="fa-solid fa-edit"
-          aria-label="Edit Category"
-          @click="openEditCategoryDialog(props.row)"
-        />
-        <q-btn
-          flat
-          dense
-          round
-          icon="fa-solid fa-trash"
-          aria-label="Delete Category"
-          color="negative"
-          @click="confirmDeleteCategory(props.row?.id)"
-        />
-      </q-td>
-    </template>
-  </q-table>
+        <div v-if="showForm" class="q-mt-md full-width">
+          <CategoryForm
+            v-bind="editingCategory ? { category: editingCategory } : {}"
+            @ok="handleFormOk"
+            @cancel="handleFormCancel"
+          />
+        </div>
+      </template>
+      <template v-slot:body-cell-parentName="props">
+        <q-td :props="props" class="text-italic">
+          {{ props.row.parent_name || 'None' }}
+        </q-td>
+      </template>
+      <template v-slot:body-cell-transactionType="props">
+        <q-td :props="props">
+          <q-badge
+            :color="props.row.transaction_type === 'Collections' ? 'blue-2' : 'orange-2'"
+            class="q-pa-sm rounded-border text-black text-weight-bold"
+            v-if="props.row.transaction_type"
+            rounded
+          >
+            {{ props.row.transaction_type }}
+          </q-badge>
+          <div v-else>-</div>
+        </q-td>
+      </template>
+      <template v-slot:body-cell-isActive="props">
+        <q-td :props="props">
+          <q-badge
+            :color="props.row.is_active ? 'green-2' : 'red-2'"
+            class="q-pa-sm text-black text-weight-bold"
+            rounded
+          >
+            {{ props.row.is_active ? 'Enabled' : 'Disabled' }}
+          </q-badge>
+        </q-td>
+      </template>
+      <template v-slot:body-cell-actions="props">
+        <q-td align="center">
+          <q-btn
+            flat
+            dense
+            round
+            icon="fa-solid fa-edit"
+            size="sm"
+            aria-label="Edit Category"
+            @click="openEditCategoryDialog(props.row)"
+            color="primary"
+          />
+          <q-btn
+            flat
+            dense
+            round
+            icon="fa-regular fa-trash-can"
+            size="sm"
+            aria-label="Delete Category"
+            color="negative"
+            @click="confirmDeleteCategory(props.row?.id)"
+          />
+        </q-td>
+      </template>
+    </q-table>
+  </q-card>
 </template>
 
 <script setup lang="ts">
@@ -72,13 +92,19 @@ import { computed, onMounted, ref } from 'vue';
 import { useCategoriesStore } from 'src/stores/categories-store';
 import { useQuasar, type QTableColumn } from 'quasar';
 import type { Category } from 'src/databases/entities/category';
-import CategoryFormModal from './partials/CategoryFormModal.vue';
+import CategoryForm from './partials/CategoryForm.vue';
 
 const categoryStore = useCategoriesStore();
 
 const columns: QTableColumn[] = [
-  { name: 'id', label: 'ID', field: 'id', align: 'left' },
-  { name: 'name', label: 'Name', field: 'category_name', align: 'left' },
+  { name: 'id', label: 'ID', field: 'id', align: 'left', classes: 'text-weight-bold' },
+  {
+    name: 'name',
+    label: 'Name',
+    field: 'category_name',
+    align: 'left',
+    classes: 'text-weight-bold',
+  },
   { name: 'parentName', label: 'Parent Name', field: 'parent_name', align: 'left' },
   { name: 'isActive', label: 'Status', field: 'is_active', align: 'center' },
   { name: 'transactionType', label: 'Type', field: 'transaction_type', align: 'left' },

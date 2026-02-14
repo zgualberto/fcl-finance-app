@@ -59,7 +59,15 @@
       />
     </div>
     <div class="col-auto">
-      <q-btn flat dense round icon="delete" color="negative" size="md" @click="emit('remove')" />
+      <q-btn
+        flat
+        dense
+        round
+        icon="fa-regular fa-trash-can"
+        color="negative"
+        size="md"
+        @click="emit('remove')"
+      />
     </div>
   </div>
 </template>
@@ -199,7 +207,29 @@ function createMemberFromSearch() {
   isCreatingMember.value = true;
   void (async () => {
     try {
-      const newMember = await memberStore.createMember(searchTerm);
+      const disabledMember = await memberStore.findDisabledByExactName(searchTerm);
+      if (disabledMember) {
+        const enabledMember = memberStore.enableMember(disabledMember);
+        if (!enabledMember || enabledMember.id == null) {
+          throw new Error('Failed to enable member');
+        }
+        memberOptions.value = [
+          {
+            value: enabledMember.id,
+            label: enabledMember.name,
+          },
+        ];
+        updateMemberName(enabledMember.id);
+        $q.notify({
+          type: 'positive',
+          message: 'Member re-enabled successfully.',
+          position: 'bottom-right',
+        });
+        localSearchTerm.value = '';
+        return;
+      }
+
+      const newMember = await memberStore.createMember({ name: searchTerm, is_active: 1 });
       if (!newMember) {
         throw new Error('Failed to create member');
       }

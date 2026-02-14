@@ -1,8 +1,8 @@
 <template>
   <div class="row q-col-gutter-md">
-    <div class="col-12 col-sm-6">
+    <div class="col-12 col-sm-4">
       <div>
-        <div class="text-caption text-grey-7 q-mb-xs">Everybody's Birthday</div>
+        <div class="text-body1 text-grey-7 q-mb-xs">Everybody's Birthday</div>
         <q-input
           v-model.number="localEverybodysBirthday"
           type="number"
@@ -15,9 +15,9 @@
         />
       </div>
     </div>
-    <div class="col-12 col-sm-6">
+    <div class="col-12 col-sm-4">
       <div>
-        <div class="text-caption text-grey-7 q-mb-xs">Special Funding</div>
+        <div class="text-body1 text-grey-7 q-mb-xs">Special Funding</div>
         <q-input
           v-model.number="localSpecialFunding"
           type="number"

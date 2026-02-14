@@ -1,60 +1,70 @@
 <template>
-  <div class="row items-start q-gutter-sm rounded-borders">
-    <div class="col">
-      <q-select
-        v-model="localCategoryId"
-        v-model:input-value="localSearchTerm"
-        option-value="value"
-        option-label="label"
-        emit-value
-        map-options
-        :options="filteredOptions"
-        :loading="isLoading"
-        dense
-        outlined
-        use-input
-        @filter="categoryFilterFn"
-        :input-debounce="0"
-        label="Category"
-        :rules="[(val) => !!val || 'Please select a category']"
-        clearable
-        @update:model-value="updateCategoryName"
-      >
-        <template v-slot:no-option>
-          <q-item>
-            <q-item-section class="text-grey"> No categories found. </q-item-section>
-          </q-item>
-          <q-item v-if="localSearchTerm.length < 3">
-            <q-item-section class="text-grey">
-              Type at least 3 characters to search.
-            </q-item-section>
-          </q-item>
-          <q-item v-else>
-            <q-item-section class="text-grey">
-              No matching categories.
-            </q-item-section>
-          </q-item>
-        </template>
-      </q-select>
+  <q-card bordered flat class="q-pa-lg rounded-borders q-mb-md">
+    <div class="row items-start q-gutter-lg rounded-borders">
+      <div class="col">
+        <div class="text-body1 text-grey-7">Category</div>
+        <q-select
+          v-model="localCategoryId"
+          v-model:input-value="localSearchTerm"
+          option-value="value"
+          option-label="label"
+          emit-value
+          map-options
+          :options="filteredOptions"
+          :loading="isLoading"
+          dense
+          outlined
+          use-input
+          @filter="categoryFilterFn"
+          :input-debounce="0"
+          :rules="[(val) => !!val || 'Please select a category']"
+          clearable
+          @update:model-value="updateCategoryName"
+        >
+          <template v-slot:no-option>
+            <q-item>
+              <q-item-section class="text-grey"> No categories found. </q-item-section>
+            </q-item>
+            <q-item v-if="localSearchTerm.length < 3">
+              <q-item-section class="text-grey">
+                Type at least 3 characters to search.
+              </q-item-section>
+            </q-item>
+            <q-item v-else>
+              <q-item-section class="text-grey"> No matching categories. </q-item-section>
+            </q-item>
+          </template>
+        </q-select>
+      </div>
+      <div class="col-6 col-sm-3">
+        <div class="text-body1 text-grey-7">Amount</div>
+        <q-input
+          v-model.number="localAmount"
+          type="number"
+          outlined
+          dense
+          prefix="₱"
+          :rules="[(val) => val > 0 || 'This field should be a valid amount']"
+        />
+      </div>
+      <div class="col-6 col-sm-3">
+        <div class="text-body1 text-grey-7">Remarks (Optional)</div>
+        <q-input v-model="localRemarks" type="text" outlined dense />
+      </div>
+      <div class="col-auto">
+        <q-btn
+          class="q-mt-lg"
+          flat
+          dense
+          round
+          icon="fa-regular fa-trash-can"
+          color="negative"
+          size="md"
+          @click="emit('remove')"
+        />
+      </div>
     </div>
-    <div class="col-6 col-sm-3">
-      <q-input
-        v-model.number="localAmount"
-        type="number"
-        outlined
-        dense
-        prefix="₱"
-        label="Amount"
-        :rules="[(val) => val > 0 || 'This field should be a valid amount']"
-      />
-    </div>
-    <div class="col-6 col-sm-3">
-      <q-input v-model="localRemarks" type="text" outlined dense label="Remarks (Optional)" />
-    </div>
-    <div class="col-auto">
-      <q-btn flat dense round icon="delete" color="negative" size="md" @click="emit('remove')" />
-    </div>
-  </div>
+  </q-card>
 </template>
 
 <script setup lang="ts">
@@ -143,5 +153,4 @@ function categoryFilterFn(val: string, update: (callback: () => void) => void) {
     applyFilter(searchTerm);
   });
 }
-
 </script>

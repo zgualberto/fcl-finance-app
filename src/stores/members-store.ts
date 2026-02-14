@@ -34,19 +34,55 @@ export const useMembersStore = defineStore('members', {
         return [];
       }
     },
-    async addMember(name: string): Promise<void> {
-      await this.createMember(name);
-    },
-    async createMember(name: string): Promise<Member | null> {
+    async findDisabledByExactName(name: string): Promise<Member | null> {
       if (!this.memberRepository) throw new Error('Repository not initialized');
       try {
-        const id = await this.memberRepository.insert({
-          name,
-          is_active: true,
+        return await this.memberRepository.findDisabledByExactName(name);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+        return null;
+      }
+    },
+    enableMember(member: Member): Member | null {
+      if (!this.memberRepository) throw new Error('Repository not initialized');
+      if (member.id == null) {
+        return null;
+      }
+      try {
+        const updated: Member = { ...member, is_active: 1 };
+        void this.memberRepository.update({
+          id: member.id,
+          name: updated.name,
+          is_active: 1,
         });
-        const member = { name, is_active: true, id } as Member;
-        this.members.unshift(member);
-        return member;
+        const index = this.members.findIndex((m) => m.id === updated.id);
+        if (index !== -1) {
+          this.members[index] = { ...this.members[index], ...updated } as Member;
+        } else {
+          this.members.unshift(updated);
+        }
+        return updated;
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+        return null;
+      }
+    },
+    async addMember(member: Partial<Member>): Promise<void> {
+      await this.createMember(member);
+    },
+    async createMember(member: Partial<Member>): Promise<Member | null> {
+      if (!this.memberRepository) throw new Error('Repository not initialized');
+      try {
+        const payload: Member = {
+          name: member.name ?? '',
+          is_active: member.is_active ?? 1,
+        };
+        const id = await this.memberRepository.insert(payload);
+        const createdMember = { ...payload, id } as Member;
+        this.members.unshift(createdMember);
+        return createdMember;
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         this.activityLogService?.logErrActivity(message);

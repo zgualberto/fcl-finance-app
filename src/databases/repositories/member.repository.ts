@@ -27,10 +27,19 @@ export class MemberRepository implements BaseRepository<Member> {
   async findByNameLike(searchTerm: string, limit = 25): Promise<Member[]> {
     const likeTerm = `%${searchTerm}%`;
     const res = await database.query(
-      `SELECT * FROM members WHERE name LIKE ? ORDER BY name ASC LIMIT ?`,
+      `SELECT * FROM members WHERE name LIKE ? AND is_active = 1 ORDER BY name ASC LIMIT ?`,
       [likeTerm, limit],
     );
     return res.values as Member[];
+  }
+
+  async findDisabledByExactName(name: string): Promise<Member | null> {
+    const res = await database.query(
+      `SELECT * FROM members WHERE name = ? AND is_active = 0 LIMIT 1`,
+      [name],
+    );
+    const members = res.values as Member[];
+    return members[0] ?? null;
   }
 
   update(member: Partial<Member>): void {

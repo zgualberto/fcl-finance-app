@@ -2,7 +2,7 @@
   <div class="q-pa-md">
     <div class="q-mb-md">
       <h1 class="q-my-none text-h5 text-weight-bold text-primary">Activity Logs</h1>
-      <p class="q-my-xs text-caption text-grey-7">Finance Team - Check Activity Logs</p>
+      <p class="q-my-xs text-body1 text-grey-7">Finance Team - Check Activity Logs</p>
     </div>
 
     <ActivityLogsComponent />

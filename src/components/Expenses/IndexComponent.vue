@@ -3,14 +3,14 @@
     <q-card class="q-pa-lg relative-position">
       <div class="q-mb-md">
         <h1 class="q-my-none text-h5 text-weight-bold text-primary">FCL Weekly Expenses</h1>
-        <p class="q-my-xs text-caption text-grey-7">Finance Team - Church Expenses</p>
+        <p class="q-my-xs text-body1 text-grey-7">Finance Team - Church Expenses</p>
       </div>
 
       <q-form ref="formRef" @submit="saveExpenses">
         <section class="form-section q-mb-lg">
           <div class="text-h6">Expense Date</div>
           <q-separator class="q-mb-md"></q-separator>
-          <div class="text-caption text-grey-7 q-mb-xs">Expense Date</div>
+          <div class="text-body1 text-grey-7 q-mb-xs">Expense Date</div>
           <q-input
             v-model="formData.expenseDate"
             type="date"

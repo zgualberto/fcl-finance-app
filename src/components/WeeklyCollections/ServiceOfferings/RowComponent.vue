@@ -2,7 +2,7 @@
   <div class="row q-col-gutter-md">
     <div class="col-12 col-sm-6 col-md-4">
       <div>
-        <div class="text-caption text-grey-7 q-mb-xs">Sunday Service Offering</div>
+        <div class="text-body1 text-grey-7 q-mb-xs">Sunday Service Offering</div>
         <q-input
           v-model.number="localSundayOffering"
           type="number"
@@ -17,7 +17,7 @@
     </div>
     <div class="col-12 col-sm-6 col-md-4">
       <div>
-        <div class="text-caption text-grey-7 q-mb-xs">Midweek Service Offering</div>
+        <div class="text-body1 text-grey-7 q-mb-xs">Midweek Service Offering</div>
         <q-input
           v-model.number="localMidweekOffering"
           type="number"
@@ -32,7 +32,7 @@
     </div>
     <div class="col-12 col-sm-6 col-md-4">
       <div>
-        <div class="text-caption text-grey-7 q-mb-xs">Sunday School Offering</div>
+        <div class="text-body1 text-grey-7 q-mb-xs">Sunday School Offering</div>
         <q-input
           v-model.number="localSundaySchoolOffering"
           type="number"

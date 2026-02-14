@@ -2,23 +2,28 @@
   <div class="q-pa-lg">
     <q-card class="q-pa-lg relative-position">
       <div class="q-mb-md">
-        <h1 class="q-my-none text-h5 text-weight-bold text-primary">FCL Weekly Collection</h1>
-        <p class="q-my-xs text-caption text-grey-7">Finance Team - Church Collections</p>
+        <h1 class="q-my-none text-h5 text-weight-bold">FCL Weekly Collection</h1>
+        <p class="q-my-xs text-body1 text-grey-7">Finance Team - Church Collections</p>
       </div>
 
       <q-form ref="formRef" @submit="saveCollection">
         <section class="form-section q-mb-lg">
           <div class="text-h6">Collection Date</div>
           <q-separator class="q-mb-md"></q-separator>
-          <div class="text-caption text-grey-7 q-mb-xs">Collection Date</div>
-          <q-input
-            v-model="formData.collectionDate"
-            type="date"
-            outlined
-            dense
-            class="full-width"
-            :rules="[(val) => !!val || 'This field is required']"
-          />
+          <div class="row">
+            <div class="col-12 col-sm-4">
+              <div class="text-body1 text-grey-7 q-mb-xs">Collection Date</div>
+              <q-input
+                v-model="formData.collectionDate"
+                type="date"
+                outlined
+                dense
+                class="full-width"
+                :rules="[(val) => !!val || 'This field is required']"
+                icon="event"
+              />
+            </div>
+          </div>
         </section>
 
         <!-- Service Offerings -->
