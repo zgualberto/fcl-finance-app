@@ -1,19 +1,33 @@
 <template>
   <q-table
-    title="Categories"
     :rows="categories"
     :columns="columns"
     row-key="id"
     flat
-    bordered
     :pagination="pagination"
     :rows-per-page-options="[0, 20, 50, 100]"
   >
-    <template v-slot:top-right>
-      <q-btn color="primary" @click="openAddCategoryDialog" rounded unelevated no-caps>
-        <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
-        Add Category
-      </q-btn>
+    <template v-slot:top>
+      <div class="row full-width">
+        <div class="col">
+          <div class="text-h5 text-weight-bold">Category Dashboard</div>
+          <div class="text-caption text-grey-7">Manage collection and expense categories</div>
+        </div>
+        <div class="col-auto">
+          <q-btn color="primary" @click="openAddCategoryDialog" rounded unelevated no-caps>
+            <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
+            Add New Category
+          </q-btn>
+        </div>
+      </div>
+
+      <div v-if="showForm" class="q-mt-md full-width">
+        <CategoryFormModal
+          v-bind="editingCategory ? { category: editingCategory } : {}"
+          @ok="handleFormOk"
+          @cancel="handleFormCancel"
+        />
+      </div>
     </template>
     <template v-slot:body-cell-transactionType="props">
       <q-td :props="props">
@@ -54,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useCategoriesStore } from 'src/stores/categories-store';
 import { useQuasar, type QTableColumn } from 'quasar';
 import type { Category } from 'src/databases/entities/category';
@@ -77,36 +91,46 @@ const pagination = {
 
 const categories = computed(() => categoryStore.categoryList);
 const $q = useQuasar();
+const showForm = ref(false);
+const editingCategory = ref<Category | null>(null);
 
 const openAddCategoryDialog = () => {
-  $q.dialog({
-    component: CategoryFormModal,
-    persistent: true,
-  }).onOk((data: Partial<Category>) => {
-    void categoryStore.addCategory(data);
-    void categoryStore.init();
-    $q.notify({
-      position: 'bottom-right',
-      type: 'positive',
-      message: `${data.category_name} has been created successfully`,
-      timeout: 2000,
-    });
-  });
+  editingCategory.value = null;
+  showForm.value = true;
 };
+
 const openEditCategoryDialog = (category: Category) => {
-  $q.dialog({
-    component: CategoryFormModal,
-    componentProps: { category },
-    persistent: true,
-  }).onOk((data: Category) => {
-    void categoryStore.updateCategory(data);
+  editingCategory.value = category;
+  showForm.value = true;
+};
+
+const handleFormOk = async (data: Partial<Category>) => {
+  if (editingCategory.value) {
+    await categoryStore.updateCategory(data as Category);
     $q.notify({
       position: 'bottom-right',
       type: 'positive',
       message: `${data.category_name} has been updated successfully`,
       timeout: 2000,
     });
-  });
+  } else {
+    await categoryStore.addCategory(data);
+    await categoryStore.init();
+    $q.notify({
+      position: 'bottom-right',
+      type: 'positive',
+      message: `${data.category_name} has been created successfully`,
+      timeout: 2000,
+    });
+  }
+
+  showForm.value = false;
+  editingCategory.value = null;
+};
+
+const handleFormCancel = () => {
+  showForm.value = false;
+  editingCategory.value = null;
 };
 
 const confirmDeleteCategory = (id: number) => {

@@ -1,43 +1,33 @@
 <template>
-  <q-dialog v-model="showDialog" @hide="handleDialogHide">
-    <q-card style="min-width: 400px" class="q-pa-md">
-      <q-card-section>
-        <div class="text-h6">
-          {{ category ? 'Edit Category' : 'New Category' }}
-        </div>
-      </q-card-section>
+  <q-card class="q-pa-md">
+    <q-card-section>
+      <div class="text-h6">
+        {{ category ? 'Edit Category' : 'Add New Category' }}
+      </div>
+    </q-card-section>
 
-      <q-form @submit.prevent="onSubmit" @reset="onReset">
-        <q-card-section class="q-gutter-md">
-          <div>
-            <div class="text-caption text-grey-7 q-mb-xs">Name</div>
-            <q-input v-model="form.category_name" filled required dense />
-          </div>
-          <div>
-            <div class="text-caption text-grey-7 q-mb-xs">Parent Category</div>
+    <q-form @submit.prevent="onSubmit">
+      <q-card-section class="q-gutter-md">
+        <div>
+          <div class="text-caption text-grey-7 q-mb-xs">Category Name</div>
+          <q-input v-model="form.category_name" filled required dense />
+        </div>
+        <div class="row no-wrap">
+          <div class="col-6">
+            <div class="text-caption text-grey-7 q-mb-xs">Status</div>
             <q-select
-              filled
-              v-model="form.parent_id"
-              use-input
-              input-debounce="200"
+              v-model="form.is_active"
               option-value="value"
               option-label="label"
               emit-value
               map-options
-              :options="parentOptions"
-              clearable
+              filled
+              :options="statusOptions"
               dense
-            >
-              <template v-slot:no-option>
-                <q-item>
-                  <q-item-section class="text-grey"> No results </q-item-section>
-                </q-item>
-              </template>
-            </q-select>
+            />
           </div>
-          <q-toggle v-model="form.is_active" label="Status" icon="check_circle" />
-          <div v-show="form.parent_id == null">
-            <div class="text-caption text-grey-7 q-mb-xs">Type</div>
+          <div class="col-12 col-sm-6" v-show="form.parent_id == null">
+            <div class="text-caption text-grey-7 q-mb-xs">Transaction Type</div>
             <q-select
               v-model="form.transaction_type"
               option-value="value"
@@ -50,42 +40,53 @@
               dense
             />
           </div>
-          <div class="row justify-end">
-            <q-btn
-              flat
-              unelevated
-              rounded
-              no-caps
-              label="Cancel"
-              @click="onCancel"
-              class="bg-blue-1 q-px-lg"
-              color="primary"
-            />
-            <q-btn
-              v-if="!category"
-              unelevated
-              rounded
-              no-caps
-              flat
-              label="Reset"
-              type="reset"
-              class="bg-blue-1 q-px-lg q-mx-sm"
-              color="primary"
-            />
-            <q-btn
-              unelevated
-              rounded
-              no-caps
-              label="Save"
-              type="submit"
-              color="primary"
-              class="q-px-lg"
-            />
-          </div>
-        </q-card-section>
-      </q-form>
-    </q-card>
-  </q-dialog>
+        </div>
+        <div>
+          <div class="text-caption text-grey-7 q-mb-xs">Parent Category (Optional)</div>
+          <q-select
+            filled
+            v-model="form.parent_id"
+            use-input
+            input-debounce="200"
+            option-value="value"
+            option-label="label"
+            emit-value
+            map-options
+            :options="parentOptions"
+            clearable
+            dense
+          >
+            <template v-slot:no-option>
+              <q-item>
+                <q-item-section class="text-grey"> No results </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+        </div>
+        <div class="row justify-start col-gap">
+          <q-btn
+            flat
+            unelevated
+            rounded
+            no-caps
+            label="Cancel"
+            @click="onCancel"
+            class="bg-blue-1 q-px-lg"
+            color="primary"
+          />
+          <q-btn
+            unelevated
+            rounded
+            no-caps
+            label="Save"
+            type="submit"
+            color="primary"
+            class="q-px-lg"
+          />
+        </div>
+      </q-card-section>
+    </q-form>
+  </q-card>
 </template>
 
 <script setup lang="ts">
@@ -113,14 +114,17 @@ const transactionTypeOptions = Object.values(TransactionType).map((type) => ({
   label: type,
 }));
 
+const statusOptions = [
+  { label: 'Enable', value: true },
+  { label: 'Disable', value: false },
+];
+
 const parentOptions = computed(() =>
   categoryStore.categories.map((c) => ({
     value: c.id,
     label: c.category_name,
   })),
 );
-
-const showDialog = ref<boolean>(true);
 
 watch(
   () => props.category,
@@ -183,21 +187,10 @@ function onSubmit() {
     transaction_type: form.value.transaction_type,
     parent_id: form.value.parent_id,
   });
-  showDialog.value = false;
-}
-
-function handleDialogHide() {
-  emit('cancel');
-  showDialog.value = false;
-}
-
-function onReset() {
-  resetForm();
 }
 
 function onCancel() {
   emit('cancel');
-  showDialog.value = false;
 }
 
 function resetForm() {
@@ -209,3 +202,9 @@ function resetForm() {
   };
 }
 </script>
+
+<style scoped>
+.col-gap {
+  column-gap: 12px;
+}
+</style>
