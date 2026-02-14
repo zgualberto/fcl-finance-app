@@ -10,15 +10,19 @@
         <section class="form-section q-mb-lg">
           <div class="text-h6">Expense Date</div>
           <q-separator class="q-mb-md"></q-separator>
-          <div class="text-body1 text-grey-7 q-mb-xs">Expense Date</div>
-          <q-input
-            v-model="formData.expenseDate"
-            type="date"
-            outlined
-            dense
-            class="full-width"
-            :rules="[(val) => !!val || 'This field is required']"
-          />
+          <div class="row">
+            <div class="col-12 col-sm-4">
+              <div class="text-body1 text-grey-7 q-mb-xs">Expense Date</div>
+              <q-input
+                v-model="formData.expenseDate"
+                type="date"
+                outlined
+                dense
+                class="full-width"
+                :rules="[(val) => !!val || 'This field is required']"
+              />
+            </div>
+          </div>
         </section>
 
         <section class="form-section">

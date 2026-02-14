@@ -1,75 +1,77 @@
 <template>
-  <div class="row items-start q-gutter-sm rounded-borders">
-    <div class="col">
-      <q-select
-        v-model="localMemberId"
-        v-model:input-value="localSearchTerm"
-        option-value="value"
-        option-label="label"
-        emit-value
-        map-options
-        :options="normalizedOptions"
-        :loading="isMembersLoading"
-        dense
-        outlined
-        use-input
-        @filter="memberFilterFn"
-        :input-debounce="0"
-        label="Member"
-        :rules="[(val) => !!val || 'Please select a member']"
-        clearable
-        @update:model-value="updateMemberName"
-      >
-        <template v-slot:no-option>
-          <q-item>
-            <q-item-section class="text-grey"> No members found. </q-item-section>
-          </q-item>
-          <q-item v-if="localSearchTerm.length < 3">
-            <q-item-section class="text-grey">
-              Type at least 3 characters to search.
-            </q-item-section>
-          </q-item>
-          <q-item v-else>
-            <q-item-section>
-              <q-btn
-                flat
-                no-caps
-                color="primary"
-                rounded
-                :disable="isCreatingMember"
-                @click="createMemberFromSearch"
-              >
-                <q-icon name="add" size="xs" class="q-mr-md" />
-                Create member "{{ localSearchTerm }}"
-              </q-btn>
-            </q-item-section>
-          </q-item>
-        </template>
-      </q-select>
+  <q-card bordered flat class="q-pa-lg rounded-borders q-mb-md bg-main">
+    <div class="row items-start q-gutter-sm rounded-borders">
+      <div class="col">
+        <div class="text-body1 text-grey-7">Member</div>
+        <q-select
+          v-model="localMemberId"
+          v-model:input-value="localSearchTerm"
+          option-value="value"
+          option-label="label"
+          emit-value
+          map-options
+          :options="normalizedOptions"
+          :loading="isMembersLoading"
+          dense
+          outlined
+          use-input
+          @filter="memberFilterFn"
+          :input-debounce="0"
+          :rules="[(val) => !!val || 'Please select a member']"
+          clearable
+          @update:model-value="updateMemberName"
+        >
+          <template v-slot:no-option>
+            <q-item>
+              <q-item-section class="text-grey"> No members found. </q-item-section>
+            </q-item>
+            <q-item v-if="localSearchTerm.length < 3">
+              <q-item-section class="text-grey">
+                Type at least 3 characters to search.
+              </q-item-section>
+            </q-item>
+            <q-item v-else>
+              <q-item-section>
+                <q-btn
+                  flat
+                  no-caps
+                  color="primary"
+                  rounded
+                  :disable="isCreatingMember"
+                  @click="createMemberFromSearch"
+                >
+                  <q-icon name="add" size="xs" class="q-mr-md" />
+                  Create member "{{ localSearchTerm }}"
+                </q-btn>
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-select>
+      </div>
+      <div class="col-4 col-sm-3">
+        <div class="text-body1 text-grey-7">Amount</div>
+        <q-input
+          v-model.number="localAmount"
+          type="number"
+          outlined
+          dense
+          prefix="₱"
+          :rules="[(val) => !!val || 'This field should be a valid amount']"
+        />
+      </div>
+      <div class="col-auto">
+        <q-btn
+          flat
+          round
+          icon="fa-regular fa-trash-can"
+          color="negative"
+          size="sm"
+          class="q-mt-lg"
+          @click="emit('remove')"
+        />
+      </div>
     </div>
-    <div class="col-4 col-sm-3">
-      <q-input
-        v-model.number="localAmount"
-        type="number"
-        outlined
-        dense
-        prefix="₱"
-        label="Amount"
-        :rules="[(val) => !!val || 'This field should be a valid amount']"
-      />
-    </div>
-    <div class="col-auto">
-      <q-btn
-        flat
-        dense
-        round
-        icon="fa-regular fa-trash-can"
-        color="negative"
-        size="md"
-        @click="emit('remove')"
-      />
-    </div>
-  </div>
+  </q-card>
 </template>
 
 <script setup lang="ts">

@@ -1,5 +1,5 @@
 <template>
-  <q-card bordered flat class="q-pa-lg rounded-borders q-mb-md">
+  <q-card bordered flat class="q-pa-lg rounded-borders q-mb-md bg-main">
     <div class="row items-start q-gutter-lg rounded-borders">
       <div class="col">
         <div class="text-body1 text-grey-7">Category</div>
@@ -55,11 +55,10 @@
         <q-btn
           class="q-mt-lg"
           flat
-          dense
           round
           icon="fa-regular fa-trash-can"
           color="negative"
-          size="md"
+          size="sm"
           @click="emit('remove')"
         />
       </div>

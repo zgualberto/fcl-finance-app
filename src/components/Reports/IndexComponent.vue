@@ -4,9 +4,9 @@
       <!-- Report Header -->
       <div class="text-center q-mb-lg">
         <h1 class="text-h4 q-mb-sm" style="font-weight: 700">
-          Financial Report for {{ formatMonthYear(`${selectedYear}-${selectedMonth}`) }}
+          Financial Report for {{ displayMonthYear }}
         </h1>
-        <p class="text-subtitle2 text-primary">Monthly Collections and Expenses Summary</p>
+        <p class="text-body2">Monthly Collections and Expenses Summary</p>
       </div>
 
       <q-card flat bordered class="report-filter-card q-mb-lg">
@@ -284,9 +284,14 @@ const yearsOptions = Array.from({ length: 50 }, (_, i) => {
   const year = new Date().getFullYear() - i;
   return { label: String(year), value: String(year) };
 });
-const selectedMonth = ref(dateUtils.formatDate(new Date(), 'MM'));
-const selectedYear = ref(dateUtils.formatDate(new Date(), 'YYYY'));
-const selectedDate = computed(() => `${selectedYear.value}-${selectedMonth.value}`);
+const selectedMonth = ref<string | null>(null);
+const selectedYear = ref<string | null>(null);
+const selectedDate = computed(() => {
+  if (!selectedYear.value || !selectedMonth.value) {
+    return null;
+  }
+  return `${selectedYear.value}-${selectedMonth.value}`;
+});
 
 const isLoading = ref(false);
 const isSharingReport = ref(false);
@@ -303,6 +308,13 @@ function formatCurrency(amount: number): string {
 function formatMonthYear(dateStr: string): string {
   return dateUtils.formatDate(dateStr + '-01', 'MMMM YYYY');
 }
+
+const displayMonthYear = computed((): string => {
+  if (!selectedYear.value || !selectedMonth.value) {
+    return 'Select month and year';
+  }
+  return formatMonthYear(`${selectedYear.value}-${selectedMonth.value}`);
+});
 
 const collectionsGroups = computed((): CategoryGroup[] => {
   return buildCategoryGroups('Collections');
@@ -454,15 +466,25 @@ async function shareReportPdf() {
     return;
   }
 
+  const selectedDateValue = selectedDate.value;
+  if (!selectedDateValue) {
+    $q.notify({
+      type: 'info',
+      message: 'Please select a month and year to export.',
+      position: 'bottom-right',
+    });
+    return;
+  }
+
   isSharingReport.value = true;
   try {
     await nextTick();
 
     await printReportAsPdf({
       reportElement: reportRef.value,
-      selectedMonth: dateUtils.formatDate(selectedDate.value + '-01', 'YYYY-MM'),
+      selectedMonth: dateUtils.formatDate(selectedDateValue + '-01', 'YYYY-MM'),
       shareTitle: 'Monthly Financial Report (PDF)',
-      shareText: `Monthly Financial Report PDF for ${formatMonthYear(selectedDate.value)}`,
+      shareText: `Monthly Financial Report PDF for ${formatMonthYear(selectedDateValue)}`,
       dialogTitle: 'Share or Print Report',
     });
 
