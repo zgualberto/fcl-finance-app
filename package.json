@@ -13,6 +13,7 @@
     "dev": "quasar dev",
     "dev:android": "quasar dev -m capacitor -T android",
     "build:android": "quasar build -m capacitor -T android",
+    "build:android:gradle-release": "cd src-capacitor/android && ./gradlew assembleRelease",
     "cap": "cd src-capacitor && npx cap",
     "cap:sync:android": "cd src-capacitor && npx cap sync android",
     "cap:open:android": "cd src-capacitor && npx cap open android",
