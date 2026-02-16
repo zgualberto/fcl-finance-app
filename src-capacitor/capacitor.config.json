@@ -1,7 +1,7 @@
 {
   "appId": "org.capacitor.fcl.finance.app",
   "appName": "FCL Finance App",
-  "webDir": "www",
+  "webDir": "../www",
   "plugins": {
     "CapacitorSQLite": {
       "iosDatabaseLocation": "Library/Databases",

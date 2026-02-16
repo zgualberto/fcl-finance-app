@@ -2,11 +2,13 @@
 // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file
 
 import { defineConfig } from '#q-app/wrappers';
+import os from 'os';
+import path from 'path';
 
 export default defineConfig((/* ctx */) => {
   return {
     bin: {
-      linuxAndroidStudio: '/home/ziegf/android-studio/bin/studio',
+      linuxAndroidStudio: path.join(os.homedir(), 'android-studio', 'bin', 'studio'),
     },
     // https://v2.quasar.dev/quasar-cli-vite/prefetch-feature
     // preFetch: true,
