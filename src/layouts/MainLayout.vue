@@ -1,12 +1,12 @@
 <template>
   <q-layout view="lHh Lpr lFf">
-    <q-header class="bg-white q-px-xl q-py-md">
+    <q-header class="bg-white q-py-md" :class="{ 'q-px-xl': $q.screen.gt.sm }">
       <q-toolbar class="justify-between">
-        <q-toolbar-title class="text-h5 text-black text-weight-bold"
-          >FCL Finance System</q-toolbar-title
-        >
+        <q-toolbar-title>
+          <router-link :to="{ name: 'home' }" class="text-h5 text-black text-weight-bold" style="text-decoration: none;">FCL Finance System</router-link>
+        </q-toolbar-title>
 
-        <div class="row items-center q-gutter-sm">
+        <div class="row items-center q-gutter-sm" v-if="$q.screen.gt.sm">
           <q-btn
             v-for="(link, index) in linksList"
             :key="index"
@@ -58,8 +58,31 @@
             </q-menu>
           </q-btn>
         </div>
+        <q-btn
+          v-else
+          flat
+          round
+          icon="menu"
+          class="text-black"
+          @click="toggleLeftDrawer"
+        />
       </q-toolbar>
     </q-header>
+
+    <q-drawer v-model="showLeftDrawer" class="text-black">
+      <q-list>
+        <EssentialLink
+          v-for="(link, index) in linksList"
+          :key="index"
+          v-bind="{
+            title: link.title,
+            ...(link.routeName && { routeName: link.routeName }),
+            ...(link.icon && { icon: link.icon }),
+            ...(link.children && { children: link.children })
+          }"
+        />
+      </q-list>
+    </q-drawer>
 
     <q-page-container class="q-my-lg">
       <router-view />
@@ -69,4 +92,12 @@
 
 <script setup lang="ts">
 import { linksList } from 'src/data/links';
+import { ref } from 'vue';
+
+import EssentialLink from 'src/components/EssentialLink.vue';
+
+const showLeftDrawer = ref(false);
+const toggleLeftDrawer = () => {
+  showLeftDrawer.value = !showLeftDrawer.value;
+};
 </script>
