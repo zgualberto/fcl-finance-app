@@ -1,6 +1,6 @@
 <template>
   <q-layout view="lHh Lpr lFf">
-    <q-header class="bg-white q-py-md" :class="{ 'q-px-xl': $q.screen.gt.sm }">
+    <q-header class="bg-white" :class="{ 'q-py-md q-px-xl': $q.screen.gt.sm, 'q-py-sm q-px-md': !$q.screen.gt.sm }">
       <q-toolbar class="justify-between">
         <q-toolbar-title>
           <router-link :to="{ name: 'home' }" class="text-h5 text-black text-weight-bold" style="text-decoration: none;">FCL Finance System</router-link>
@@ -84,7 +84,7 @@
       </q-list>
     </q-drawer>
 
-    <q-page-container class="q-my-lg">
+    <q-page-container :class="{ 'q-my-lg': $q.screen.gt.sm, 'q-my-none': !$q.screen.gt.sm }">
       <router-view />
     </q-page-container>
   </q-layout>

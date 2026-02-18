@@ -1,7 +1,7 @@
 <template>
-  <q-card bordered flat class="q-pa-lg rounded-borders q-mb-md bg-main">
+  <q-card bordered flat class="rounded-borders q-mb-md bg-main" :class="{ 'q-pa-lg': !$q.platform.is.mobile, 'q-pa-md': $q.platform.is.mobile }">
     <div class="row items-start q-gutter-sm rounded-borders">
-      <div class="col">
+      <div class="col-12 col-sm">
         <div class="text-body1 text-grey-7">Member</div>
         <q-select
           v-model="localMemberId"
@@ -39,6 +39,7 @@
                   rounded
                   :disable="isCreatingMember"
                   @click="createMemberFromSearch"
+                  :class="{ 'full-width': $q.screen.lt.sm }"
                 >
                   <q-icon name="add" size="xs" class="q-mr-md" />
                   Create member "{{ localSearchTerm }}"
@@ -48,7 +49,7 @@
           </template>
         </q-select>
       </div>
-      <div class="col-4 col-sm-3">
+      <div class="col-12 col-sm-3">
         <div class="text-body1 text-grey-7">Amount</div>
         <q-input
           v-model.number="localAmount"
@@ -59,10 +60,9 @@
           :rules="[(val) => !!val || 'This field should be a valid amount']"
         />
       </div>
-      <div class="col-auto">
+      <div class="col-12 col-sm-auto flex justify-end">
         <q-btn
           flat
-          round
           icon="fa-regular fa-trash-can"
           color="negative"
           size="sm"
