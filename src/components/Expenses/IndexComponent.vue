@@ -1,13 +1,30 @@
 <template>
-  <div class="q-pa-lg">
-    <q-card class="q-pa-lg relative-position">
+  <div     
+    :class="{
+      'q-pa-lg': $q.screen.width > $q.screen.height,
+      'q-pa-md': $q.platform.is.mobile,
+    }"
+  >
+    <q-card 
+    class="relative-position"
+      :class="{
+        'q-pa-lg': $q.screen.width > $q.screen.height,
+        'q-pa-md': $q.platform.is.mobile,
+      }"
+    >
       <div class="q-mb-md">
-        <h1 class="q-my-none text-h5 text-weight-bold text-primary">FCL Weekly Expenses</h1>
+        <h1 class="q-my-none text-h5 text-weight-bold">FCL Weekly Expenses</h1>
         <p class="q-my-xs text-body1 text-grey-7">Finance Team - Church Expenses</p>
       </div>
 
       <q-form ref="formRef" @submit="saveExpenses">
-        <section class="form-section q-mb-lg">
+        <section 
+          class="form-section" 
+          :class="{ 
+            'q-mb-lg': $q.screen.width > $q.screen.height, 
+            'q-mb-sm': $q.screen.lt.sm 
+          }"
+        >
           <div class="text-h6">Expense Date</div>
           <q-separator class="q-mb-md"></q-separator>
           <div class="row">
@@ -25,12 +42,18 @@
           </div>
         </section>
 
-        <section class="form-section">
+        <section class="form-section" :class="{ 'q-mt-lg': $q.screen.width > $q.screen.height, 'q-mt-md': $q.screen.lt.sm }">
           <div class="row items-center q-mb-sm">
-            <div class="col">
+            <div class="col-12 col-sm">
               <div class="text-h6">Expenses ({{ formData.items.length }} entries)</div>
             </div>
-            <div class="col-auto q-gutter-md">
+            <div 
+              class="col-12 col-sm-auto" 
+              :class="{ 
+                'q-gutter-md': $q.screen.width > $q.screen.height, 
+                'row justify-around q-py-sm': $q.screen.lt.sm 
+              }"
+            >
               <q-btn
                 rounded
                 unelevated

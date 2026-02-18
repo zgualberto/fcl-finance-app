@@ -18,7 +18,7 @@
       </div>
 
       <q-form ref="formRef" @submit="saveCollection">
-        <section class="form-section" :class="{ 'q-mb-lg': $q.screen.gt.sm, 'q-mb-sm': $q.screen.lt.sm }">
+        <section class="form-section" :class="{ 'q-mb-lg': $q.screen.width > $q.screen.height, 'q-mb-sm': $q.screen.lt.sm }">
           <div class="text-h6">Collection Date</div>
           <q-separator class="q-mb-md"></q-separator>
           <div class="row">
@@ -49,7 +49,7 @@
         </section>
 
         <!-- Other Offerings -->
-        <section class="form-section" :class="{ 'q-mt-lg': $q.screen.gt.sm, 'q-mt-md': $q.screen.lt.sm }">
+        <section class="form-section" :class="{ 'q-mt-lg': $q.screen.width > $q.screen.height, 'q-mt-md': $q.screen.lt.sm }">
           <div class="text-h6">Other Offerings</div>
           <q-separator class="q-mb-md"></q-separator>
           <OtherOfferingsRow
@@ -59,7 +59,7 @@
         </section>
 
         <!-- Tithes -->
-        <section class="form-section" :class="{ 'q-mt-lg': $q.screen.gt.sm, 'q-mt-md': $q.screen.lt.sm }">
+        <section class="form-section" :class="{ 'q-mt-lg': $q.screen.width > $q.screen.height, 'q-mt-md': $q.screen.lt.sm }">
           <div class="row items-center q-col-gutter-sm q-mb-sm">
             <div class="col-12 col-sm">
               <div class="text-h6">Tithes ({{ formData.tithes.length }} entries)</div>

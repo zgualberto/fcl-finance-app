@@ -1,7 +1,18 @@
 <template>
-  <q-card bordered flat class="q-pa-lg rounded-borders q-mb-md bg-main">
-    <div class="row items-start q-gutter-lg rounded-borders">
-      <div class="col">
+  <q-card 
+    bordered 
+    flat 
+    class="rounded-borders q-mb-md bg-main"
+    :class="{ 
+      'q-pa-lg': $q.screen.width > $q.screen.height, 
+      'q-pa-md': $q.platform.is.mobile 
+    }"
+  >
+    <div 
+      class="row items-start rounded-borders" 
+      :class="{ 'q-gutter-sm': $q.screen.width > $q.screen.height }"
+    >
+      <div class="col-12 col-sm">
         <div class="text-body1 text-grey-7">Category</div>
         <q-select
           v-model="localCategoryId"
@@ -36,7 +47,7 @@
           </template>
         </q-select>
       </div>
-      <div class="col-6 col-sm-3">
+      <div class="col-12 col-sm-3">
         <div class="text-body1 text-grey-7">Amount</div>
         <q-input
           v-model.number="localAmount"
@@ -47,11 +58,11 @@
           :rules="[(val) => val > 0 || 'This field should be a valid amount']"
         />
       </div>
-      <div class="col-6 col-sm-3">
+      <div class="col-12 col-sm-3">
         <div class="text-body1 text-grey-7">Remarks (Optional)</div>
         <q-input v-model="localRemarks" type="text" outlined dense />
       </div>
-      <div class="col-auto">
+      <div class="col-12 col-sm-auto flex justify-end">
         <q-btn
           class="q-mt-lg"
           flat
