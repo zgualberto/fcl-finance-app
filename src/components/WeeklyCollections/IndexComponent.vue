@@ -1,14 +1,14 @@
 <template>
   <div
     :class="{
-      'q-pa-lg': !$q.platform.is.mobile,
-      'q-pa-md': $q.screen.lt.sm,
+      'q-pa-lg': $q.screen.width > $q.screen.height,
+      'q-pa-md': $q.platform.is.mobile,
     }"
   >
     <q-card
       class="relative-position"
       :class="{
-        'q-pa-lg': !$q.platform.is.mobile,
+        'q-pa-lg': $q.screen.width > $q.screen.height,
         'q-pa-md': $q.platform.is.mobile,
       }"
     >
@@ -65,8 +65,8 @@
               <div class="text-h6">Tithes ({{ formData.tithes.length }} entries)</div>
             </div>
             <div class="col-12 col-sm-auto">
-              <div class="row q-col-gutter-sm justify-end">
-                <div class="col-12 col-sm-auto">
+              <div class="row q-col-gutter-sm" :class="{ 'justify-end': !$q.screen.lt.sm, 'justify-between': $q.screen.lt.sm }">
+                <div class="col-sm-auto">
                   <q-btn
                     rounded
                     unelevated
@@ -80,7 +80,7 @@
                     Add 10
                   </q-btn>
                 </div>
-                <div class="col-12 col-sm-auto">
+                <div class="col-sm-auto">
                   <q-btn
                     rounded
                     unelevated
@@ -94,7 +94,7 @@
                     Add 5
                   </q-btn>
                 </div>
-                <div class="col-12 col-sm-auto">
+                <div class="col-sm-auto">
                   <q-btn
                     unelevated
                     color="primary"
