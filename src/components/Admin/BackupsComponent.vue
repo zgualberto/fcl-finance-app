@@ -48,6 +48,11 @@
               {{ formatTimestamp(props.row.timestamp) }}
             </q-td>
           </template>
+          <template v-slot:body-cell-size="props">
+            <q-td :props="props">
+              {{ formatFileSize(props.row.size) }}
+            </q-td>
+          </template>
           <template v-slot:body-cell-actions="props">
             <q-td :props="props" class="text-right">
               <q-btn
@@ -128,7 +133,15 @@ import {
   restoreFromBackup,
 } from 'src/services/backup';
 
-type BackupSummary = { key: string; timestamp: Date };
+type BackupSummary = { key: string; timestamp: Date; size: number };
+
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+}
 
 const $q = useQuasar();
 const backups = ref<BackupSummary[]>([]);
@@ -139,6 +152,7 @@ const selectedFile = ref<File | null>(null);
 
 const columns: QTableColumn[] = [
   { name: 'timestamp', label: 'Created', field: 'timestamp', align: 'left' },
+  { name: 'size', label: 'Size', field: 'size', align: 'left' },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
 ];
 

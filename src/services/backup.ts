@@ -14,11 +14,21 @@ interface BackupEntry {
   timestamp: number;
   checksum: string;
   data: string;
+  size: number;
 }
 
 interface BackupSummary {
   key: string;
   timestamp: Date;
+  size: number;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
 
 /**
@@ -75,6 +85,7 @@ async function openBackupDB(): Promise<IDBPDatabase> {
 
 async function storeBackupData(jsonData: string, timestamp = Date.now()): Promise<string> {
   const checksum = calculateCRC32(jsonData);
+  const size = new Blob([jsonData]).size;
   const backupDb = await openBackupDB();
   const tx = backupDb.transaction(BACKUP_STORE_NAME, 'readwrite');
 
@@ -89,6 +100,7 @@ async function storeBackupData(jsonData: string, timestamp = Date.now()): Promis
       timestamp,
       checksum,
       data: jsonData,
+      size,
     },
     backupKey,
   );
@@ -153,9 +165,12 @@ export async function getAvailableBackups(): Promise<BackupSummary[]> {
     for (const key of allBackups) {
       const backup = (await backupDb.get(BACKUP_STORE_NAME, key)) as BackupEntry | undefined;
       if (backup) {
+        // Calculate size from data if not pre-calculated (for backwards compatibility)
+        const size = backup.size || new Blob([backup.data]).size;
         backups.push({
           key,
           timestamp: new Date(backup.timestamp),
+          size,
         });
       }
     }
@@ -188,6 +203,36 @@ export async function restoreFromBackup(backupKey: string): Promise<boolean> {
   } catch (error) {
     console.error('[Backup] Failed to restore from backup:', error);
     return false;
+  }
+}
+
+export function getBackupSizeFormatted(bytes: number): string {
+  return formatFileSize(bytes);
+}
+
+export async function downloadBackupToLocalStorage(backupKey: string): Promise<string> {
+  const backup = await getBackupEntry(backupKey);
+  if (!backup) {
+    throw new Error('Backup not found');
+  }
+
+  const timestamp = buildTimestampWithSeconds(new Date(backup.timestamp));
+  const fileName = `fcl-backup-${timestamp}.json`;
+
+  try {
+    await Filesystem.writeFile({
+      path: fileName,
+      data: backup.data,
+      directory: Directory.Documents,
+      recursive: true,
+      encoding: Encoding.UTF8,
+    });
+
+    console.log('[Backup] File downloaded successfully:', fileName);
+    return fileName;
+  } catch (error) {
+    console.error('[Backup] Download error:', error);
+    throw error;
   }
 }
 
