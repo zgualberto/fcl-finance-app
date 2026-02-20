@@ -45,6 +45,11 @@ const routes: RouteRecordRaw[] = [
         name: 'admin.activity-logs',
         component: () => import('pages/Admin/ActivityLogsPage.vue'),
       },
+      {
+        path: 'backups',
+        name: 'admin.backups',
+        component: () => import('pages/Admin/BackupsPage.vue'),
+      },
     ],
   },
 

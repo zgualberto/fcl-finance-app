@@ -30,6 +30,11 @@ export const linksList: EssentialLinkProps[] = [
         icon: 'fa-solid fa-list',
         routeName: 'admin.activity-logs',
       },
+      {
+        title: 'Backups',
+        icon: 'fa-solid fa-box-archive',
+        routeName: 'admin.backups',
+      },
     ],
   },
   {

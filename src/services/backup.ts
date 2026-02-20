@@ -1,16 +1,24 @@
 import type { IDBPDatabase } from 'idb';
 import { openDB } from 'idb';
+import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { checkIntegrity, exportForBackup, importFromBackup } from './database';
 import { setRecovered } from 'src/composables/useRecoveryWarning';
 
 const BACKUP_STORE_NAME = 'fcl-backup-store';
 const BACKUP_DB_NAME = 'fcl-backup-db';
 const MAX_BACKUPS = 10;
+const BACKUP_DIR = 'backups';
 
 interface BackupEntry {
   timestamp: number;
   checksum: string;
   data: string;
+}
+
+interface BackupSummary {
+  key: string;
+  timestamp: Date;
 }
 
 /**
@@ -27,6 +35,31 @@ function calculateCRC32(data: string): string {
   return ((crc ^ -1) >>> 0).toString(16).padStart(8, '0');
 }
 
+function buildTimestampWithSeconds(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  const second = String(date.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day}_${hour}-${minute}-${second}`;
+}
+
+async function ensureBackupsDirectory(): Promise<void> {
+  try {
+    await Filesystem.mkdir({
+      path: BACKUP_DIR,
+      directory: Directory.Cache,
+      recursive: true,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.toLowerCase().includes('already exists')) {
+      throw error;
+    }
+  }
+}
+
 /**
  * Open or create IndexedDB connection for backups
  */
@@ -40,6 +73,55 @@ async function openBackupDB(): Promise<IDBPDatabase> {
   });
 }
 
+async function storeBackupData(jsonData: string, timestamp = Date.now()): Promise<string> {
+  const checksum = calculateCRC32(jsonData);
+  const backupDb = await openBackupDB();
+  const tx = backupDb.transaction(BACKUP_STORE_NAME, 'readwrite');
+
+  const allBackupsKey = 'all-backups';
+  const allBackups: string[] = (await tx.store.get(allBackupsKey)) || [];
+
+  const backupKey = `backup-${timestamp}`;
+  allBackups.push(backupKey);
+
+  await tx.store.put(
+    {
+      timestamp,
+      checksum,
+      data: jsonData,
+    },
+    backupKey,
+  );
+
+  if (allBackups.length > MAX_BACKUPS) {
+    const toDelete = allBackups.slice(0, allBackups.length - MAX_BACKUPS);
+    for (const key of toDelete) {
+      await tx.store.delete(key);
+    }
+    allBackups.splice(0, allBackups.length - MAX_BACKUPS);
+  }
+
+  await tx.store.put(allBackups, allBackupsKey);
+  await tx.done;
+
+  return backupKey;
+}
+
+async function getBackupEntry(backupKey: string): Promise<BackupEntry | null> {
+  const backupDb = await openBackupDB();
+  const backup = (await backupDb.get(BACKUP_STORE_NAME, backupKey)) as BackupEntry | undefined;
+  if (!backup) {
+    return null;
+  }
+
+  const calculatedChecksum = calculateCRC32(backup.data);
+  if (calculatedChecksum !== backup.checksum) {
+    throw new Error('Backup checksum mismatch');
+  }
+
+  return backup;
+}
+
 /**
  * Backup database to IndexedDB (triggered on significant user actions)
  */
@@ -48,44 +130,10 @@ export async function backupDatabase(): Promise<void> {
     console.log('[Backup] Starting database backup...');
 
     const jsonData = await exportForBackup();
-    const checksum = calculateCRC32(jsonData);
-    const timestamp = Date.now();
+    await storeBackupData(jsonData);
 
-    const backupDb = await openBackupDB();
-    const tx = backupDb.transaction(BACKUP_STORE_NAME, 'readwrite');
-
-    // Get existing backups to maintain history
-    const allBackupsKey = 'all-backups';
-    const allBackups: string[] = (await tx.store.get(allBackupsKey)) || [];
-
-    // Generate unique key for this backup
-    const backupKey = `backup-${timestamp}`;
-    allBackups.push(backupKey);
-
-    // Store the backup
-    await tx.store.put(
-      {
-        timestamp,
-        checksum,
-        data: jsonData,
-      },
-      backupKey,
-    );
-
-    // Keep only the latest 10 backups
-    if (allBackups.length > MAX_BACKUPS) {
-      const toDelete = allBackups.slice(0, allBackups.length - MAX_BACKUPS);
-      for (const key of toDelete) {
-        await tx.store.delete(key);
-      }
-      allBackups.splice(0, allBackups.length - MAX_BACKUPS);
-    }
-
-    // Update all-backups list
-    await tx.store.put(allBackups, allBackupsKey);
-    await tx.done;
-
-    console.log('[Backup] Database backed up successfully. Backups stored:', allBackups.length);
+    const backups = await getAvailableBackups();
+    console.log('[Backup] Database backed up successfully. Backups stored:', backups.length);
   } catch (error) {
     console.error('[Backup] Failed to backup database:', error);
     // Don't throw - backup failure shouldn't crash the app
@@ -95,7 +143,7 @@ export async function backupDatabase(): Promise<void> {
 /**
  * Get list of available backups with timestamps
  */
-export async function getAvailableBackups(): Promise<Array<{ key: string; timestamp: Date }>> {
+export async function getAvailableBackups(): Promise<BackupSummary[]> {
   try {
     const backupDb = await openBackupDB();
     const allBackupsKey = 'all-backups';
@@ -126,18 +174,9 @@ export async function restoreFromBackup(backupKey: string): Promise<boolean> {
   try {
     console.log('[Backup] Restoring from backup:', backupKey);
 
-    const backupDb = await openBackupDB();
-    const backup = (await backupDb.get(BACKUP_STORE_NAME, backupKey)) as BackupEntry | undefined;
-
+    const backup = await getBackupEntry(backupKey);
     if (!backup) {
       console.error('[Backup] Backup not found:', backupKey);
-      return false;
-    }
-
-    // Verify checksum
-    const calculatedChecksum = calculateCRC32(backup.data);
-    if (calculatedChecksum !== backup.checksum) {
-      console.error('[Backup] Checksum mismatch - backup may be corrupted');
       return false;
     }
 
@@ -150,6 +189,44 @@ export async function restoreFromBackup(backupKey: string): Promise<boolean> {
     console.error('[Backup] Failed to restore from backup:', error);
     return false;
   }
+}
+
+export async function exportBackupToShare(backupKey: string): Promise<void> {
+  const backup = await getBackupEntry(backupKey);
+  if (!backup) {
+    throw new Error('Backup not found');
+  }
+
+  await ensureBackupsDirectory();
+
+  const timestamp = buildTimestampWithSeconds(new Date(backup.timestamp));
+  const fileName = `fcl-backup-${timestamp}.json`;
+  const filePath = `${BACKUP_DIR}/${fileName}`;
+
+  await Filesystem.writeFile({
+    path: filePath,
+    data: backup.data,
+    directory: Directory.Cache,
+    recursive: true,
+    encoding: Encoding.UTF8,
+  });
+
+  const fileUri = await Filesystem.getUri({
+    path: filePath,
+    directory: Directory.Cache,
+  });
+
+  await Share.share({
+    title: 'FCL Backup',
+    text: 'FCL backup file',
+    url: fileUri.uri,
+    dialogTitle: 'Share Backup',
+  });
+}
+
+export async function importBackupJson(jsonData: string): Promise<string> {
+  await importFromBackup(jsonData);
+  return await storeBackupData(jsonData);
 }
 
 /**
