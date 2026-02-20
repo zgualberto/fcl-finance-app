@@ -1,5 +1,5 @@
 <template>
-  <q-card class="q-pa-lg shadow-box shadow-3 rounded-borders">
+  <q-card class="rounded-borders" :class="{ 'q-ma-sm q-pa-lg': $q.screen.width > $q.screen.height, 'q-pa-md': $q.screen.lt.sm }">
     <q-table
       :rows="members"
       :columns="columns"

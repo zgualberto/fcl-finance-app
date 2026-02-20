@@ -1,6 +1,6 @@
 <template>
-  <q-card class="q-pa-sm rounded-borders" flat bordered>
-    <q-card-section class="q-py-md">
+  <q-card class="rounded-borders" :class="{ 'q-pa-sm': $q.screen.width > $q.screen.height, 'q-pa-xs': $q.screen.lt.sm }" flat bordered>
+    <q-card-section :class="{ 'q-py-md': $q.screen.width > $q.screen.height, 'q-py-xs': $q.screen.lt.sm }">
       <div class="row items-center">
         <div class="col text-h6">
           {{ member ? 'Edit Member' : 'Add New Member' }}
@@ -12,7 +12,7 @@
     </q-card-section>
 
     <q-form @submit.prevent="onSubmit">
-      <q-card-section class="q-gutter-md">
+      <q-card-section class="q-gutter-md" :class="{ 'q-py-md': $q.screen.width > $q.screen.height }">
         <div>
           <div class="text-body1 text-grey-7 q-mb-xs">Member Name</div>
           <q-input v-model="form.name" filled required dense />

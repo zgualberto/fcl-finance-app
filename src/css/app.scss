@@ -134,3 +134,8 @@ body {
   background: var(--color-summary-bg);
   color: var(--color-summary-text);
 }
+
+.q-table__top {
+  padding-left: 0px !important;
+  padding-right: 0px !important;
+}

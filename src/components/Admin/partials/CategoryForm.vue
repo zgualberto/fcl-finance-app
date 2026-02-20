@@ -1,6 +1,6 @@
 <template>
-  <q-card class="q-pa-sm rounded-borders" flat bordered>
-    <q-card-section class="q-py-md">
+  <q-card class="rounded-borders" :class="{ 'q-pa-sm': $q.screen.width > $q.screen.height, 'q-pa-xs': $q.screen.lt.sm }" flat bordered>
+    <q-card-section :class="{ 'q-py-md': $q.screen.width > $q.screen.height, 'q-py-xs': $q.screen.lt.sm }">
       <div class="row items-center">
         <div class="col text-h6">
           {{ category ? 'Edit Category' : 'Add New Category' }}
@@ -12,14 +12,14 @@
     </q-card-section>
 
     <q-form @submit.prevent="onSubmit">
-      <q-card-section class="q-gutter-md">
+      <q-card-section class="q-gutter-md" :class="{ 'q-py-md': $q.screen.width > $q.screen.height, 'q-py-xs': $q.screen.lt.sm }">
         <div>
           <div class="text-body1 text-grey-7 q-mb-xs">Category Name</div>
           <q-input v-model="form.category_name" filled required dense />
         </div>
-        <div class="row no-wrap">
-          <div class="col">
-            <div :class="{ 'q-pr-sm': form.parent_id == null }">
+        <div class="row" :class="{ 'no-wrap': $q.screen.width > $q.screen.height }">
+          <div class="col-12 col-sm-6">
+            <div :class="{ 'q-pr-sm': form.parent_id == null && $q.screen.width > $q.screen.height }">
               <div class="text-body1 text-grey-7 q-mb-xs">Status</div>
               <q-select
                 v-model="form.is_active"
@@ -33,8 +33,8 @@
               />
             </div>
           </div>
-          <div class="col-6" v-show="form.parent_id == null">
-            <div class="q-pl-sm">
+          <div class="col-12 col-sm-6" v-show="form.parent_id == null">
+            <div :class="{ 'q-pl-sm': $q.screen.width > $q.screen.height }">
               <div class="text-body1 text-grey-7 q-mb-xs">Transaction Type</div>
               <q-select
                 v-model="form.transaction_type"
