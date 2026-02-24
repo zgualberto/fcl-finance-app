@@ -125,7 +125,7 @@ export class CategoryRepository implements BaseRepository<Category> {
             child.name AS category_name,
             child.parent_id,
             child.is_active,
-            child.transaction_type,
+            parent.transaction_type,
             parent.name AS parent_name,
             ct.path || ' / ' || child.name AS path
           FROM categories child
