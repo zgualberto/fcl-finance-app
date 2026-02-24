@@ -4,12 +4,8 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: () => import('layouts/MainLayout.vue'),
+    redirect: '/weekly-collections',
     children: [
-      {
-        path: '',
-        name: 'home',
-        component: () => import('pages/IndexPage.vue'),
-      },
       {
         path: 'weekly-collections',
         name: 'weekly_collections',
