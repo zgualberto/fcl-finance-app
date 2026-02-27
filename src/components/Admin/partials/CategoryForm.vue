@@ -1,6 +1,13 @@
 <template>
-  <q-card class="rounded-borders" :class="{ 'q-pa-sm': $q.screen.width > $q.screen.height, 'q-pa-xs': $q.screen.lt.sm }" flat bordered>
-    <q-card-section :class="{ 'q-py-md': $q.screen.width > $q.screen.height, 'q-py-xs': $q.screen.lt.sm }">
+  <q-card
+    class="rounded-borders"
+    :class="{ 'q-pa-sm': $q.screen.width > $q.screen.height, 'q-pa-xs': $q.screen.lt.sm }"
+    flat
+    bordered
+  >
+    <q-card-section
+      :class="{ 'q-py-md': $q.screen.width > $q.screen.height, 'q-py-xs': $q.screen.lt.sm }"
+    >
       <div class="row items-center">
         <div class="col text-h6">
           {{ category ? 'Edit Category' : 'Add New Category' }}
@@ -12,14 +19,19 @@
     </q-card-section>
 
     <q-form @submit.prevent="onSubmit">
-      <q-card-section class="q-gutter-md" :class="{ 'q-py-md': $q.screen.width > $q.screen.height, 'q-py-xs': $q.screen.lt.sm }">
+      <q-card-section
+        class="q-gutter-md"
+        :class="{ 'q-py-md': $q.screen.width > $q.screen.height, 'q-py-xs': $q.screen.lt.sm }"
+      >
         <div>
           <div class="text-body1 text-grey-7 q-mb-xs">Category Name</div>
           <q-input v-model="form.category_name" filled required dense />
         </div>
         <div class="row" :class="{ 'no-wrap': $q.screen.width > $q.screen.height }">
           <div class="col-12 col-sm-6">
-            <div :class="{ 'q-pr-sm': form.parent_id == null && $q.screen.width > $q.screen.height }">
+            <div
+              :class="{ 'q-pr-sm': form.parent_id == null && $q.screen.width > $q.screen.height }"
+            >
               <div class="text-body1 text-grey-7 q-mb-xs">Status</div>
               <q-select
                 v-model="form.is_active"
@@ -33,7 +45,7 @@
               />
             </div>
           </div>
-          <div class="col-12 col-sm-6" v-show="form.parent_id == null">
+          <div class="col-12 col-sm-6">
             <div :class="{ 'q-pl-sm': $q.screen.width > $q.screen.height }">
               <div class="text-body1 text-grey-7 q-mb-xs">Transaction Type</div>
               <q-select
@@ -46,6 +58,13 @@
                 required
                 :options="transactionTypeOptions"
                 dense
+                :rules="[
+                  (val) =>
+                    form.parent_id !== null ||
+                    !!val ||
+                    'Transaction type is required for parent categories',
+                ]"
+                :disable="form.parent_id !== null"
               />
             </div>
           </div>
@@ -55,19 +74,29 @@
           <q-select
             filled
             v-model="form.parent_id"
+            v-model:input-value="parentSearchTerm"
             use-input
-            input-debounce="200"
+            :input-debounce="0"
             option-value="value"
             option-label="label"
             emit-value
             map-options
-            :options="parentOptions"
+            :options="filteredParentOptions"
+            @filter="parentFilterFn"
             clearable
             dense
           >
             <template v-slot:no-option>
               <q-item>
-                <q-item-section class="text-grey"> No results </q-item-section>
+                <q-item-section class="text-grey"> No categories found. </q-item-section>
+              </q-item>
+              <q-item v-if="parentSearchTerm.length < 3">
+                <q-item-section class="text-grey">
+                  Type at least 3 characters to search.
+                </q-item-section>
+              </q-item>
+              <q-item v-else>
+                <q-item-section class="text-grey"> No matching categories. </q-item-section>
               </q-item>
             </template>
           </q-select>
@@ -111,9 +140,12 @@ const emit = defineEmits(['ok', 'cancel']);
 const form = ref({
   category_name: '',
   is_active: true,
-  transaction_type: ('' as string | null),
+  transaction_type: '' as string | null,
   parent_id: null as number | null,
 });
+
+const parentSearchTerm = ref('');
+const filteredParentOptions = ref<Array<{ value: number; label: string }>>([]);
 
 const $q = useQuasar();
 const categoryStore = useCategoriesStore();
@@ -129,11 +161,32 @@ const statusOptions = [
 ];
 
 const parentOptions = computed(() =>
-  categoryStore.categories.map((c) => ({
-    value: c.id,
-    label: c.category_name,
-  })),
+  categoryStore.categories
+    .filter((c) => c.id !== undefined)
+    .map((c) => ({
+      value: c.id!,
+      label: c.category_name,
+    })),
 );
+
+function applyParentFilter(searchTerm: string) {
+  const normalized = searchTerm.trim().toLowerCase();
+  if (!normalized || normalized.length < 3) {
+    filteredParentOptions.value = [];
+    return;
+  }
+  filteredParentOptions.value = parentOptions.value.filter((option) =>
+    option.label.toLowerCase().includes(normalized),
+  );
+}
+
+function parentFilterFn(val: string, update: (callback: () => void) => void) {
+  const searchTerm = val.trim();
+  parentSearchTerm.value = searchTerm;
+  update(() => {
+    applyParentFilter(searchTerm);
+  });
+}
 
 watch(
   () => props.category,
@@ -142,12 +195,14 @@ watch(
       form.value = {
         category_name: cat.category_name,
         is_active: cat.is_active == 1 ? true : false,
-        transaction_type: cat.parent_id !== null ? cat.transaction_type : null,
+        transaction_type: cat.transaction_type as string | null,
         parent_id: cat.parent_id as number | null,
       };
     } else {
       resetForm();
     }
+    parentSearchTerm.value = '';
+    filteredParentOptions.value = [];
   },
   { immediate: true },
 );
@@ -193,7 +248,7 @@ function onSubmit() {
     ...props.category,
     category_name: form.value.category_name,
     is_active: form.value.is_active == true ? 1 : 0,
-    transaction_type: form.value.parent_id !== null ? form.value.transaction_type : null,
+    transaction_type: form.value.transaction_type,
     parent_id: form.value.parent_id,
   });
 }
