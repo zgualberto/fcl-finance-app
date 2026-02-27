@@ -1,12 +1,12 @@
 <template>
-  <div     
+  <div
     :class="{
       'q-pa-lg': $q.screen.width > $q.screen.height,
       'q-pa-md': $q.platform.is.mobile,
     }"
   >
-    <q-card 
-    class="relative-position rounded-borders"
+    <q-card
+      class="relative-position rounded-borders"
       :class="{
         'q-pa-lg': $q.screen.width > $q.screen.height,
         'q-pa-md': $q.platform.is.mobile,
@@ -18,11 +18,11 @@
       </div>
 
       <q-form ref="formRef" @submit="saveExpenses">
-        <section 
-          class="form-section" 
-          :class="{ 
-            'q-mb-lg': $q.screen.width > $q.screen.height, 
-            'q-mb-sm': $q.screen.lt.sm 
+        <section
+          class="form-section"
+          :class="{
+            'q-mb-lg': $q.screen.width > $q.screen.height,
+            'q-mb-sm': $q.screen.lt.sm,
           }"
         >
           <div class="text-h6">Expense Date</div>
@@ -42,39 +42,18 @@
           </div>
         </section>
 
-        <section class="form-section" :class="{ 'q-mt-lg': $q.screen.width > $q.screen.height, 'q-mt-md': $q.screen.lt.sm }">
+        <section
+          class="form-section"
+          :class="{ 'q-mt-lg': $q.screen.width > $q.screen.height, 'q-mt-md': $q.screen.lt.sm }"
+        >
           <div class="row items-center q-mb-sm">
             <div class="col-12 col-sm">
               <div class="text-h6">Expenses ({{ formData.items.length }} entries)</div>
             </div>
-            <div 
-              class="col-12 col-sm-auto" 
-              :class="{ 
-                'q-gutter-md': $q.screen.width > $q.screen.height, 
-                'row justify-around q-py-sm': $q.screen.lt.sm 
-              }"
-            >
-              <q-btn
-                rounded
-                unelevated
-                flat
-                color="negative"
-                @click="addItems(5)"
-                no-caps
-                class="bg-red-1"
-              >
-                <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
-                Add 5
-              </q-btn>
-              <q-btn rounded unelevated color="negative" @click="addItems(1)" no-caps>
-                <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
-                Add 1
-              </q-btn>
-            </div>
           </div>
           <q-separator class="q-mb-md"></q-separator>
 
-          <div class="q-my-md">
+          <div class="q-mt-md q-mb-lg">
             <ExpensesRow
               v-for="(item, index) in formData.items"
               :key="index"
@@ -88,6 +67,40 @@
               :on-create-category="createExpenseCategory"
               @remove="removeItem(index)"
             />
+
+            <q-separator class="q-mb-md"></q-separator>
+            <div
+              class="row q-col-gutter-md"
+              :class="{ 'justify-center': !$q.screen.lt.sm, 'justify-between': $q.screen.lt.sm }"
+            >
+              <div class="col-sm-auto">
+                <q-btn
+                  rounded
+                  unelevated
+                  flat
+                  color="negative"
+                  @click="addItems(5)"
+                  no-caps
+                  class="bg-red-1 q-px-xl"
+                >
+                  <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
+                  Add 5
+                </q-btn>
+              </div>
+              <div class="col-sm-auto">
+                <q-btn
+                  rounded
+                  unelevated
+                  color="negative"
+                  @click="addItems(1)"
+                  no-caps
+                  class="q-px-xl"
+                >
+                  <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
+                  Add 1
+                </q-btn>
+              </div>
+            </div>
           </div>
 
           <q-btn type="submit" label="Save Expenses" color="negative" class="full-width" no-caps />

@@ -18,7 +18,10 @@
       </div>
 
       <q-form ref="formRef" @submit="saveCollection">
-        <section class="form-section" :class="{ 'q-mb-lg': $q.screen.width > $q.screen.height, 'q-mb-sm': $q.screen.lt.sm }">
+        <section
+          class="form-section"
+          :class="{ 'q-mb-lg': $q.screen.width > $q.screen.height, 'q-mb-sm': $q.screen.lt.sm }"
+        >
           <div class="text-h6">Collection Date</div>
           <q-separator class="q-mb-md"></q-separator>
           <div class="row">
@@ -49,7 +52,10 @@
         </section>
 
         <!-- Other Offerings -->
-        <section class="form-section" :class="{ 'q-mt-lg': $q.screen.width > $q.screen.height, 'q-mt-md': $q.screen.lt.sm }">
+        <section
+          class="form-section"
+          :class="{ 'q-mt-lg': $q.screen.width > $q.screen.height, 'q-mt-md': $q.screen.lt.sm }"
+        >
           <div class="text-h6">Other Offerings</div>
           <q-separator class="q-mb-md"></q-separator>
           <OtherOfferingsRow
@@ -59,60 +65,19 @@
         </section>
 
         <!-- Tithes -->
-        <section class="form-section" :class="{ 'q-mt-lg': $q.screen.width > $q.screen.height, 'q-mt-md': $q.screen.lt.sm }">
+        <section
+          class="form-section"
+          :class="{ 'q-mt-lg': $q.screen.width > $q.screen.height, 'q-mt-md': $q.screen.lt.sm }"
+        >
           <div class="row items-center q-col-gutter-sm q-mb-sm">
             <div class="col-12 col-sm">
               <div class="text-h6">Tithes ({{ formData.tithes.length }} entries)</div>
             </div>
-            <div class="col-12 col-sm-auto">
-              <div class="row q-col-gutter-sm" :class="{ 'justify-end': !$q.screen.lt.sm, 'justify-between': $q.screen.lt.sm }">
-                <div class="col-sm-auto">
-                  <q-btn
-                    rounded
-                    unelevated
-                    flat
-                    color="primary"
-                    @click="addTithes(10)"
-                    no-caps
-                    :class="['bg-blue-1', { 'full-width': $q.screen.lt.sm }]"
-                  >
-                    <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
-                    Add 10
-                  </q-btn>
-                </div>
-                <div class="col-sm-auto">
-                  <q-btn
-                    rounded
-                    unelevated
-                    flat
-                    color="primary"
-                    @click="addTithes(5)"
-                    no-caps
-                    :class="['bg-blue-1', { 'full-width': $q.screen.lt.sm }]"
-                  >
-                    <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
-                    Add 5
-                  </q-btn>
-                </div>
-                <div class="col-sm-auto">
-                  <q-btn
-                    unelevated
-                    color="primary"
-                    @click="addTithes(1)"
-                    rounded
-                    no-caps
-                    :class="{ 'full-width': $q.screen.lt.sm }"
-                  >
-                    <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
-                    Add 1
-                  </q-btn>
-                </div>
-              </div>
-            </div>
+            <div class="col-12 col-sm-auto"></div>
           </div>
           <q-separator class="q-mb-md"></q-separator>
 
-          <div class="q-my-md">
+          <div class="q-mt-md q-mb-lg">
             <WeeklyCollectionsTitheRow
               v-for="(tithe, index) in formData.tithes"
               :key="index"
@@ -122,6 +87,57 @@
               v-model:amount="tithe.amount"
               @remove="removeTithe(index)"
             />
+
+            <q-separator class="q-mb-md"></q-separator>
+            <div
+              class="row q-col-gutter-md"
+              :class="{ 'justify-center': !$q.screen.lt.sm, 'justify-between': $q.screen.lt.sm }"
+            >
+              <div class="col-sm-auto">
+                <q-btn
+                  rounded
+                  unelevated
+                  flat
+                  color="primary"
+                  @click="addTithes(10)"
+                  no-caps
+                  :class="['bg-blue-1', { 'full-width': $q.screen.lt.sm }]"
+                  class="q-px-xl"
+                >
+                  <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
+                  Add 10
+                </q-btn>
+              </div>
+              <div class="col-sm-auto">
+                <q-btn
+                  rounded
+                  unelevated
+                  flat
+                  color="primary"
+                  @click="addTithes(5)"
+                  no-caps
+                  :class="['bg-blue-1', { 'full-width': $q.screen.lt.sm }]"
+                  class="q-px-xl"
+                >
+                  <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
+                  Add 5
+                </q-btn>
+              </div>
+              <div class="col-sm-auto">
+                <q-btn
+                  unelevated
+                  color="primary"
+                  @click="addTithes(1)"
+                  rounded
+                  no-caps
+                  :class="{ 'full-width': $q.screen.lt.sm }"
+                  class="q-px-xl"
+                >
+                  <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
+                  Add 1
+                </q-btn>
+              </div>
+            </div>
           </div>
           <!-- Save Button -->
           <q-btn
