@@ -111,7 +111,7 @@ const emit = defineEmits(['ok', 'cancel']);
 const form = ref({
   category_name: '',
   is_active: true,
-  transaction_type: '',
+  transaction_type: ('' as string | null),
   parent_id: null as number | null,
 });
 
@@ -142,7 +142,7 @@ watch(
       form.value = {
         category_name: cat.category_name,
         is_active: cat.is_active == 1 ? true : false,
-        transaction_type: cat.transaction_type,
+        transaction_type: cat.parent_id !== null ? cat.transaction_type : null,
         parent_id: cat.parent_id as number | null,
       };
     } else {
@@ -193,7 +193,7 @@ function onSubmit() {
     ...props.category,
     category_name: form.value.category_name,
     is_active: form.value.is_active == true ? 1 : 0,
-    transaction_type: form.value.transaction_type,
+    transaction_type: form.value.parent_id !== null ? form.value.transaction_type : null,
     parent_id: form.value.parent_id,
   });
 }

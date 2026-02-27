@@ -3,7 +3,7 @@
     <q-header class="bg-white" :class="{ 'q-py-md q-px-xl': $q.screen.gt.sm, 'q-py-sm q-px-md': !$q.screen.gt.sm }">
       <q-toolbar class="justify-between">
         <q-toolbar-title>
-          <router-link :to="{ name: 'home' }" class="text-h5 text-black text-weight-bold" style="text-decoration: none;">FCL Finance System</router-link>
+          <router-link :to="{ name: 'weekly_collections' }" class="text-h5 text-black text-weight-bold" style="text-decoration: none;">FCL Finance System</router-link>
         </q-toolbar-title>
 
         <div class="row items-center q-gutter-sm" v-if="$q.screen.gt.sm">
