@@ -290,8 +290,13 @@ const yearsOptions = Array.from({ length: 50 }, (_, i) => {
   const year = new Date().getFullYear() - i;
   return { label: String(year), value: String(year) };
 });
-const selectedMonth = ref<string | null>(null);
-const selectedYear = ref<string | null>(null);
+
+const today = new Date();
+const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+const currentYear = String(today.getFullYear());
+
+const selectedMonth = ref<string | null>(currentMonth);
+const selectedYear = ref<string | null>(currentYear);
 const selectedDate = computed(() => {
   if (!selectedYear.value || !selectedMonth.value) {
     return null;
