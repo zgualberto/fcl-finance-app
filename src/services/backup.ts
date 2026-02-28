@@ -274,6 +274,27 @@ export async function importBackupJson(jsonData: string): Promise<string> {
   return await storeBackupData(jsonData);
 }
 
+export async function deleteBackup(backupKey: string): Promise<void> {
+  const backupDb = await openBackupDB();
+  const tx = backupDb.transaction(BACKUP_STORE_NAME, 'readwrite');
+
+  const allBackupsKey = 'all-backups';
+  const allBackups: string[] = (await tx.store.get(allBackupsKey)) || [];
+
+  if (!allBackups.includes(backupKey)) {
+    throw new Error('Backup not found');
+  }
+
+  await tx.store.delete(backupKey);
+  await tx.store.put(
+    allBackups.filter((key) => key !== backupKey),
+    allBackupsKey,
+  );
+  await tx.done;
+
+  console.log('[Backup] Backup deleted:', backupKey);
+}
+
 /**
  * Check if SQLite database is corrupted and attempt recovery
  * Called during app boot before other operations

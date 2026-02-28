@@ -75,6 +75,16 @@
                 :loading="pendingKey === props.row.key"
                 @click="handleShareBackup(props.row.key)"
               />
+              <q-btn
+                flat
+                round
+                size="sm"
+                color="negative"
+                icon="fa-solid fa-trash"
+                aria-label="Delete backup"
+                :loading="pendingKey === props.row.key"
+                @click="confirmDelete(props.row.key)"
+              />
             </q-td>
           </template>
           <template v-slot:no-data>
@@ -127,6 +137,7 @@ import { onMounted, ref } from 'vue';
 import { useQuasar, type QTableColumn } from 'quasar';
 import {
   backupDatabase,
+  deleteBackup,
   exportBackupToShare,
   getAvailableBackups,
   importBackupJson,
@@ -223,6 +234,17 @@ const confirmRestore = (backupKey: string) => {
   });
 };
 
+const confirmDelete = (backupKey: string) => {
+  $q.dialog({
+    title: 'Delete Backup',
+    message: 'Delete this backup file from local storage? This cannot be undone.',
+    cancel: true,
+    persistent: true,
+  }).onOk(() => {
+    void handleDeleteBackup(backupKey);
+  });
+};
+
 const handleRestoreBackup = async (backupKey: string) => {
   try {
     pendingKey.value = backupKey;
@@ -256,6 +278,27 @@ const handleShareBackup = async (backupKey: string) => {
     $q.notify({
       type: 'negative',
       message: 'Failed to share backup',
+      position: 'bottom-right',
+    });
+  } finally {
+    pendingKey.value = null;
+  }
+};
+
+const handleDeleteBackup = async (backupKey: string) => {
+  try {
+    pendingKey.value = backupKey;
+    await deleteBackup(backupKey);
+    await loadBackups();
+    $q.notify({
+      type: 'positive',
+      message: 'Backup deleted successfully',
+      position: 'bottom-right',
+    });
+  } catch {
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to delete backup',
       position: 'bottom-right',
     });
   } finally {
