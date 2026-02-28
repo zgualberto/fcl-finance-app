@@ -1,0 +1,15 @@
+FCL Finance is a comprehensive financial management application designed specifically for faith community management.
+
+Features:
+
+• Track Weekly Collections: Record tithes, offerings, and other weekly giving
+• Expense Management: Log and categorize church expenses
+• Activity Logs: Maintain detailed records of all financial transactions
+• Member Management: Track member information and contributions
+• Reporting: Generate financial reports for analysis and planning
+• Secure Data: Local database with optional backup functionality
+• Offline Support: Work offline and sync when connected
+
+The application provides a user-friendly interface for managing church finances, with support for multiple collection categories and expense tracking. All data is stored locally on your device for privacy and security.
+
+FCL Finance helps faith communities maintain accurate financial records and make informed decisions about resource allocation.

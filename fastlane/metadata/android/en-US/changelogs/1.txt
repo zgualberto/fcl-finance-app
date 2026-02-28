@@ -1,0 +1,10 @@
+Initial release
+
+Features:
+- Weekly collections tracking (tithes, offerings, other categories)
+- Expense management and categorization
+- Member management
+- Activity logging
+- Financial reports
+- Local SQLite database with backup support
+- Offline-first functionality
