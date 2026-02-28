@@ -45,9 +45,7 @@
                 <template v-slot:prepend>
                   <q-icon name="history" />
                 </template>
-                <template v-slot:hint>
-                  Select a date to load and edit previous expenses
-                </template>
+                <template v-slot:hint> Select a date to load and edit previous expenses </template>
               </q-select>
             </div>
           </div>
@@ -308,7 +306,7 @@ function transformTransactionsToExpenseFormData(transactions: Transaction[]): Ex
   transactions.forEach((transaction) => {
     const categoryId = transaction.category_id ?? null;
     const categoryName = transaction.category_name || '';
-    
+
     // Extract remarks from description if present
     // Description format: "Category - Remarks"
     let remarks = '';
@@ -372,7 +370,9 @@ async function loadExpenseByDate() {
 }
 
 async function checkForDuplicateExpenses(): Promise<boolean> {
-  const existingExpenses = await transactionsStore.fetchCollectionByDate(formData.value.expenseDate);
+  const existingExpenses = await transactionsStore.fetchCollectionByDate(
+    formData.value.expenseDate,
+  );
 
   if (existingExpenses.length === 0) {
     return false; // No duplicate
