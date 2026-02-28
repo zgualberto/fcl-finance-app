@@ -136,9 +136,8 @@ export class TransactionRepository implements BaseRepository<Transaction> {
     return dates.map((row) => row.date);
   }
 
-  async findByCollectionDate(date: string): Promise<Transaction[]> {
-    const res = await database.query(
-      `SELECT
+  async findByCollectionDate(date: string, transactionType?: string): Promise<Transaction[]> {
+    let query = `SELECT
          t.id,
          t.member_id,
          t.category_id,
@@ -156,10 +155,18 @@ export class TransactionRepository implements BaseRepository<Transaction> {
        LEFT JOIN categories c ON c.id = t.category_id
        LEFT JOIN categories pc ON pc.id = c.parent_id
        LEFT JOIN members m ON m.id = t.member_id
-       WHERE t.date = ?
-       ORDER BY t.created_at ASC`,
-      [date],
-    );
+       WHERE t.date = ?`;
+
+    const params: (string | null)[] = [date];
+
+    if (transactionType !== undefined) {
+      query += ` AND COALESCE(pc.transaction_type, c.transaction_type) = ?`;
+      params.push(transactionType);
+    }
+
+    query += ` ORDER BY t.created_at ASC`;
+
+    const res = await database.query(query, params);
     return res.values as Transaction[];
   }
 }

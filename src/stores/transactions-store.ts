@@ -93,13 +93,13 @@ export const useTransactionsStore = defineStore('transactions', {
         return [];
       }
     },
-    async fetchCollectionByDate(date: string): Promise<Transaction[]> {
+    async fetchTransactionByDate(date: string, transactionType?: string): Promise<Transaction[]> {
       if (!this.transactionRepository) {
         await this.init();
       }
       if (!this.transactionRepository) throw new Error('Repository not initialized');
       try {
-        return await this.transactionRepository.findByCollectionDate(date);
+        return await this.transactionRepository.findByCollectionDate(date, transactionType);
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         this.activityLogService?.logErrActivity(message);

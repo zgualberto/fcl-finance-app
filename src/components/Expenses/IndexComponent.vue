@@ -337,7 +337,7 @@ async function loadExpenseByDate() {
   }
 
   try {
-    const transactions = await transactionsStore.fetchCollectionByDate(selectedExpenseDate.value);
+    const transactions = await transactionsStore.fetchTransactionByDate(selectedExpenseDate.value, TransactionType.EXPENSES);
     if (transactions.length === 0) {
       $q.notify({
         type: 'info',
@@ -370,8 +370,9 @@ async function loadExpenseByDate() {
 }
 
 async function checkForDuplicateExpenses(): Promise<boolean> {
-  const existingExpenses = await transactionsStore.fetchCollectionByDate(
+  const existingExpenses = await transactionsStore.fetchTransactionByDate(
     formData.value.expenseDate,
+    TransactionType.EXPENSES,
   );
 
   if (existingExpenses.length === 0) {

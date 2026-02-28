@@ -711,8 +711,9 @@ async function loadCollectionByDate() {
   }
 
   try {
-    const transactions = await transactionsStore.fetchCollectionByDate(
+    const transactions = await transactionsStore.fetchTransactionByDate(
       selectedCollectionDate.value,
+      TransactionType.COLLECTIONS,
     );
     if (transactions.length === 0) {
       $q.notify({
@@ -746,8 +747,9 @@ async function loadCollectionByDate() {
 }
 
 async function checkForDuplicateCollection(): Promise<boolean> {
-  const existingCollections = await transactionsStore.fetchCollectionByDate(
+  const existingCollections = await transactionsStore.fetchTransactionByDate(
     formData.value.collectionDate,
+    TransactionType.COLLECTIONS,
   );
 
   if (existingCollections.length === 0) {
