@@ -18,6 +18,42 @@
       </div>
 
       <q-form ref="formRef" @submit="saveExpenses">
+        <!-- Load Existing Expenses -->
+        <section
+          class="form-section"
+          :class="{
+            'q-mb-lg': $q.screen.width > $q.screen.height,
+            'q-mb-sm': $q.screen.lt.sm,
+          }"
+        >
+          <div class="text-h6">Load Existing Expenses</div>
+          <q-separator class="q-mb-md"></q-separator>
+          <div class="row">
+            <div class="col-12 col-sm-4">
+              <div class="text-body1 text-grey-7 q-mb-xs">Select Date</div>
+              <q-select
+                v-model="selectedExpenseDate"
+                :options="availableExpenseDates"
+                outlined
+                dense
+                class="full-width"
+                clearable
+                emit-value
+                map-options
+                @update:model-value="loadExpenseByDate"
+              >
+                <template v-slot:prepend>
+                  <q-icon name="history" />
+                </template>
+                <template v-slot:hint>
+                  Select a date to load and edit previous expenses
+                </template>
+              </q-select>
+            </div>
+          </div>
+        </section>
+
+        <!-- Create/Edit Expenses -->
         <section
           class="form-section"
           :class="{
@@ -175,6 +211,8 @@ const formRef = ref<QForm | null>(null);
 const isSaving = ref(false);
 const isCategoriesLoading = ref(false);
 const expenseCategoryOptions = ref<CategoryOption[]>([]);
+const availableExpenseDates = ref<string[]>([]);
+const selectedExpenseDate = ref<string | null>(null);
 
 const categoriesStore = useCategoriesStore();
 const transactionsStore = useTransactionsStore();
@@ -241,6 +279,142 @@ async function loadExpenseCategories() {
   } finally {
     isCategoriesLoading.value = false;
   }
+}
+
+async function loadExpenseDates() {
+  try {
+    availableExpenseDates.value = await transactionsStore.fetchCollectionDates();
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Failed to load expense dates:', message);
+  }
+}
+
+function transformTransactionsToExpenseFormData(transactions: Transaction[]): ExpensesFormData {
+  const data = createDefaultFormData();
+
+  if (transactions.length === 0) {
+    return data;
+  }
+
+  // Set the expense date from first transaction
+  const firstDate = transactions[0]?.date;
+  if (firstDate) {
+    data.expenseDate = firstDate;
+  }
+  data.items = []; // Reset items
+
+  // Transform each transaction to an expense item
+  transactions.forEach((transaction) => {
+    const categoryId = transaction.category_id ?? null;
+    const categoryName = transaction.category_name || '';
+    
+    // Extract remarks from description if present
+    // Description format: "Category - Remarks"
+    let remarks = '';
+    if (transaction.description) {
+      const parts = transaction.description.split(' - ');
+      if (parts.length > 1) {
+        remarks = parts.slice(1).join(' - ');
+      }
+    }
+
+    data.items.push({
+      categoryId,
+      categoryName,
+      amount: transaction.amount || 0,
+      remarks,
+      searchTerm: '',
+    });
+  });
+
+  return data;
+}
+
+async function loadExpenseByDate() {
+  if (!selectedExpenseDate.value) {
+    resetForm();
+    selectedExpenseDate.value = null;
+    return;
+  }
+
+  try {
+    const transactions = await transactionsStore.fetchCollectionByDate(selectedExpenseDate.value);
+    if (transactions.length === 0) {
+      $q.notify({
+        type: 'info',
+        message: 'No expenses found for this date.',
+        position: 'bottom-right',
+      });
+      return;
+    }
+
+    formData.value = transformTransactionsToExpenseFormData(transactions);
+    void nextTick(() => {
+      formRef.value?.resetValidation();
+    });
+
+    $q.notify({
+      type: 'positive',
+      message: `Expenses from ${selectedExpenseDate.value} loaded successfully.`,
+      position: 'bottom-right',
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to load expenses. Please try again.',
+      caption: message,
+      position: 'bottom-right',
+    });
+    selectedExpenseDate.value = null;
+  }
+}
+
+async function checkForDuplicateExpenses(): Promise<boolean> {
+  const existingExpenses = await transactionsStore.fetchCollectionByDate(formData.value.expenseDate);
+
+  if (existingExpenses.length === 0) {
+    return false; // No duplicate
+  }
+
+  return new Promise((resolve) => {
+    $q.dialog({
+      title: 'Expenses Already Exist',
+      message: `Expenses already exist for ${formData.value.expenseDate}. Do you want to replace them with the new data?`,
+      ok: {
+        label: 'Replace',
+        color: 'negative',
+        unelevated: true,
+        rounded: true,
+        noCaps: true,
+      },
+      cancel: { label: 'Cancel', flat: true, class: 'bg-red-1', rounded: true, noCaps: true },
+    })
+      .onOk(() => {
+        // Delete old transactions for this date
+        try {
+          for (const transaction of existingExpenses) {
+            if (transaction.id) {
+              transactionsStore.deleteTransaction(transaction.id);
+            }
+          }
+          resolve(true);
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error);
+          $q.notify({
+            type: 'negative',
+            message: 'Failed to delete old expenses. Please try again.',
+            caption: message,
+            position: 'bottom-right',
+          });
+          resolve(false);
+        }
+      })
+      .onCancel(() => {
+        resolve(false);
+      });
+  });
 }
 
 async function createExpenseCategory(name: string): Promise<CategoryOption | null> {
@@ -334,10 +508,19 @@ async function saveExpenses() {
     return;
   }
 
+  // Check for duplicate expenses and ask for confirmation if they exist
+  const shouldReplace = await checkForDuplicateExpenses();
+  if (!shouldReplace && availableExpenseDates.value.includes(formData.value.expenseDate)) {
+    return;
+  }
+
   isSaving.value = true;
   try {
     const transactions = buildTransactions();
     await transactionsStore.addTransactionsBatch(transactions);
+
+    // Refresh available dates after saving
+    await loadExpenseDates();
 
     $q.notify({
       type: 'positive',
@@ -348,6 +531,7 @@ async function saveExpenses() {
     const summaryRows = buildSummaryRows();
     handleOpenSummary(summaryRows);
     resetForm();
+    selectedExpenseDate.value = null;
   } catch {
     $q.notify({
       type: 'negative',
@@ -362,6 +546,7 @@ async function saveExpenses() {
 onMounted(() => {
   void transactionsStore.init();
   void loadExpenseCategories();
+  void loadExpenseDates();
 });
 </script>
 
