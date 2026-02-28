@@ -1,6 +1,7 @@
 import type { Transaction } from '../entities/transaction';
 import type { BaseRepository } from './base.repository';
 import { getDatabase } from 'src/services/database';
+import type { TransactionType } from 'src/enums/transaction_type';
 
 const database = getDatabase();
 
@@ -126,12 +127,23 @@ export class TransactionRepository implements BaseRepository<Transaction> {
     return res.values as Transaction[];
   }
 
-  async findDistinctCollectionDates(): Promise<string[]> {
-    const res = await database.query(
-      `SELECT DISTINCT t.date
-       FROM transactions t
-       ORDER BY t.date DESC`,
-    );
+  async findDistinctCollectionDates(transactionType?: TransactionType): Promise<string[]> {
+    let query = `SELECT DISTINCT t.date
+       FROM transactions t`;
+    const params: string[] = [];
+
+    if (transactionType !== undefined) {
+      query += `
+       LEFT JOIN categories c ON c.id = t.category_id
+       LEFT JOIN categories pc ON pc.id = c.parent_id
+       WHERE COALESCE(pc.transaction_type, c.transaction_type) = ?`;
+      params.push(transactionType);
+    }
+
+    query += `
+       ORDER BY t.date DESC`;
+
+    const res = await database.query(query, params);
     const dates = res.values as Array<{ date: string }>;
     return dates.map((row) => row.date);
   }

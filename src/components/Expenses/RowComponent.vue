@@ -128,10 +128,8 @@ const localSearchTerm = computed({
 
 watch(
   () => props.options,
-  (next) => {
-    if (localSearchTerm.value.length >= 3) {
-      filteredOptions.value = [...next];
-    }
+  () => {
+    applyFilter(localSearchTerm.value);
   },
   { immediate: true },
 );
@@ -148,7 +146,12 @@ function updateCategoryName(value: number | null) {
 function applyFilter(searchTerm: string) {
   const normalized = searchTerm.trim().toLowerCase();
   if (!normalized || normalized.length < 3) {
-    filteredOptions.value = [];
+    if (localCategoryId.value == null) {
+      filteredOptions.value = [];
+      return;
+    }
+    const selectedOption = props.options.find((option) => option.value === localCategoryId.value);
+    filteredOptions.value = selectedOption ? [selectedOption] : [];
     return;
   }
   filteredOptions.value = props.options.filter((option) =>

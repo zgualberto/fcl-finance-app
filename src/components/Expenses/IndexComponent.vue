@@ -281,7 +281,9 @@ async function loadExpenseCategories() {
 
 async function loadExpenseDates() {
   try {
-    availableExpenseDates.value = await transactionsStore.fetchCollectionDates();
+    availableExpenseDates.value = await transactionsStore.fetchCollectionDates(
+      TransactionType.EXPENSES,
+    );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Failed to load expense dates:', message);

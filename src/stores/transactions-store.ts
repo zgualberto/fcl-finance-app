@@ -2,6 +2,7 @@ import { defineStore, acceptHMRUpdate } from 'pinia';
 import type { Transaction } from 'src/databases/entities/transaction';
 import { TransactionRepository } from 'src/databases/repositories/transaction.repository';
 import { ActivityLogService } from 'src/services/activity-log.service';
+import type { TransactionType } from 'src/enums/transaction_type';
 
 export const useTransactionsStore = defineStore('transactions', {
   state: () => ({
@@ -78,14 +79,14 @@ export const useTransactionsStore = defineStore('transactions', {
         return [];
       }
     },
-    async fetchCollectionDates(): Promise<string[]> {
+    async fetchCollectionDates(transactionType?: TransactionType): Promise<string[]> {
       if (!this.transactionRepository) {
         await this.init();
       }
       if (!this.transactionRepository) throw new Error('Repository not initialized');
       try {
         this.availableCollectionDates =
-          await this.transactionRepository.findDistinctCollectionDates();
+          await this.transactionRepository.findDistinctCollectionDates(transactionType);
         return this.availableCollectionDates;
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);

@@ -643,7 +643,9 @@ async function loadOfferingCategories(skipDialog = false) {
 
 async function loadCollectionDates() {
   try {
-    availableCollectionDates.value = await transactionsStore.fetchCollectionDates();
+    availableCollectionDates.value = await transactionsStore.fetchCollectionDates(
+      TransactionType.COLLECTIONS,
+    );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Failed to load collection dates:', message);
