@@ -153,7 +153,7 @@ sdk_path: $ANDROID_HOME
 # keypass: {env: FDROID_KEY_PASS}
 
 # The distinguished name used for all keys.
-# keydname: CN=FCL Finance App, OU=F-Droid
+keydname: CN=Ziegfrid Gualberto, O=FCL Finance, C=PH
 
 # Use this to override the auto-generated key aliases with specific ones
 # for particular applications. Normally, just leave it empty.
