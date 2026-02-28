@@ -8,6 +8,7 @@ export const useTransactionsStore = defineStore('transactions', {
     transactions: [] as Transaction[],
     transactionRepository: null as TransactionRepository | null,
     activityLogService: null as ActivityLogService | null,
+    availableCollectionDates: [] as string[],
   }),
 
   getters: {
@@ -71,6 +72,34 @@ export const useTransactionsStore = defineStore('transactions', {
       if (!this.transactionRepository) throw new Error('Repository not initialized');
       try {
         return await this.transactionRepository.findByDateRange(startDate, endDate);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+        return [];
+      }
+    },
+    async fetchCollectionDates(): Promise<string[]> {
+      if (!this.transactionRepository) {
+        await this.init();
+      }
+      if (!this.transactionRepository) throw new Error('Repository not initialized');
+      try {
+        this.availableCollectionDates =
+          await this.transactionRepository.findDistinctCollectionDates();
+        return this.availableCollectionDates;
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+        return [];
+      }
+    },
+    async fetchCollectionByDate(date: string): Promise<Transaction[]> {
+      if (!this.transactionRepository) {
+        await this.init();
+      }
+      if (!this.transactionRepository) throw new Error('Repository not initialized');
+      try {
+        return await this.transactionRepository.findByCollectionDate(date);
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         this.activityLogService?.logErrActivity(message);

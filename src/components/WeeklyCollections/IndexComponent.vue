@@ -18,6 +18,39 @@
       </div>
 
       <q-form ref="formRef" @submit="saveCollection">
+        <!-- Load Existing Collection -->
+        <section
+          class="form-section"
+          :class="{ 'q-mb-lg': $q.screen.width > $q.screen.height, 'q-mb-sm': $q.screen.lt.sm }"
+        >
+          <div class="text-h6">Load Existing Collection</div>
+          <q-separator class="q-mb-md"></q-separator>
+          <div class="row">
+            <div class="col-12 col-sm-4">
+              <div class="text-body1 text-grey-7 q-mb-xs">Select Date</div>
+              <q-select
+                v-model="selectedCollectionDate"
+                :options="availableCollectionDates"
+                outlined
+                dense
+                class="full-width"
+                clearable
+                emit-value
+                map-options
+                @update:model-value="loadCollectionByDate"
+              >
+                <template v-slot:prepend>
+                  <q-icon name="history" />
+                </template>
+                <template v-slot:hint>
+                  Select a date to load and edit a previous collection
+                </template>
+              </q-select>
+            </div>
+          </div>
+        </section>
+
+        <!-- Create/Edit Collection -->
         <section
           class="form-section"
           :class="{ 'q-mb-lg': $q.screen.width > $q.screen.height, 'q-mb-sm': $q.screen.lt.sm }"
@@ -227,6 +260,8 @@ const createDefaultFormData = (): FormData => ({
 
 const formData = ref<FormData>(createDefaultFormData());
 const formRef = ref<QForm | null>(null);
+const availableCollectionDates = ref<string[]>([]);
+const selectedCollectionDate = ref<string | null>(null);
 
 const totalAmount = computed(() => {
   const offerings =
@@ -456,10 +491,19 @@ async function saveCollection() {
     return;
   }
 
+  // Check for duplicate collection and ask for confirmation if it exists
+  const shouldReplace = await checkForDuplicateCollection();
+  if (!shouldReplace && availableCollectionDates.value.includes(formData.value.collectionDate)) {
+    return;
+  }
+
   isSaving.value = true;
   try {
     const transactions = buildTransactions();
     await transactionsStore.addTransactionsBatch(transactions);
+
+    // Refresh available dates after saving
+    await loadCollectionDates();
 
     $q.notify({
       type: 'positive',
@@ -468,6 +512,7 @@ async function saveCollection() {
     });
     handleOpenSummary();
     resetForm();
+    selectedCollectionDate.value = null;
   } catch {
     $q.notify({
       type: 'negative',
@@ -596,10 +641,163 @@ async function loadOfferingCategories(skipDialog = false) {
   }
 }
 
+async function loadCollectionDates() {
+  try {
+    availableCollectionDates.value = await transactionsStore.fetchCollectionDates();
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Failed to load collection dates:', message);
+  }
+}
+
+function transformTransactionsToFormData(transactions: Transaction[]): FormData {
+  const data = createDefaultFormData();
+
+  if (transactions.length === 0) {
+    return data;
+  }
+
+  // Set the collection date from first transaction
+  const firstDate = transactions[0]?.date;
+  if (firstDate) {
+    data.collectionDate = firstDate;
+  }
+  data.tithes = []; // Reset tithes
+
+  // Group transactions by category
+  transactions.forEach((transaction) => {
+    const categoryName = transaction.category_name ?? '';
+
+    // Match category to form fields using string values
+    switch (categoryName) {
+      case 'Sunday Service Offering':
+        data.sundayOffering += transaction.amount || 0;
+        break;
+      case 'Midweek Service Offering':
+        data.midweekOffering += transaction.amount || 0;
+        break;
+      case 'Sunday School Offering':
+        data.sundaySchoolOffering += transaction.amount || 0;
+        break;
+      case "Everybody's Birthday":
+        data.everybodysBirthday += transaction.amount || 0;
+        break;
+      case 'Special Funding':
+        data.specialFunding += transaction.amount || 0;
+        break;
+      case 'Tithes': {
+        // Tithes have individual member entries
+        const memberId = transaction.member_id ?? null;
+        const memberName = transaction.member_name || '';
+        data.tithes.push({
+          memberId,
+          memberName,
+          amount: transaction.amount || 0,
+          searchTerm: '',
+        });
+        break;
+      }
+    }
+  });
+
+  return data;
+}
+
+async function loadCollectionByDate() {
+  if (!selectedCollectionDate.value) {
+    resetForm();
+    selectedCollectionDate.value = null;
+    return;
+  }
+
+  try {
+    const transactions = await transactionsStore.fetchCollectionByDate(
+      selectedCollectionDate.value,
+    );
+    if (transactions.length === 0) {
+      $q.notify({
+        type: 'info',
+        message: 'No transactions found for this date.',
+        position: 'bottom-right',
+      });
+      return;
+    }
+
+    formData.value = transformTransactionsToFormData(transactions);
+    void nextTick(() => {
+      formRef.value?.resetValidation();
+    });
+
+    $q.notify({
+      type: 'positive',
+      message: `Collection from ${selectedCollectionDate.value} loaded successfully.`,
+      position: 'bottom-right',
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to load collection. Please try again.',
+      caption: message,
+      position: 'bottom-right',
+    });
+    selectedCollectionDate.value = null;
+  }
+}
+
+async function checkForDuplicateCollection(): Promise<boolean> {
+  const existingCollections = await transactionsStore.fetchCollectionByDate(
+    formData.value.collectionDate,
+  );
+
+  if (existingCollections.length === 0) {
+    return false; // No duplicate
+  }
+
+  return new Promise((resolve) => {
+    $q.dialog({
+      title: 'Collection Already Exists',
+      message: `A collection already exists for ${formData.value.collectionDate}. Do you want to replace it with the new data?`,
+      ok: {
+        label: 'Replace',
+        color: 'negative',
+        unelevated: true,
+        rounded: true,
+        noCaps: true,
+      },
+      cancel: { label: 'Cancel', flat: true, class: 'bg-blue-1', rounded: true, noCaps: true },
+    })
+      .onOk(() => {
+        // Delete old transactions for this date
+        try {
+          for (const transaction of existingCollections) {
+            if (transaction.id) {
+              transactionsStore.deleteTransaction(transaction.id);
+            }
+          }
+          resolve(true);
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error);
+          $q.notify({
+            type: 'negative',
+            message: 'Failed to delete old collection. Please try again.',
+            caption: message,
+            position: 'bottom-right',
+          });
+          resolve(false);
+        }
+      })
+      .onCancel(() => {
+        resolve(false);
+      });
+  });
+}
+
 onMounted(() => {
   void memberStore.init(false);
   void transactionsStore.init();
   void loadOfferingCategories();
+  void loadCollectionDates();
 });
 </script>
 

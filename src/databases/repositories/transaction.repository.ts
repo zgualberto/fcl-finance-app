@@ -125,4 +125,41 @@ export class TransactionRepository implements BaseRepository<Transaction> {
     );
     return res.values as Transaction[];
   }
+
+  async findDistinctCollectionDates(): Promise<string[]> {
+    const res = await database.query(
+      `SELECT DISTINCT t.date
+       FROM transactions t
+       ORDER BY t.date DESC`,
+    );
+    const dates = res.values as Array<{ date: string }>;
+    return dates.map((row) => row.date);
+  }
+
+  async findByCollectionDate(date: string): Promise<Transaction[]> {
+    const res = await database.query(
+      `SELECT
+         t.id,
+         t.member_id,
+         t.category_id,
+         t.amount,
+         t.description,
+         t.date,
+         t.created_at,
+         t.updated_at,
+         c.name AS category_name,
+         COALESCE(pc.transaction_type, c.transaction_type) AS transaction_type,
+         c.parent_id,
+         pc.name AS parent_name,
+         m.name AS member_name
+       FROM transactions t
+       LEFT JOIN categories c ON c.id = t.category_id
+       LEFT JOIN categories pc ON pc.id = c.parent_id
+       LEFT JOIN members m ON m.id = t.member_id
+       WHERE t.date = ?
+       ORDER BY t.created_at ASC`,
+      [date],
+    );
+    return res.values as Transaction[];
+  }
 }
