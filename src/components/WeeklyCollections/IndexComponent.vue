@@ -184,6 +184,7 @@ import { OtherOfferingCategoryName } from 'src/enums/other_offering_category';
 import { TransactionType } from 'src/enums/transaction_type';
 import type { Transaction } from 'src/databases/entities/transaction';
 import type { Category } from 'src/databases/entities/category';
+import { useUnsavedWarning } from 'src/composables/useUnsavedWarning';
 
 import WeeklyCollectionsTitheRow from './Tithes/RowComponent.vue';
 import ServiceOfferingsRow from './ServiceOfferings/RowComponent.vue';
@@ -242,6 +243,25 @@ const totalAmount = computed(() => {
   return offerings + tithesTotal;
 });
 
+const memberStore = useMembersStore();
+const categoriesStore = useCategoriesStore();
+const transactionsStore = useTransactionsStore();
+const $q = useQuasar();
+
+function resetForm() {
+  formData.value = createDefaultFormData();
+  void nextTick(() => {
+    formRef.value?.resetValidation();
+  });
+}
+
+// Track unsaved changes and warn before leaving
+useUnsavedWarning({
+  formData,
+  defaultData: createDefaultFormData(),
+  onReset: resetForm,
+});
+
 function addTithes(count: number) {
   for (let i = 0; i < count; i++) {
     formData.value.tithes.push(createDefaultTithe());
@@ -259,10 +279,6 @@ function formatCurrency(amount: number): string {
   });
 }
 
-const memberStore = useMembersStore();
-const categoriesStore = useCategoriesStore();
-const transactionsStore = useTransactionsStore();
-const $q = useQuasar();
 const offeringCategoryNames: WeeklyOfferingCategoryName[] = [
   WeeklyOfferingCategoryName.MIDWEEK_SERVICE_OFFERING,
   WeeklyOfferingCategoryName.SUNDAY_SCHOOL_OFFERING,
@@ -421,13 +437,6 @@ function buildTransactions(): Partial<Transaction>[] {
   });
 
   return transactions;
-}
-
-function resetForm() {
-  formData.value = createDefaultFormData();
-  void nextTick(() => {
-    formRef.value?.resetValidation();
-  });
 }
 
 async function saveCollection() {

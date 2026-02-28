@@ -135,6 +135,7 @@ import { useTransactionsStore } from 'src/stores/transactions-store';
 import { TransactionType } from 'src/enums/transaction_type';
 import type { Category } from 'src/databases/entities/category';
 import type { Transaction } from 'src/databases/entities/transaction';
+import { useUnsavedWarning } from 'src/composables/useUnsavedWarning';
 import ExpensesRow from './RowComponent.vue';
 import ExpensesSummaryDialog from './SummaryDialogComponent.vue';
 
@@ -178,6 +179,20 @@ const expenseCategoryOptions = ref<CategoryOption[]>([]);
 const categoriesStore = useCategoriesStore();
 const transactionsStore = useTransactionsStore();
 const $q = useQuasar();
+
+function resetForm() {
+  formData.value = createDefaultFormData();
+  void nextTick(() => {
+    formRef.value?.resetValidation();
+  });
+}
+
+// Track unsaved changes and warn before leaving
+useUnsavedWarning({
+  formData,
+  defaultData: createDefaultFormData(),
+  onReset: resetForm,
+});
 
 const totalAmount = computed(() =>
   formData.value.items.reduce((sum, item) => sum + (item.amount || 0), 0),
@@ -280,13 +295,6 @@ function buildTransactions(): Partial<Transaction>[] {
       description,
       date: expenseDate,
     };
-  });
-}
-
-function resetForm() {
-  formData.value = createDefaultFormData();
-  void nextTick(() => {
-    formRef.value?.resetValidation();
   });
 }
 
