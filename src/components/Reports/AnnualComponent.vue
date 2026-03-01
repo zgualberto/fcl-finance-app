@@ -8,7 +8,7 @@
     </div>
     <div ref="reportRef">
       <!-- Report Header -->
-      <div class="q-mb-lg" v-show="!isSharingReport">
+      <div class="q-mb-lg">
         <q-card flat bordered class="row justify-between q-pa-md rounded-borders">
           <div class="annual-header-left">
             <div class="row items-center q-mb-sm">
@@ -24,7 +24,7 @@
             </div>
             <p class="text-body2 text-grey-6">Yearly Collections and Expenses Overview</p>
           </div>
-          <div class="annual-header-right">
+          <div class="annual-header-right" v-show="!isSharingReport">
             <div class="row items-center q-gutter-md">
               <q-icon name="event" size="24px" class="text-grey-6" />
               <q-select
