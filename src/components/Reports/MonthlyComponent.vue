@@ -245,7 +245,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { date as dateUtils, useQuasar } from 'quasar';
 import { printReportAsPdf } from 'src/services/print.service';
 import { useTransactionsStore } from 'src/stores/transactions-store';
@@ -291,12 +291,8 @@ const yearsOptions = Array.from({ length: 50 }, (_, i) => {
   return { label: String(year), value: String(year) };
 });
 
-const today = new Date();
-const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
-const currentYear = String(today.getFullYear());
-
-const selectedMonth = ref<string | null>(currentMonth);
-const selectedYear = ref<string | null>(currentYear);
+const selectedMonth = ref<string | null>(null);
+const selectedYear = ref<string | null>(null);
 const selectedDate = computed(() => {
   if (!selectedYear.value || !selectedMonth.value) {
     return null;
@@ -522,6 +518,35 @@ async function shareReportPdf() {
   }
 }
 
+async function initializeReport() {
+  try {
+    // Fetch the most recent transaction date
+    const collectionDates = await transactionsStore.fetchCollectionDates();
+    
+    if (collectionDates.length > 0 && collectionDates[0]) {
+      // Use the most recent transaction date (first in the array as it's sorted DESC)
+      const lastTransactionDate = collectionDates[0];
+      const dateObj = new Date(lastTransactionDate);
+      selectedMonth.value = String(dateObj.getMonth() + 1).padStart(2, '0');
+      selectedYear.value = String(dateObj.getFullYear());
+    } else {
+      // Fall back to current date if no transactions exist
+      const today = new Date();
+      selectedMonth.value = String(today.getMonth() + 1).padStart(2, '0');
+      selectedYear.value = String(today.getFullYear());
+    }
+  } catch {
+    // Fall back to current date on error
+    const today = new Date();
+    selectedMonth.value = String(today.getMonth() + 1).padStart(2, '0');
+    selectedYear.value = String(today.getFullYear());
+  }
+}
+
+onMounted(() => {
+  void initializeReport();
+});
+
 watch(
   [selectedMonth, selectedYear],
   () => {
@@ -532,9 +557,6 @@ watch(
       void loadReport();
       loadReportTimeout.value = null;
     }, loadReportDelayMs);
-  },
-  {
-    immediate: true,
   },
 );
 
