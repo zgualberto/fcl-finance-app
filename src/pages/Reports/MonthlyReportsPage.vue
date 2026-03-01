@@ -1,11 +1,11 @@
 <template>
   <div class="q-pa-lg">
     <q-card class="q-pa-lg relative-position">
-      <ReportsComponent />
+      <MonthlyComponent />
     </q-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import ReportsComponent from '../../components/Reports/IndexComponent.vue';
+import MonthlyComponent from '../../components/Reports/MonthlyComponent.vue';
 </script>

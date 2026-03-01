@@ -1,15 +1,11 @@
 <template>
   <div class="q-pa-lg">
     <q-card class="q-pa-lg relative-position">
-      <div class="q-pa-xl text-center">
-        <q-icon name="info" size="64px" color="grey-5" />
-        <div class="text-h6 text-grey-7 q-mt-md">Annual Report Coming Soon</div>
-        <p class="text-grey-6">This feature will be available in a future update.</p>
-      </div>
+      <AnnualComponent />
     </q-card>
   </div>
 </template>
 
 <script setup lang="ts">
-// Placeholder for annual reports
+import AnnualComponent from '../../components/Reports/AnnualComponent.vue';
 </script>

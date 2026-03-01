@@ -7,5 +7,5 @@
 </template>
 
 <script setup lang="ts">
-import ReportsComponent from '../components/Reports/IndexComponent.vue';
+import ReportsComponent from '../components/Reports/MonthlyComponent.vue';
 </script>
