@@ -13,9 +13,13 @@
           <div class="annual-header-left">
             <div class="row items-center q-mb-sm">
               <div class="text-h4 text-weight-bold">Annual Financial Report {{ selectedYear }}</div>
-              <q-badge class="annual-header-badge q-pa-sm q-ma-md">
+              <q-badge v-if="summaryTotals.gross > 0" class="annual-header-badge q-pa-sm q-ma-md">
                 <q-icon name="check_circle" color="positive" class="q-mr-sm" />
                 <span class="text-weight-bold">Healthy</span>
+              </q-badge>
+              <q-badge v-else class="annual-header-badge-warning q-pa-sm q-ma-md">
+                <q-icon name="warning" color="warning" class="q-mr-sm" />
+                <span class="text-weight-bold">Deficit</span>
               </q-badge>
             </div>
             <p class="text-body2 text-grey-6">Yearly Collections and Expenses Overview</p>
@@ -163,43 +167,35 @@
 
         <!-- Right Charts Section -->
         <div class="col-12 col-md-8">
-          <!-- Financial Breakdown Chart Placeholder -->
-          <q-card class="rounded-borders q-mb-lg" flat bordered style="min-height: 300px">
+          <!-- Financial Breakdown Chart -->
+          <q-card class="rounded-borders q-mb-lg" flat bordered>
             <q-card-section>
               <div class="text-h6 q-mb-md" style="font-weight: 700; color: #1f2937">
                 💹 Financial Breakdown
               </div>
-              <div
-                class="row items-center justify-center"
-                style="min-height: 250px; background-color: #f8fafc; border-radius: 8px"
-              >
-                <!-- TODO: Horizontal bar chart showing annual collection breakdown by category -->
-                <div class="text-center">
-                  <q-icon name="bar_chart" size="48px" color="grey-4" />
-                  <div class="q-mt-md text-body2 text-grey-6">
-                    Financial breakdown chart - Coming soon
-                  </div>
-                </div>
-              </div>
+              <apexchart
+                ref="barChartRef"
+                type="bar"
+                :options="barChartOptions"
+                :series="barChartSeries"
+                height="350"
+              ></apexchart>
             </q-card-section>
           </q-card>
 
-          <!-- Collection Distribution Chart Placeholder -->
-          <q-card class="rounded-borders" flat bordered style="min-height: 300px">
+          <!-- Collection Distribution Chart -->
+          <q-card class="rounded-borders" flat bordered>
             <q-card-section>
               <div class="text-h6 q-mb-md" style="font-weight: 700; color: #1f2937">
                 💰 Collection Distribution
               </div>
-              <div
-                class="row items-center justify-center"
-                style="min-height: 250px; background-color: #f8fafc; border-radius: 8px"
-              >
-                <!-- TODO: Pie chart showing collection distribution (NET retained, National 15%, District 3%, Expenses) -->
-                <div class="text-center">
-                  <q-icon name="pie_chart" size="48px" color="grey-4" />
-                  <div class="q-mt-md text-body2 text-grey-6">Distribution chart - Coming soon</div>
-                </div>
-              </div>
+              <apexchart
+                ref="pieChartRef"
+                type="pie"
+                :options="pieChartOptions"
+                :series="pieChartSeries"
+                height="350"
+              ></apexchart>
             </q-card-section>
           </q-card>
         </div>
@@ -298,6 +294,118 @@ const deductions = computed((): Deduction[] => {
     },
   ];
 });
+
+// Bar Chart Configuration (Financial Breakdown)
+const barChartOptions = computed(() => ({
+  chart: {
+    type: 'bar',
+    toolbar: {
+      show: true,
+    },
+  },
+  plotOptions: {
+    bar: {
+      horizontal: true,
+      borderRadius: 4,
+      distributed: true,
+      dataLabels: {
+        position: 'bottom',
+      },
+    },
+  },
+  dataLabels: {
+    enabled: false,
+  },
+  stroke: {
+    show: true,
+    width: 1,
+  },
+  xaxis: {
+    categories: [
+      'Total Collection',
+      'Expenses',
+      'Gross Collection',
+      'National (15%)',
+      'District (3%)',
+      'NET Collection',
+    ],
+    // labels: {
+    //   formatter: function (val: number) {
+    //     return '₱' + val.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    //   },
+    // },
+  },
+  colors: ['#1976d2', '#d32f2f', '#7b1fa2', '#d32f2f', '#d32f2f', '#388e3c'],
+  grid: {
+    borderColor: '#e5e7eb',
+    strokeDashArray: 4,
+  },
+}));
+
+const barChartSeries = computed(() => [
+  {
+    name: 'Amount',
+    data: [
+      summaryTotals.value.collections,
+      summaryTotals.value.expenses,
+      summaryTotals.value.gross,
+      summaryTotals.value.national15,
+      summaryTotals.value.district3,
+      summaryTotals.value.net,
+    ],
+  },
+]);
+
+// Pie Chart Configuration (Collection Distribution)
+const pieChartOptions = computed(() => ({
+  chart: {
+    type: 'pie',
+    toolbar: {
+      show: true,
+    },
+  },
+  labels: ['NET Retained', 'National (15%)', 'District (3%)', 'Expenses'],
+  colors: ['#388e3c', '#f97316', '#ea580c', '#d32f2f'],
+  plotOptions: {
+    pie: {
+      dataLabels: {
+        offset: -5,
+      },
+    },
+  },
+  dataLabels: {
+    formatter: function (val: number) {
+      return val.toFixed(1) + '%';
+    },
+    style: {
+      fontSize: '12px',
+      fontWeight: 600,
+    },
+  },
+  legend: {
+    position: 'bottom',
+    fontSize: '13px',
+    fontFamily: 'Roboto, sans-serif',
+  },
+  tooltip: {
+    theme: 'light',
+    style: {
+      fontSize: '12px',
+    },
+    y: {
+      formatter: function (val: number) {
+        return '₱' + val.toLocaleString('en-US', { maximumFractionDigits: 0 });
+      },
+    },
+  },
+}));
+
+const pieChartSeries = computed(() => [
+  summaryTotals.value.net,
+  summaryTotals.value.national15,
+  summaryTotals.value.district3,
+  summaryTotals.value.expenses,
+]);
 
 async function loadReport() {
   if (!selectedYear.value) {
@@ -437,6 +545,12 @@ onBeforeUnmount(() => {
 .annual-header-badge {
   background-color: #e8f5e9;
   color: #2e7d32;
+  border-radius: 20px;
+}
+
+.annual-header-badge-warning {
+  background-color: #fff3e0;
+  color: #f57c00;
   border-radius: 20px;
 }
 

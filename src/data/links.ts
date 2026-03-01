@@ -25,11 +25,11 @@ export const linksList: EssentialLinkProps[] = [
         icon: 'fa-solid fa-tags',
         routeName: 'admin.categories',
       },
-      {
-        title: 'Activity Logs',
-        icon: 'fa-solid fa-list',
-        routeName: 'admin.activity-logs',
-      },
+      // {
+      //   title: 'Activity Logs',
+      //   icon: 'fa-solid fa-list',
+      //   routeName: 'admin.activity-logs',
+      // },
       {
         title: 'Backups',
         icon: 'fa-solid fa-box-archive',
