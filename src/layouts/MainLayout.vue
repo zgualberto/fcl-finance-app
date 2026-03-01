@@ -1,9 +1,17 @@
 <template>
   <q-layout view="lHh Lpr lFf">
-    <q-header class="bg-white" :class="{ 'q-py-md q-px-xl': $q.screen.gt.sm, 'q-py-sm q-px-md': !$q.screen.gt.sm }">
+    <q-header
+      class="bg-white"
+      :class="{ 'q-py-md q-px-xl': $q.screen.gt.sm, 'q-py-sm q-px-md': !$q.screen.gt.sm }"
+    >
       <q-toolbar class="justify-between">
         <q-toolbar-title>
-          <router-link :to="{ name: 'weekly_collections' }" class="text-h5 text-black text-weight-bold" style="text-decoration: none;">FCL Finance System</router-link>
+          <router-link
+            :to="{ name: 'weekly_collections' }"
+            class="text-h5 text-black text-weight-bold"
+            style="text-decoration: none"
+            >FCL Finance System</router-link
+          >
         </q-toolbar-title>
 
         <div class="row items-center q-gutter-sm" v-if="$q.screen.gt.sm">
@@ -13,21 +21,21 @@
             :to="link.routeName ? { name: link.routeName } : undefined"
             no-caps
             rounded
-            :class="{ 'text-black': link.routeName !== $router.currentRoute.value.name }"
+            :class="{
+              'text-black':
+                link.routeName !== $router.currentRoute.value.name &&
+                !isCurrentRouteInChildren(link),
+            }"
             :flat="
-              (link.children && link.children.length > 0) ||
-              (link.routeName !== $router.currentRoute.value.name &&
-                (!link.children || link.children.length === 0))
+              link.routeName !== $router.currentRoute.value.name && !isCurrentRouteInChildren(link)
             "
             :color="
-              link.routeName === $router.currentRoute.value.name &&
-              (!link.children || link.children.length === 0)
+              link.routeName === $router.currentRoute.value.name || isCurrentRouteInChildren(link)
                 ? 'primary'
                 : 'dark'
             "
             :unelevated="
-              link.routeName === $router.currentRoute.value.name &&
-              (!link.children || link.children.length === 0)
+              link.routeName === $router.currentRoute.value.name || isCurrentRouteInChildren(link)
             "
             class="q-py-sm q-px-md text-subtitle1 text-weight-medium"
           >
@@ -58,14 +66,7 @@
             </q-menu>
           </q-btn>
         </div>
-        <q-btn
-          v-else
-          flat
-          round
-          icon="menu"
-          class="text-black"
-          @click="toggleLeftDrawer"
-        />
+        <q-btn v-else flat round icon="menu" class="text-black" @click="toggleLeftDrawer" />
       </q-toolbar>
     </q-header>
 
@@ -78,7 +79,7 @@
             title: link.title,
             ...(link.routeName && { routeName: link.routeName }),
             ...(link.icon && { icon: link.icon }),
-            ...(link.children && { children: link.children })
+            ...(link.children && { children: link.children }),
           }"
         />
       </q-list>
@@ -93,11 +94,21 @@
 <script setup lang="ts">
 import { linksList } from 'src/data/links';
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 import EssentialLink from 'src/components/EssentialLink.vue';
 
+const router = useRouter();
 const showLeftDrawer = ref(false);
+
 const toggleLeftDrawer = () => {
   showLeftDrawer.value = !showLeftDrawer.value;
+};
+
+const isCurrentRouteInChildren = (link: (typeof linksList)[0]) => {
+  if (!link.children || link.children.length === 0) {
+    return false;
+  }
+  return link.children.some((child) => child.routeName === router.currentRoute.value.name);
 };
 </script>
