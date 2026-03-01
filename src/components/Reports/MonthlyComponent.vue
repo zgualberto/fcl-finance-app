@@ -522,7 +522,7 @@ async function initializeReport() {
   try {
     // Fetch the most recent transaction date
     const collectionDates = await transactionsStore.fetchCollectionDates();
-    
+
     if (collectionDates.length > 0 && collectionDates[0]) {
       // Use the most recent transaction date (first in the array as it's sorted DESC)
       const lastTransactionDate = collectionDates[0];
@@ -547,18 +547,15 @@ onMounted(() => {
   void initializeReport();
 });
 
-watch(
-  [selectedMonth, selectedYear],
-  () => {
-    if (loadReportTimeout.value) {
-      clearTimeout(loadReportTimeout.value);
-    }
-    loadReportTimeout.value = setTimeout(() => {
-      void loadReport();
-      loadReportTimeout.value = null;
-    }, loadReportDelayMs);
-  },
-);
+watch([selectedMonth, selectedYear], () => {
+  if (loadReportTimeout.value) {
+    clearTimeout(loadReportTimeout.value);
+  }
+  loadReportTimeout.value = setTimeout(() => {
+    void loadReport();
+    loadReportTimeout.value = null;
+  }, loadReportDelayMs);
+});
 
 onBeforeUnmount(() => {
   if (loadReportTimeout.value) {
