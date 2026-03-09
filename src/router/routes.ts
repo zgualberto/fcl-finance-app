@@ -51,6 +51,11 @@ const routes: RouteRecordRaw[] = [
         name: 'admin.settings',
         component: () => import('pages/Admin/SettingsPage.vue'),
       },
+      {
+        path: 'terms-and-conditions',
+        name: 'terms-and-conditions',
+        component: () => import('pages/TermsAndConditionsPage.vue'),
+      },
     ],
   },
 

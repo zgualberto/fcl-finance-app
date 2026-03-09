@@ -58,4 +58,9 @@ export const linksList: EssentialLinkProps[] = [
       },
     ],
   },
+  {
+    title: 'Terms & Conditions',
+    icon: 'fa-solid fa-file-contract',
+    routeName: 'terms-and-conditions',
+  },
 ];
