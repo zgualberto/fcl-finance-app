@@ -100,6 +100,10 @@ export class TransactionRepository implements BaseRepository<Transaction> {
     void database.run(`DELETE FROM transactions WHERE id = ?`, [id]);
   }
 
+  async deleteByDate(date: string): Promise<void> {
+    await database.run(`DELETE FROM transactions WHERE date = ?`, [date]);
+  }
+
   async findByDateRange(startDate: string, endDate: string): Promise<Transaction[]> {
     const res = await database.query(
       `SELECT
@@ -148,7 +152,10 @@ export class TransactionRepository implements BaseRepository<Transaction> {
     return dates.map((row) => row.date);
   }
 
-  async findByCollectionDate(date: string, transactionType?: string): Promise<Transaction[]> {
+  async findByCollectionDate(
+    date: string,
+    transactionType?: TransactionType,
+  ): Promise<Transaction[]> {
     let query = `SELECT
          t.id,
          t.member_id,
@@ -169,7 +176,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
        LEFT JOIN members m ON m.id = t.member_id
        WHERE t.date = ?`;
 
-    const params: (string | null)[] = [date];
+    const params: string[] = [date];
 
     if (transactionType !== undefined) {
       query += ` AND COALESCE(pc.transaction_type, c.transaction_type) = ?`;

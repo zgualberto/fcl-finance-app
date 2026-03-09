@@ -205,8 +205,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { date as dateUtils, type QForm, useQuasar } from 'quasar';
+import { useRoute } from 'vue-router';
 
 import { useMembersStore } from 'src/stores/members-store';
 import { useCategoriesStore } from 'src/stores/categories-store';
@@ -282,6 +283,7 @@ const memberStore = useMembersStore();
 const categoriesStore = useCategoriesStore();
 const transactionsStore = useTransactionsStore();
 const $q = useQuasar();
+const route = useRoute();
 
 function resetForm() {
   formData.value = createDefaultFormData();
@@ -652,6 +654,36 @@ async function loadCollectionDates() {
   }
 }
 
+function getRouteDateQuery(): string | null {
+  const queryDate = route.query.date;
+  if (Array.isArray(queryDate)) {
+    return queryDate[0] ?? null;
+  }
+  if (typeof queryDate === 'string' && queryDate.trim()) {
+    return queryDate;
+  }
+  return null;
+}
+
+async function applyRouteDatePrefill() {
+  const routeDate = getRouteDateQuery();
+  if (!routeDate) {
+    return;
+  }
+
+  if (!availableCollectionDates.value.includes(routeDate)) {
+    $q.notify({
+      type: 'info',
+      message: `No collection found for ${routeDate}.`,
+      position: 'bottom-right',
+    });
+    return;
+  }
+
+  selectedCollectionDate.value = routeDate;
+  await loadCollectionByDate();
+}
+
 function transformTransactionsToFormData(transactions: Transaction[]): FormData {
   const data = createDefaultFormData();
 
@@ -797,12 +829,20 @@ async function checkForDuplicateCollection(): Promise<boolean> {
   });
 }
 
-onMounted(() => {
-  void memberStore.init(false);
-  void transactionsStore.init();
-  void loadOfferingCategories();
-  void loadCollectionDates();
+onMounted(async () => {
+  await memberStore.init(false);
+  await transactionsStore.init();
+  await loadOfferingCategories();
+  await loadCollectionDates();
+  await applyRouteDatePrefill();
 });
+
+watch(
+  () => route.query.date,
+  () => {
+    void applyRouteDatePrefill();
+  },
+);
 </script>
 
 <style scoped lang="scss">

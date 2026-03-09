@@ -66,6 +66,19 @@ export const useTransactionsStore = defineStore('transactions', {
         this.activityLogService?.logErrActivity(message);
       }
     },
+    async deleteTransactionsByDate(date: string): Promise<void> {
+      if (!this.transactionRepository) {
+        await this.init();
+      }
+      if (!this.transactionRepository) throw new Error('Repository not initialized');
+      try {
+        await this.transactionRepository.deleteByDate(date);
+        this.transactions = this.transactions.filter((t) => t.date !== date);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+      }
+    },
     async fetchTransactionsByDateRange(startDate: string, endDate: string): Promise<Transaction[]> {
       if (!this.transactionRepository) {
         await this.init();
@@ -94,7 +107,10 @@ export const useTransactionsStore = defineStore('transactions', {
         return [];
       }
     },
-    async fetchTransactionByDate(date: string, transactionType?: string): Promise<Transaction[]> {
+    async fetchTransactionByDate(
+      date: string,
+      transactionType?: TransactionType,
+    ): Promise<Transaction[]> {
       if (!this.transactionRepository) {
         await this.init();
       }

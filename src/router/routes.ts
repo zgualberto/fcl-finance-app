@@ -7,6 +7,11 @@ const routes: RouteRecordRaw[] = [
     redirect: '/weekly-collections',
     children: [
       {
+        path: 'ytd-collections',
+        name: 'ytd_collections',
+        component: () => import('pages/YTDCollectionsPage.vue'),
+      },
+      {
         path: 'weekly-collections',
         name: 'weekly_collections',
         component: () => import('pages/WeeklyCollectionsPage.vue'),

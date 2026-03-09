@@ -7,7 +7,7 @@
       <q-toolbar class="justify-between">
         <q-toolbar-title>
           <router-link
-            :to="{ name: 'weekly_collections' }"
+            :to="{ name: 'ytd_collections' }"
             class="text-h5 text-black text-weight-bold"
             style="text-decoration: none"
             >{{ applicationTitle }}</router-link
