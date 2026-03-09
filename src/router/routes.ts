@@ -46,6 +46,11 @@ const routes: RouteRecordRaw[] = [
         name: 'admin.backups',
         component: () => import('pages/Admin/BackupsPage.vue'),
       },
+      {
+        path: 'settings',
+        name: 'admin.settings',
+        component: () => import('pages/Admin/SettingsPage.vue'),
+      },
     ],
   },
 

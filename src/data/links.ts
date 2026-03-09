@@ -35,6 +35,11 @@ export const linksList: EssentialLinkProps[] = [
         icon: 'fa-solid fa-box-archive',
         routeName: 'admin.backups',
       },
+      {
+        title: 'Application Settings',
+        icon: 'fa-solid fa-gear',
+        routeName: 'admin.settings',
+      },
     ],
   },
   {

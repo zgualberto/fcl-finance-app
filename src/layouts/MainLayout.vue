@@ -10,7 +10,7 @@
             :to="{ name: 'weekly_collections' }"
             class="text-h5 text-black text-weight-bold"
             style="text-decoration: none"
-            >FCL Finance System</router-link
+            >{{ applicationTitle }}</router-link
           >
         </q-toolbar-title>
 
@@ -93,13 +93,20 @@
 
 <script setup lang="ts">
 import { linksList } from 'src/data/links';
-import { ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useSettingsStore } from 'src/stores/settings-store';
 
 import EssentialLink from 'src/components/EssentialLink.vue';
 
 const router = useRouter();
 const showLeftDrawer = ref(false);
+const settingsStore = useSettingsStore();
+
+const applicationTitle = computed(() => {
+  const title = settingsStore.settingValue('application.title');
+  return title?.trim() ? title : 'FCL Finance System';
+});
 
 const toggleLeftDrawer = () => {
   showLeftDrawer.value = !showLeftDrawer.value;
@@ -111,4 +118,8 @@ const isCurrentRouteInChildren = (link: (typeof linksList)[0]) => {
   }
   return link.children.some((child) => child.routeName === router.currentRoute.value.name);
 };
+
+onMounted(async () => {
+  await settingsStore.init();
+});
 </script>
