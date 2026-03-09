@@ -157,7 +157,7 @@
             Metro Manila, Philippines 1117
           </p>
           <p class="q-my-sm"><strong>License:</strong> MIT License</p>
-          <p class="q-my-sm"><strong>Version:</strong> 1.1.0</p>
+          <p class="q-my-sm"><strong>Version:</strong> {{ appVersion }}</p>
           <p class="q-my-sm"><strong>Last Updated:</strong> March 2026</p>
         </section>
 
@@ -213,7 +213,11 @@
   </q-card>
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { version } from '../../package.json';
+
+const appVersion = version;
+</script>
 
 <style scoped lang="scss">
 .terms-content {
