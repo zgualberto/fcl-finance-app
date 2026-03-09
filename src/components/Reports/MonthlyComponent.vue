@@ -231,7 +231,10 @@
           <div class="row justify-between items-center full-width">
             <div>
               <div class="text-subtitle2 q-mb-sm">NET Collection</div>
-              <div class="text-caption q-mb-sm">(GROSS - National 15% - District 3%)</div>
+              <div class="text-caption q-mb-sm">
+                (GROSS - National {{ Math.round(settingsStore.nationalPercent * 100) }}% - District
+                {{ Math.round(settingsStore.districtPercent * 100) }}%)
+              </div>
               <div class="text-h4" style="font-weight: 700">
                 ₱{{ formatCurrency(summaryTotals.net) }}
               </div>
@@ -249,6 +252,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { date as dateUtils, useQuasar } from 'quasar';
 import { printReportAsPdf } from 'src/services/print.service';
 import { useTransactionsStore } from 'src/stores/transactions-store';
+import { useSettingsStore } from 'src/stores/settings-store';
 import type { Transaction } from 'src/databases/entities/transaction';
 
 interface CategoryGroup {
@@ -269,6 +273,7 @@ interface Deduction {
 }
 
 const transactionsStore = useTransactionsStore();
+const settingsStore = useSettingsStore();
 const $q = useQuasar();
 
 const monthsOptions = [
@@ -385,34 +390,42 @@ const summaryTotals = computed(() => {
 
   const gross = collections - expenses;
 
-  const national15 = gross * 0.15;
-  const district3 = gross * 0.03;
-  const net = gross - national15 - district3;
+  const nationalPercentDec = settingsStore.nationalPercent;
+  const districtPercentDec = settingsStore.districtPercent;
+
+  const national = gross * nationalPercentDec;
+  const district = gross * districtPercentDec;
+  const net = gross - national - district;
 
   return {
     collections,
     expenses,
     gross,
-    national15,
-    district3,
+    national,
+    district,
     net,
   };
 });
 
 const deductions = computed((): Deduction[] => {
   const gross = summaryTotals.value.gross;
+  const nationalPercentDec = settingsStore.nationalPercent;
+  const districtPercentDec = settingsStore.districtPercent;
+  const nationalPercent = Math.round(nationalPercentDec * 100);
+  const districtPercent = Math.round(districtPercentDec * 100);
+
   return [
     {
-      name: 'National 15%',
-      description: '15% of GROSS Collection',
-      percentage: 15,
-      amount: gross * 0.15,
+      name: `National ${nationalPercent}%`,
+      description: `${nationalPercent}% of GROSS Collection`,
+      percentage: nationalPercent,
+      amount: gross * nationalPercentDec,
     },
     {
-      name: 'District 3%',
-      description: '3% of GROSS Collection',
-      percentage: 3,
-      amount: gross * 0.03,
+      name: `District ${districtPercent}%`,
+      description: `${districtPercent}% of GROSS Collection`,
+      percentage: districtPercent,
+      amount: gross * districtPercentDec,
     },
   ];
 });
@@ -543,7 +556,8 @@ async function initializeReport() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await settingsStore.init();
   void initializeReport();
 });
 

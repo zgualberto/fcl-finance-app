@@ -154,7 +154,10 @@
               <div class="row justify-between items-start full-width">
                 <div>
                   <div class="text-subtitle2 q-mb-sm">NET Collection</div>
-                  <div class="text-caption q-mb-sm" style="opacity: 0.8">(GROSS - Deductions)</div>
+                  <div class="text-caption q-mb-sm" style="opacity: 0.8">
+                    (GROSS - National {{ Math.round(settingsStore.nationalPercent * 100) }}% -
+                    District {{ Math.round(settingsStore.districtPercent * 100) }}%)
+                  </div>
                   <div class="text-h5" style="font-weight: 700">
                     ₱{{ formatCurrency(summaryTotals.net) }}
                   </div>
@@ -205,10 +208,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { printReportAsPdf } from 'src/services/print.service';
 import { useTransactionsStore } from 'src/stores/transactions-store';
+import { useSettingsStore } from 'src/stores/settings-store';
 import type { Transaction } from 'src/databases/entities/transaction';
 
 interface Deduction {
@@ -219,6 +223,7 @@ interface Deduction {
 }
 
 const transactionsStore = useTransactionsStore();
+const settingsStore = useSettingsStore();
 const $q = useQuasar();
 
 const yearsOptions = Array.from({ length: 50 }, (_, i) => {
@@ -257,8 +262,11 @@ const summaryTotals = computed(() => {
 
   const gross = collections - expenses;
 
-  const national15 = gross * 0.15;
-  const district3 = gross * 0.03;
+  const nationalPercentDec = settingsStore.nationalPercent;
+  const districtPercentDec = settingsStore.districtPercent;
+
+  const national15 = gross * nationalPercentDec;
+  const district3 = gross * districtPercentDec;
   const net = gross - national15 - district3;
 
   return {
@@ -279,23 +287,41 @@ const expensePercentage = computed(() => {
 
 const deductions = computed((): Deduction[] => {
   const gross = summaryTotals.value.gross;
+  const nationalPercentDec = settingsStore.nationalPercent;
+  const districtPercentDec = settingsStore.districtPercent;
+  const nationalPercent = Math.round(nationalPercentDec * 100);
+  const districtPercent = Math.round(districtPercentDec * 100);
+
   return [
     {
-      name: 'National 15%',
-      description: '15% of GROSS Collection',
-      percentage: 15,
-      amount: gross * 0.15,
+      name: `National ${nationalPercent}%`,
+      description: `${nationalPercent}% of GROSS Collection`,
+      percentage: nationalPercent,
+      amount: gross * nationalPercentDec,
     },
     {
-      name: 'District 3%',
-      description: '3% of GROSS Collection',
-      percentage: 3,
-      amount: gross * 0.03,
+      name: `District ${districtPercent}%`,
+      description: `${districtPercent}% of GROSS Collection`,
+      percentage: districtPercent,
+      amount: gross * districtPercentDec,
     },
   ];
 });
 
 // Bar Chart Configuration (Financial Breakdown)
+const barChartCategories = computed(() => {
+  const nationalPercent = Math.round(settingsStore.nationalPercent * 100);
+  const districtPercent = Math.round(settingsStore.districtPercent * 100);
+  return [
+    'Total Collection',
+    'Expenses',
+    'Gross Collection',
+    `National (${nationalPercent}%)`,
+    `District (${districtPercent}%)`,
+    'NET Collection',
+  ];
+});
+
 const barChartOptions = computed(() => ({
   chart: {
     type: 'bar',
@@ -321,19 +347,7 @@ const barChartOptions = computed(() => ({
     width: 1,
   },
   xaxis: {
-    categories: [
-      'Total Collection',
-      'Expenses',
-      'Gross Collection',
-      'National (15%)',
-      'District (3%)',
-      'NET Collection',
-    ],
-    // labels: {
-    //   formatter: function (val: number) {
-    //     return '₱' + val.toLocaleString('en-US', { maximumFractionDigits: 0 });
-    //   },
-    // },
+    categories: barChartCategories.value,
   },
   colors: ['#1976d2', '#d32f2f', '#7b1fa2', '#d32f2f', '#d32f2f', '#388e3c'],
   grid: {
@@ -357,6 +371,17 @@ const barChartSeries = computed(() => [
 ]);
 
 // Pie Chart Configuration (Collection Distribution)
+const pieChartLabels = computed(() => {
+  const nationalPercent = Math.round(settingsStore.nationalPercent * 100);
+  const districtPercent = Math.round(settingsStore.districtPercent * 100);
+  return [
+    'NET Retained',
+    `National (${nationalPercent}%)`,
+    `District (${districtPercent}%)`,
+    'Expenses',
+  ];
+});
+
 const pieChartOptions = computed(() => ({
   chart: {
     type: 'pie',
@@ -364,7 +389,7 @@ const pieChartOptions = computed(() => ({
       show: true,
     },
   },
-  labels: ['NET Retained', 'National (15%)', 'District (3%)', 'Expenses'],
+  labels: pieChartLabels.value,
   colors: ['#388e3c', '#f97316', '#ea580c', '#d32f2f'],
   plotOptions: {
     pie: {
@@ -520,6 +545,10 @@ watch(
     immediate: true,
   },
 );
+
+onMounted(async () => {
+  await settingsStore.init();
+});
 
 onBeforeUnmount(() => {
   if (loadReportTimeout.value) {

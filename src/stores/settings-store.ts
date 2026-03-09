@@ -16,6 +16,22 @@ export const useSettingsStore = defineStore('settings', {
     setting: (state) => (key: string) => state.settings.find((item) => item.key === key),
     settingValue: (state) => (key: string) =>
       state.settings.find((item) => item.key === key)?.value ?? '',
+    nationalPercent: (state) => {
+      const value = state.settings.find(
+        (item) => item.key === 'application.national.percent',
+      )?.value;
+      if (!value) return 0.15;
+      const parsed = parseFloat(value);
+      return Number.isNaN(parsed) ? 0.15 : parsed / 100;
+    },
+    districtPercent: (state) => {
+      const value = state.settings.find(
+        (item) => item.key === 'application.district.percent',
+      )?.value;
+      if (!value) return 0.03;
+      const parsed = parseFloat(value);
+      return Number.isNaN(parsed) ? 0.03 : parsed / 100;
+    },
   },
 
   actions: {
