@@ -55,13 +55,15 @@ export async function runMigrations(db: SQLiteDBConnection): Promise<void> {
       try {
         console.log(`[Migrations] Executing migration ${migration.version}...`);
 
-        // Get the up statements
-        const upStatements = migration.up();
-        const statements = Array.isArray(upStatements) ? upStatements : [upStatements];
+        // Run migration: either SQL statement(s) or imperative migration logic.
+        const upResult = await migration.up(db);
+        if (typeof upResult === 'string' || Array.isArray(upResult)) {
+          const statements = Array.isArray(upResult) ? upResult : [upResult];
 
-        // Execute each statement (no explicit transactions - SQLite handles commits automatically)
-        for (const statement of statements) {
-          await db.execute(statement);
+          // Execute each statement (no explicit transactions - SQLite handles commits automatically)
+          for (const statement of statements) {
+            await db.execute(statement);
+          }
         }
 
         // Record the migration

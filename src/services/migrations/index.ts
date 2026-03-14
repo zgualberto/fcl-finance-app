@@ -7,5 +7,6 @@ import { migration as migration1 } from './1_initial_schema';
 import { migration as migration2 } from './2_create_activity_log_schema';
 import { migration as migration3 } from './3_remove_updatedAt_activity_log_schema';
 import { migration as migration4 } from './4_create_settings_schema';
+import { migration as migration5 } from './5_rename_settings_to_application_settings';
 
-export const migrations: Migration[] = [migration1, migration2, migration3, migration4];
+export const migrations: Migration[] = [migration1, migration2, migration3, migration4, migration5];

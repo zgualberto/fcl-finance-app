@@ -1,3 +1,7 @@
+import type { SQLiteDBConnection } from '@capacitor-community/sqlite';
+
+type MigrationStepResult = string | string[] | void | Promise<string | string[] | void>;
+
 /**
  * Migration interface - similar to Laravel migrations
  * Each migration file should export a migration object with these properties
@@ -17,14 +21,14 @@ export interface Migration {
 
   /**
    * SQL statements or operations to execute when migrating up
-   * Can be a string (single SQL statement) or array of strings
+   * Can be SQL statement(s), or run imperative DB logic for conditional migrations
    */
-  up: () => string | string[];
+  up: (db: SQLiteDBConnection) => MigrationStepResult;
 
   /**
    * SQL statements or operations to execute when rolling back
    * Should undo what the up function did
-   * Can be a string (single SQL statement) or array of strings
+   * Can be SQL statement(s), or run imperative DB logic for conditional rollbacks
    */
-  down: () => string | string[];
+  down: (db: SQLiteDBConnection) => MigrationStepResult;
 }

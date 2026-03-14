@@ -6,7 +6,7 @@ export const migration: Migration = {
   description: () => 'Create settings schema for key-value configuration',
 
   up: () => [
-    `CREATE TABLE IF NOT EXISTS settings (
+    `CREATE TABLE IF NOT EXISTS "settings" (
       key NVARCHAR(255) PRIMARY KEY,
       value TEXT NOT NULL DEFAULT '',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -14,5 +14,5 @@ export const migration: Migration = {
     )`,
   ],
 
-  down: () => [`DROP TABLE IF EXISTS settings`],
+  down: () => [`DROP TABLE IF EXISTS "settings"`],
 };
