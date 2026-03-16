@@ -16,6 +16,12 @@
           <div class="col">
             <div class="text-h5 text-weight-bold">Settings</div>
             <div class="text-body1 text-grey-7">Manage application configuration values</div>
+
+            <!-- keys -->
+            <div class="text-body2 text-grey-6 q-mt-sm">Available Keys:</div>
+            <div class="text-body2 text-grey-6">application.title</div>
+            <div class="text-body2 text-grey-6">application.national.percent</div>
+            <div class="text-body2 text-grey-6">application.district.percent</div>
           </div>
           <div class="col-auto">
             <q-btn color="primary" @click="openCreateForm" rounded unelevated no-caps>

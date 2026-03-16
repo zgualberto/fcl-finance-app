@@ -17,29 +17,29 @@ export const migration: Migration = {
       ).values?.length ?? 0;
 
     if (!hasLegacy && !hasTarget) {
-      await db.execute(`
-        CREATE TABLE IF NOT EXISTS application_settings (
+      return [
+        `CREATE TABLE IF NOT EXISTS application_settings (
           key NVARCHAR(255) PRIMARY KEY,
           value TEXT NOT NULL DEFAULT '',
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-      return;
+        )`,
+      ];
     }
 
     if (hasLegacy && !hasTarget) {
-      await db.execute(`ALTER TABLE "settings" RENAME TO application_settings`);
-      return;
+      return [`ALTER TABLE "settings" RENAME TO application_settings`];
     }
 
     if (hasLegacy && hasTarget) {
-      await db.execute(`
-        INSERT OR REPLACE INTO application_settings (key, value, created_at, updated_at)
-        SELECT key, value, created_at, updated_at FROM "settings"
-      `);
-      await db.execute(`DROP TABLE IF EXISTS "settings"`);
+      return [
+        `INSERT OR REPLACE INTO application_settings (key, value, created_at, updated_at)
+        SELECT key, value, created_at, updated_at FROM "settings"`,
+        `DROP TABLE IF EXISTS "settings"`,
+      ];
     }
+
+    return [];
   },
 
   down: async (db) => {
@@ -54,28 +54,28 @@ export const migration: Migration = {
       ).values?.length ?? 0;
 
     if (!hasLegacy && hasTarget) {
-      await db.execute(`ALTER TABLE application_settings RENAME TO "settings"`);
-      return;
+      return [`ALTER TABLE application_settings RENAME TO "settings"`];
     }
 
     if (hasLegacy && hasTarget) {
-      await db.execute(`
-        INSERT OR REPLACE INTO "settings" (key, value, created_at, updated_at)
-        SELECT key, value, created_at, updated_at FROM application_settings
-      `);
-      await db.execute(`DROP TABLE IF EXISTS application_settings`);
-      return;
+      return [
+        `INSERT OR REPLACE INTO "settings" (key, value, created_at, updated_at)
+        SELECT key, value, created_at, updated_at FROM application_settings`,
+        `DROP TABLE IF EXISTS application_settings`,
+      ];
     }
 
     if (!hasLegacy && !hasTarget) {
-      await db.execute(`
-        CREATE TABLE IF NOT EXISTS "settings" (
+      return [
+        `CREATE TABLE IF NOT EXISTS "settings" (
           key NVARCHAR(255) PRIMARY KEY,
           value TEXT NOT NULL DEFAULT '',
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+        )`,
+      ];
     }
+
+    return [];
   },
 };

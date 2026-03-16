@@ -19,7 +19,7 @@ const acceptTerms = () => {
     position: 'bottom-right',
     timeout: 2000,
   });
-  void router.push({ name: 'weekly_collections' });
+  void router.push({ name: 'ytd_collections' });
 };
 
 const closeTerms = () => {

@@ -4,7 +4,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: () => import('layouts/MainLayout.vue'),
-    redirect: '/weekly-collections',
+    redirect: '/ytd-collections',
     children: [
       {
         path: 'ytd-collections',
