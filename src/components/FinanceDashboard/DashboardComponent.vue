@@ -106,11 +106,21 @@
 
                 <div
                   v-for="item in visibleExpenseRatioByCategory"
-                  :key="item.category"
-                  class="q-mb-md"
+                  :key="item.parent"
+                  class="q-mb-md expense-parent-row"
+                  @click="toggleParentCategory(item.parent)"
                 >
-                  <div class="row items-center justify-between q-mb-xs">
-                    <div class="text-body2 text-weight-medium">{{ item.category }}</div>
+                  <div class="row items-center q-mb-xs">
+                    <q-btn
+                      flat
+                      dense
+                      round
+                      :icon="expandedParentCategories.has(item.parent) ? 'expand_more' : 'chevron_right'"
+                      size="xs"
+                      :style="item.children.length === 0 ? 'visibility: hidden' : ''"
+                      @click.stop="toggleParentCategory(item.parent)"
+                    />
+                    <div class="col text-body2 text-weight-medium q-ml-xs">{{ item.parent }}</div>
                     <div class="text-body2 text-weight-bold">{{ item.percentageLabel }}</div>
                   </div>
                   <q-linear-progress
@@ -120,6 +130,19 @@
                     track-color="grey-3"
                     :color="item.color"
                   />
+                  <div
+                    v-if="expandedParentCategories.has(item.parent) && item.children.length > 0"
+                    class="q-mt-xs q-ml-lg"
+                  >
+                    <div
+                      v-for="child in item.children"
+                      :key="child.category"
+                      class="row items-center justify-between q-py-xs"
+                    >
+                      <div class="text-body2 text-grey-8">{{ child.category }}</div>
+                      <div class="text-body2 text-grey-7 text-weight-medium">{{ child.percentageLabel }}</div>
+                    </div>
+                  </div>
                 </div>
 
                 <div v-if="hasMoreExpenseCategories" class="row justify-center q-mt-sm">
@@ -191,12 +214,19 @@ interface ReminderItem {
   displayDate: string;
 }
 
-interface ExpenseRatioItem {
+interface ExpenseChildItem {
   category: string;
+  amount: number;
+  percentageLabel: string;
+}
+
+interface ExpenseParentItem {
+  parent: string;
   amount: number;
   ratio: number;
   percentageLabel: string;
   color: string;
+  children: ExpenseChildItem[];
 }
 
 const transactionsStore = useTransactionsStore();
@@ -212,6 +242,7 @@ const loadReportDelayMs = 300;
 const loadReportTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 const expenseCategoryPreviewCount = 4;
 const showAllExpenseCategories = ref(false);
+const expandedParentCategories = ref(new Set<string>());
 
 const selectedYear = ref(null);
 const yearsOptions = Array.from({ length: 50 }, (_, i) => {
@@ -365,7 +396,7 @@ const monthlyBarChartOptions = computed(() => ({
   },
 }));
 
-const expenseRatioByCategory = computed((): ExpenseRatioItem[] => {
+const expenseRatioByCategory = computed((): ExpenseParentItem[] => {
   const expenseTransactions = rawTransactions.value.filter(
     (transaction) => transaction.transaction_type === 'Expenses',
   );
@@ -378,30 +409,51 @@ const expenseRatioByCategory = computed((): ExpenseRatioItem[] => {
     return [];
   }
 
-  const totalsByCategory = new Map<string, number>();
+  const parentTotals = new Map<string, number>();
+  const childTotals = new Map<string, Map<string, number>>();
+
   for (const transaction of expenseTransactions) {
-    const category = transaction.category_name || transaction.parent_name || 'Uncategorized';
-    const currentTotal = totalsByCategory.get(category) ?? 0;
-    totalsByCategory.set(category, currentTotal + transaction.amount);
+    const parent = transaction.parent_name || 'Uncategorized';
+    const child = transaction.category_name || parent;
+    parentTotals.set(parent, (parentTotals.get(parent) ?? 0) + transaction.amount);
+    if (!childTotals.has(parent)) {
+      childTotals.set(parent, new Map());
+    }
+    const childMap = childTotals.get(parent)!;
+    childMap.set(child, (childMap.get(child) ?? 0) + transaction.amount);
   }
 
   const palette = ['deep-orange', 'orange', 'amber', 'purple', 'indigo', 'cyan', 'blue'];
 
-  return Array.from(totalsByCategory.entries())
-    .map(([category, amount], index) => {
-      const ratio = amount / totalExpense;
+  return Array.from(parentTotals.entries())
+    .map(([parent, amount]) => ({
+      parent,
+      amount,
+      ratio: amount / totalExpense,
+      percentageLabel: `${((amount / totalExpense) * 100).toFixed(1)}%`,
+      color: '',
+      children: [] as ExpenseChildItem[],
+    }))
+    .sort((a, b) => b.amount - a.amount)
+    .map((item, index) => {
+      const childMap = childTotals.get(item.parent)!;
+      const children: ExpenseChildItem[] = Array.from(childMap.entries())
+        .filter(([childName]) => childName !== item.parent)
+        .map(([childName, childAmount]) => ({
+          category: childName,
+          amount: childAmount,
+          percentageLabel: `${((childAmount / totalExpense) * 100).toFixed(1)}%`,
+        }))
+        .sort((a, b) => b.amount - a.amount);
       return {
-        category,
-        amount,
-        ratio,
-        percentageLabel: `${(ratio * 100).toFixed(1)}%`,
+        ...item,
         color: palette[index % palette.length]!,
+        children,
       };
-    })
-    .sort((a, b) => b.amount - a.amount);
+    });
 });
 
-const visibleExpenseRatioByCategory = computed((): ExpenseRatioItem[] => {
+const visibleExpenseRatioByCategory = computed((): ExpenseParentItem[] => {
   if (showAllExpenseCategories.value) {
     return expenseRatioByCategory.value;
   }
@@ -429,6 +481,16 @@ function showMoreExpenseCategories(): void {
 
 function showLessExpenseCategories(): void {
   showAllExpenseCategories.value = false;
+}
+
+function toggleParentCategory(parent: string): void {
+  const updated = new Set(expandedParentCategories.value);
+  if (updated.has(parent)) {
+    updated.delete(parent);
+  } else {
+    updated.add(parent);
+  }
+  expandedParentCategories.value = updated;
 }
 
 function getEndOfMonth(date: Date): Date {
@@ -550,6 +612,7 @@ watch(
   selectedYear,
   () => {
     showAllExpenseCategories.value = false;
+    expandedParentCategories.value = new Set();
 
     if (loadReportTimeout.value) {
       clearTimeout(loadReportTimeout.value);
@@ -576,6 +639,16 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
+.expense-parent-row {
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.04);
+  }
+}
+
 .summary-card {
   border-radius: 14px;
 }
