@@ -12,6 +12,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/YTDCollectionsPage.vue'),
       },
       {
+        path: 'finance-dashboard',
+        name: 'finance_dashboard',
+        component: () => import('pages/FinanceDashboardPage.vue'),
+      },
+      {
         path: 'weekly-collections',
         name: 'weekly_collections',
         component: () => import('pages/WeeklyCollectionsPage.vue'),

@@ -5,7 +5,7 @@
   >
     <div class="row full-width q-mb-md items-start">
       <div class="col">
-        <div class="text-h4 text-weight-bold">YTD Collections</div>
+        <div class="text-h5 text-weight-bold">YTD Collections</div>
         <div class="text-body1 text-grey-7">Overview of all collection and expense records</div>
       </div>
       <div class="col-auto">

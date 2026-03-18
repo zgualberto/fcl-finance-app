@@ -11,6 +11,11 @@ export const linksList: EssentialLinkProps[] = [
         routeName: 'ytd_collections',
       },
       {
+        title: 'Finance Dashboard',
+        icon: 'fa-solid fa-chart-column',
+        routeName: 'finance_dashboard',
+      },
+      {
         title: 'Collections',
         icon: 'fa-solid fa-money-bills',
         routeName: 'weekly_collections',
