@@ -392,7 +392,7 @@ const monthlyBarChartOptions = computed(
           },
         },
       },
-      colors: ['#1976d2', '#d32f2f'],
+      colors: ['#1f6feb', '#d32f2f'],
       stroke: {
         show: false,
       },
