@@ -115,7 +115,9 @@
                       flat
                       dense
                       round
-                      :icon="expandedParentCategories.has(item.parent) ? 'expand_more' : 'chevron_right'"
+                      :icon="
+                        expandedParentCategories.has(item.parent) ? 'expand_more' : 'chevron_right'
+                      "
                       size="xs"
                       :style="item.children.length === 0 ? 'visibility: hidden' : ''"
                       @click.stop="toggleParentCategory(item.parent)"
@@ -140,7 +142,9 @@
                       class="row items-center justify-between q-py-xs"
                     >
                       <div class="text-body2 text-grey-8">{{ child.category }}</div>
-                      <div class="text-body2 text-grey-7 text-weight-medium">{{ child.percentageLabel }}</div>
+                      <div class="text-body2 text-grey-7 text-weight-medium">
+                        {{ child.percentageLabel }}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -341,60 +345,72 @@ const monthlyBarChartSeries = computed(() => [
   },
 ]);
 
-const monthlyBarChartOptions = computed(() => ({
-  chart: {
-    type: 'bar',
-    toolbar: {
-      show: true,
-    },
-  },
-  plotOptions: {
-    bar: {
-      horizontal: true,
-      borderRadius: 6,
-      barHeight: '62%',
+const monthlyBarChartOptions = computed(
+  () =>
+    ({
+      chart: {
+        type: 'bar',
+        toolbar: {
+          show: true,
+        },
+      },
+      plotOptions: {
+        bar: {
+          horizontal: true,
+          borderRadius: 6,
+          barHeight: '62%',
+          dataLabels: {
+            position: 'top',
+          },
+        },
+      },
       dataLabels: {
-        position: 'right',
+        enabled: true,
+        textAnchor: 'end',
+        style: {
+          colors: ['#fff'],
+          fontWeight: 400,
+        },
+        formatter: (value: number) => `₱${formatCurrency(value)}`,
+        offsetX: -8,
+        dropShadow: {
+          enabled: true,
+        },
       },
-    },
-  },
-  dataLabels: {
-    enabled: false,
-  },
-  xaxis: {
-    min: 0,
-    categories: monthlyTotalsWithData.value.map((month) => month.monthLabel),
-    labels: {
-      formatter: (value: number) =>
-        `₱${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
-    },
-  },
-  yaxis: {
-    labels: {
-      style: {
-        fontSize: '12px',
-        fontWeight: 600,
+      xaxis: {
+        min: 0,
+        categories: monthlyTotalsWithData.value.map((month) => month.monthLabel),
+        labels: {
+          formatter: (value: number) =>
+            `₱${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
+        },
       },
-    },
-  },
-  colors: ['#1976d2', '#d32f2f'],
-  stroke: {
-    show: false,
-  },
-  grid: {
-    borderColor: '#e5e7eb',
-    strokeDashArray: 4,
-  },
-  legend: {
-    position: 'bottom',
-    horizontalAlign: 'left',
-  },
-  tooltip: {
-    y: {
-      formatter: (value: number) => `₱${formatCurrency(value)}`,
-    },
-  },
-}));
+      yaxis: {
+        labels: {
+          style: {
+            fontSize: '12px',
+          },
+        },
+      },
+      colors: ['#1976d2', '#d32f2f'],
+      stroke: {
+        show: false,
+      },
+      grid: {
+        borderColor: '#e5e7eb',
+        strokeDashArray: 4,
+      },
+      legend: {
+        position: 'bottom',
+        horizontalAlign: 'left',
+      },
+      tooltip: {
+        y: {
+          formatter: (value: number) => `₱${formatCurrency(value)}`,
+        },
+      },
+    }) as ApexCharts.ApexOptions,
+);
 
 const expenseRatioByCategory = computed((): ExpenseParentItem[] => {
   const expenseTransactions = rawTransactions.value.filter(
@@ -643,10 +659,6 @@ onBeforeUnmount(() => {
   cursor: pointer;
   border-radius: 6px;
   transition: background 0.15s;
-
-  &:hover {
-    background: rgba(0, 0, 0, 0.04);
-  }
 }
 
 .summary-card {

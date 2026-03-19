@@ -7,7 +7,7 @@ const database = getDatabase();
 export class ActivityLogRepository implements BaseRepository<ActivityLog> {
   async insert(log: Partial<ActivityLog>): Promise<number> {
     const result = await database.run(`INSERT INTO activity_logs (log, is_error) VALUES (?, ?)`, [
-      log,
+      log.log,
       log.is_error || false,
     ]);
     return result.changes?.lastId ?? 0;
