@@ -55,6 +55,7 @@
                   <div class="text-h4 text-weight-bold">
                     ₱{{ formatCurrency(summaryTotals.collections) }}
                   </div>
+                  <div class="text-caption">+12% vs 2025</div>
                 </div>
                 <q-icon name="trending_up" size="28px" class="opacity-40" />
               </div>
@@ -70,6 +71,7 @@
                   <div class="text-h4 text-weight-bold">
                     ₱{{ formatCurrency(summaryTotals.expenses) }}
                   </div>
+                  <div class="text-caption">+8% vs 2025</div>
                 </div>
                 <q-icon name="trending_down" size="28px" class="opacity-40" />
               </div>
@@ -85,11 +87,9 @@
                   <div class="text-h4 text-weight-bold">
                     ₱{{ formatCurrency(summaryTotals.net) }}
                   </div>
-                  <div class="text-caption">
-                    After National {{ nationalRateLabel }} & District {{ districtRateLabel }}
-                  </div>
+                  <div class="text-caption">{{ netStatusLabel }}</div>
                 </div>
-                <q-icon name="payments" size="28px" class="opacity-40" />
+                <q-icon :name="netStatusIcon" size="28px" class="opacity-40" />
               </div>
             </q-card-section>
           </q-card>
@@ -271,9 +271,6 @@ const yearsOptions = Array.from({ length: 50 }, (_, i) => {
   return { label: String(year), value: String(year) };
 });
 
-const nationalRateLabel = computed(() => `${Math.round(settingsStore.nationalPercent * 100)}%`);
-const districtRateLabel = computed(() => `${Math.round(settingsStore.districtPercent * 100)}%`);
-
 function formatCurrency(amount: number): string {
   return amount.toLocaleString('en-US', {
     minimumFractionDigits: 2,
@@ -303,6 +300,16 @@ const summaryTotals = computed(() => {
     district,
     net,
   };
+});
+
+const netStatusLabel = computed(() => {
+  return summaryTotals.value.net >= 0 ? 'Healthy' : 'Deficit';
+});
+
+const netStatusIcon = computed(() => {
+  return summaryTotals.value.net >= 0
+    ? 'fa-regular fa-circle-check'
+    : 'fa-solid fa-triangle-exclamation';
 });
 
 const monthlyTotals = computed((): MonthlyTotals[] => {

@@ -1,8 +1,5 @@
 <template>
-  <q-card
-    class="rounded-borders"
-    :class="{ 'q-ma-sm q-pa-lg': $q.screen.width > $q.screen.height, 'q-pa-md': $q.screen.lt.sm }"
-  >
+  <div>
     <div class="row full-width q-mb-md items-start">
       <div class="col">
         <div class="text-h5 text-weight-bold">Year-over-year comparison</div>
@@ -24,7 +21,7 @@
         </div>
       </div>
     </div>
-  </q-card>
+  </div>
 </template>
 
 <script lang="ts" setup></script>

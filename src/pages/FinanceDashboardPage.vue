@@ -1,7 +1,7 @@
 <template>
   <div class="q-pa-lg">
     <q-card
-      class="relative-position rounded-borders q-mb-md"
+      class="relative-position rounded-borders q-mb-lg"
       :class="{ 'q-ma-sm q-pa-lg': $q.screen.width > $q.screen.height, 'q-pa-md': $q.screen.lt.sm }"
     >
       <DashboardComponent />
