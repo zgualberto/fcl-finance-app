@@ -413,7 +413,7 @@ const monthlyBarChartOptions = computed(
           fontWeight: 600,
         },
         formatter: (value: number) => `₱${formatCurrency(value)}`,
-        offsetX: 64,
+        offsetX: 68,
       },
       xaxis: {
         min: 0,
