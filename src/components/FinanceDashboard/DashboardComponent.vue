@@ -96,24 +96,31 @@
         </div>
       </div>
 
-      <div class="row q-col-gutter-md">
+      <div class="row q-col-gutter-md items-stretch">
         <div class="col-12 col-md-6">
           <q-card class="rounded-borders full-height" flat bordered>
             <q-card-section>
               <div class="text-h6 text-weight-bold q-mb-md">Monthly Collections vs Expenses</div>
-              <apexchart
-                type="bar"
-                :options="monthlyBarChartOptions"
-                :series="monthlyBarChartSeries"
-                height="390"
-              />
+              <div
+                :class="[
+                  'monthly-chart-scroll-area',
+                  { 'monthly-chart-scroll-area--export': isSharingReport },
+                ]"
+              >
+                <apexchart
+                  type="bar"
+                  :options="monthlyBarChartOptions"
+                  :series="monthlyBarChartSeries"
+                  :height="monthlyBarChartHeight"
+                />
+              </div>
             </q-card-section>
           </q-card>
         </div>
 
-        <div class="col-12 col-md-6">
-          <div class="column q-gutter-md">
-            <q-card class="rounded-borders" flat bordered>
+        <div class="col-12 col-md-6 dashboard-main-col">
+          <div class="dashboard-side-column">
+            <q-card class="rounded-borders dashboard-side-card" flat bordered>
               <q-card-section>
                 <div class="text-h6 text-weight-bold q-mb-md">Expense Ratio by Category</div>
 
@@ -190,7 +197,7 @@
               </q-card-section>
             </q-card>
 
-            <q-card class="rounded-borders" flat bordered>
+            <q-card class="rounded-borders dashboard-side-card" flat bordered>
               <q-card-section>
                 <div class="text-h6 text-weight-bold q-mb-md">Upcoming Reminders</div>
 
@@ -369,20 +376,30 @@ const monthlyBarChartSeries = computed(() => [
   },
 ]);
 
+const monthlyBarChartHeight = computed(() => {
+  const rowCount = Math.max(monthlyTotalsWithData.value.length, 1);
+  const minHeight = 280;
+  const maxHeight = 1200;
+  const perRowHeight = 120;
+  const baseHeight = 80;
+
+  return Math.min(maxHeight, Math.max(minHeight, baseHeight + rowCount * perRowHeight));
+});
+
 const monthlyBarChartOptions = computed(
   () =>
     ({
       chart: {
         type: 'bar',
         toolbar: {
-          show: true,
+          show: false,
         },
       },
       plotOptions: {
         bar: {
           horizontal: true,
           borderRadius: 6,
-          barHeight: '62%',
+          barHeight: '80%',
           dataLabels: {
             position: 'top',
           },
@@ -392,14 +409,11 @@ const monthlyBarChartOptions = computed(
         enabled: true,
         textAnchor: 'end',
         style: {
-          colors: ['#fff'],
-          fontWeight: 400,
+          colors: ['#000'],
+          fontWeight: 600,
         },
         formatter: (value: number) => `₱${formatCurrency(value)}`,
-        offsetX: -8,
-        dropShadow: {
-          enabled: true,
-        },
+        offsetX: 64,
       },
       xaxis: {
         min: 0,
@@ -716,6 +730,39 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 
+.dashboard-main-row {
+  align-items: stretch;
+}
+
+.dashboard-main-col {
+  display: flex;
+}
+
+.dashboard-side-column {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.dashboard-side-card {
+  flex: 1;
+}
+
+.monthly-chart-scroll-area {
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+}
+
+.monthly-chart-scroll-area--export {
+  height: auto;
+  overflow: visible;
+  padding-right: 0;
+}
+
 .report-loading-overlay {
   position: fixed;
   inset: 0;
@@ -733,6 +780,19 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 600px) {
+  .dashboard-main-col {
+    display: block;
+  }
+
+  .dashboard-side-card {
+    flex: initial;
+  }
+
+  .monthly-chart-scroll-area {
+    max-height: 420px;
+    padding-right: 0;
+  }
+
   .dashboard-controls-wrap {
     width: 100%;
     justify-content: flex-start;
@@ -741,6 +801,15 @@ onBeforeUnmount(() => {
   .annual-header-select,
   .annual-download-button {
     width: 100%;
+  }
+}
+
+@media print {
+  .monthly-chart-scroll-area {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
   }
 }
 </style>

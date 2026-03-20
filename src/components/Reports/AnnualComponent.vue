@@ -326,7 +326,7 @@ const barChartOptions = computed(() => ({
   chart: {
     type: 'bar',
     toolbar: {
-      show: true,
+      show: false,
     },
   },
   plotOptions: {
@@ -386,7 +386,7 @@ const pieChartOptions = computed(() => ({
   chart: {
     type: 'pie',
     toolbar: {
-      show: true,
+      show: false,
     },
   },
   labels: pieChartLabels.value,
