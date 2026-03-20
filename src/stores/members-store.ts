@@ -8,6 +8,7 @@ export const useMembersStore = defineStore('members', {
     members: [] as Member[],
     memberRepository: null as MemberRepository | null,
     activityLogService: null as ActivityLogService | null,
+    totalMembers: 0,
   }),
 
   getters: {
@@ -111,6 +112,16 @@ export const useMembersStore = defineStore('members', {
         const message = error instanceof Error ? error.message : String(error);
         this.activityLogService?.logErrActivity(message);
       }
+    },
+    async fetchPage(page: number, limit: number = 20): Promise<{ rows: Member[]; total: number }> {
+      if (!this.memberRepository) throw new Error('Repository not initialized');
+      const [rows, total] = await Promise.all([
+        this.memberRepository.findAllWithPagination(page, limit),
+        this.memberRepository.countAll(),
+      ]);
+      this.members = rows;
+      this.totalMembers = total;
+      return { rows, total };
     },
   },
 });

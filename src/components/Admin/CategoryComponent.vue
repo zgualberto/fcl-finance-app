@@ -1,12 +1,17 @@
 <template>
-  <q-card class="rounded-borders" :class="{ 'q-ma-sm q-pa-lg': $q.screen.width > $q.screen.height, 'q-pa-md': $q.screen.lt.sm }">
+  <q-card
+    class="rounded-borders"
+    :class="{ 'q-ma-sm q-pa-lg': $q.screen.width > $q.screen.height, 'q-pa-md': $q.screen.lt.sm }"
+  >
     <q-table
       :rows="categories"
       :columns="columns"
       row-key="id"
       flat
-      :pagination="pagination"
-      :rows-per-page-options="[0, 20, 50, 100]"
+      v-model:pagination="pagination"
+      :rows-per-page-options="[20, 50, 100]"
+      :loading="loading"
+      @request="onRequest"
     >
       <template v-slot:top>
         <div class="row full-width">
@@ -111,9 +116,12 @@ const columns: QTableColumn[] = [
   { name: 'actions', field: 'action', label: 'Actions', align: 'center' },
 ];
 
-const pagination = {
+const pagination = ref({
+  page: 1,
   rowsPerPage: 20,
-};
+  rowsNumber: 0,
+});
+const loading = ref(false);
 
 const categories = computed(() => categoryStore.categoryList);
 const $q = useQuasar();
@@ -130,6 +138,26 @@ const openEditCategoryDialog = (category: Category) => {
   showForm.value = true;
 };
 
+async function refreshCurrentPage() {
+  loading.value = true;
+  const { total } = await categoryStore.fetchPage(
+    pagination.value.page,
+    pagination.value.rowsPerPage,
+  );
+  pagination.value.rowsNumber = total;
+  loading.value = false;
+}
+
+async function onRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
+  loading.value = true;
+  const { page, rowsPerPage } = props.pagination;
+  const { total } = await categoryStore.fetchPage(page, rowsPerPage);
+  pagination.value.page = page;
+  pagination.value.rowsPerPage = rowsPerPage;
+  pagination.value.rowsNumber = total;
+  loading.value = false;
+}
+
 const handleFormOk = async (data: Partial<Category>) => {
   if (editingCategory.value) {
     await categoryStore.updateCategory(data as Category);
@@ -141,7 +169,6 @@ const handleFormOk = async (data: Partial<Category>) => {
     });
   } else {
     await categoryStore.addCategory(data);
-    await categoryStore.init();
     $q.notify({
       position: 'bottom-right',
       type: 'positive',
@@ -152,6 +179,7 @@ const handleFormOk = async (data: Partial<Category>) => {
 
   showForm.value = false;
   editingCategory.value = null;
+  await refreshCurrentPage();
 };
 
 const handleFormCancel = () => {
@@ -168,6 +196,7 @@ const confirmDeleteCategory = (id: number) => {
   }).onOk(() => {
     console.log(`Confirm deleted category id: ${id}`);
     void categoryStore.deleteCategory(id);
+    void refreshCurrentPage();
     $q.notify({
       position: 'bottom-right',
       type: 'positive',
@@ -178,6 +207,10 @@ const confirmDeleteCategory = (id: number) => {
 };
 
 onMounted(async () => {
-  await categoryStore.init();
+  await categoryStore.init(false);
+  loading.value = true;
+  const { total } = await categoryStore.fetchPage(1, pagination.value.rowsPerPage);
+  pagination.value.rowsNumber = total;
+  loading.value = false;
 });
 </script>

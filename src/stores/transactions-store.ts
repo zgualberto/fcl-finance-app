@@ -10,6 +10,7 @@ export const useTransactionsStore = defineStore('transactions', {
     transactionRepository: null as TransactionRepository | null,
     activityLogService: null as ActivityLogService | null,
     availableCollectionDates: [] as string[],
+    totalTransactions: 0,
   }),
 
   getters: {
@@ -19,9 +20,11 @@ export const useTransactionsStore = defineStore('transactions', {
   },
 
   actions: {
-    async init() {
+    async init(loadAll = true) {
       this.transactionRepository = new TransactionRepository();
-      this.transactions = await this.transactionRepository.findAll();
+      if (loadAll) {
+        this.transactions = await this.transactionRepository.findAll();
+      }
       this.activityLogService = new ActivityLogService();
     },
     async addTransaction(data: Partial<Transaction>): Promise<void> {
@@ -68,7 +71,7 @@ export const useTransactionsStore = defineStore('transactions', {
     },
     async deleteTransactionsByDate(date: string): Promise<void> {
       if (!this.transactionRepository) {
-        await this.init();
+        await this.init(false);
       }
       if (!this.transactionRepository) throw new Error('Repository not initialized');
       try {
@@ -81,7 +84,7 @@ export const useTransactionsStore = defineStore('transactions', {
     },
     async fetchTransactionsByDateRange(startDate: string, endDate: string): Promise<Transaction[]> {
       if (!this.transactionRepository) {
-        await this.init();
+        await this.init(false);
       }
       if (!this.transactionRepository) throw new Error('Repository not initialized');
       try {
@@ -94,7 +97,7 @@ export const useTransactionsStore = defineStore('transactions', {
     },
     async fetchCollectionDates(transactionType?: TransactionType): Promise<string[]> {
       if (!this.transactionRepository) {
-        await this.init();
+        await this.init(false);
       }
       if (!this.transactionRepository) throw new Error('Repository not initialized');
       try {
@@ -112,7 +115,7 @@ export const useTransactionsStore = defineStore('transactions', {
       transactionType?: TransactionType,
     ): Promise<Transaction[]> {
       if (!this.transactionRepository) {
-        await this.init();
+        await this.init(false);
       }
       if (!this.transactionRepository) throw new Error('Repository not initialized');
       try {
@@ -121,6 +124,69 @@ export const useTransactionsStore = defineStore('transactions', {
         const message = error instanceof Error ? error.message : String(error);
         this.activityLogService?.logErrActivity(message);
         return [];
+      }
+    },
+    async fetchPage(
+      page: number,
+      limit: number = 20,
+    ): Promise<{ rows: Transaction[]; total: number }> {
+      if (!this.transactionRepository) {
+        await this.init(false);
+      }
+      if (!this.transactionRepository) throw new Error('Repository not initialized');
+      try {
+        const [rows, total] = await Promise.all([
+          this.transactionRepository.findAllPaginated(page, limit),
+          this.transactionRepository.countAll(),
+        ]);
+        this.totalTransactions = total;
+        return { rows, total };
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+        return { rows: [], total: 0 };
+      }
+    },
+    async fetchYtdSummaryTotals(
+      startDate: string,
+      endDate: string,
+    ): Promise<{ collections: number; expenses: number }> {
+      if (!this.transactionRepository) {
+        await this.init(false);
+      }
+      if (!this.transactionRepository) throw new Error('Repository not initialized');
+      try {
+        return await this.transactionRepository.getYtdSummaryTotals(startDate, endDate);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+        return { collections: 0, expenses: 0 };
+      }
+    },
+    async fetchYtdPage(
+      startDate: string,
+      endDate: string,
+      page: number,
+      limit: number = 20,
+    ): Promise<{
+      rows: Array<{ date: string; collection: number; expenses: number }>;
+      total: number;
+    }> {
+      if (!this.transactionRepository) {
+        await this.init(false);
+      }
+      if (!this.transactionRepository) throw new Error('Repository not initialized');
+      try {
+        const [rows, total] = await Promise.all([
+          this.transactionRepository.findYtdByDatePaginated(startDate, endDate, page, limit),
+          this.transactionRepository.countYtdDates(startDate, endDate),
+        ]);
+
+        return { rows, total };
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+        return { rows: [], total: 0 };
       }
     },
   },

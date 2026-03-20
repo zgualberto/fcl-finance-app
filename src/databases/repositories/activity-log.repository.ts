@@ -27,4 +27,9 @@ export class ActivityLogRepository implements BaseRepository<ActivityLog> {
     );
     return res.values as ActivityLog[];
   }
+
+  async countAll(): Promise<number> {
+    const res = await database.query('SELECT COUNT(*) AS count FROM activity_logs');
+    return (res.values?.[0]?.count as number) ?? 0;
+  }
 }

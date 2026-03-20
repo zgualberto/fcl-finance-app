@@ -52,4 +52,18 @@ export class MemberRepository implements BaseRepository<Member> {
   delete(id: number): void {
     void database.run(`DELETE FROM members WHERE id = ?`, [id]);
   }
+
+  async findAllWithPagination(page: number = 1, limit: number = 20): Promise<Member[]> {
+    const offset = (page - 1) * limit;
+    const res = await database.query(
+      'SELECT * FROM members ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      [limit, offset],
+    );
+    return res.values as Member[];
+  }
+
+  async countAll(): Promise<number> {
+    const res = await database.query('SELECT COUNT(*) AS count FROM members');
+    return (res.values?.[0]?.count as number) ?? 0;
+  }
 }

@@ -8,5 +8,13 @@ import { migration as migration2 } from './2_create_activity_log_schema';
 import { migration as migration3 } from './3_remove_updatedAt_activity_log_schema';
 import { migration as migration4 } from './4_create_settings_schema';
 import { migration as migration5 } from './5_rename_settings_to_application_settings';
+import { migration as migration6 } from './6_add_performance_indexes';
 
-export const migrations: Migration[] = [migration1, migration2, migration3, migration4, migration5];
+export const migrations: Migration[] = [
+  migration1,
+  migration2,
+  migration3,
+  migration4,
+  migration5,
+  migration6,
+];

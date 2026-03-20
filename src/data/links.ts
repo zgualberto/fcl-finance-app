@@ -2,7 +2,7 @@ import type { EssentialLinkProps } from 'components/EssentialLink.vue';
 
 export const linksList: EssentialLinkProps[] = [
   {
-    title: 'Collections',
+    title: 'Transactions',
     icon: 'fa-solid fa-wallet',
     children: [
       {

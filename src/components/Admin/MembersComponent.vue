@@ -1,12 +1,17 @@
 <template>
-  <q-card class="rounded-borders" :class="{ 'q-ma-sm q-pa-lg': $q.screen.width > $q.screen.height, 'q-pa-md': $q.screen.lt.sm }">
+  <q-card
+    class="rounded-borders"
+    :class="{ 'q-ma-sm q-pa-lg': $q.screen.width > $q.screen.height, 'q-pa-md': $q.screen.lt.sm }"
+  >
     <q-table
       :rows="members"
       :columns="columns"
       row-key="id"
       flat
-      :pagination="pagination"
-      :rows-per-page-options="[0, 20, 50, 100]"
+      v-model:pagination="pagination"
+      :rows-per-page-options="[20, 50, 100]"
+      :loading="loading"
+      @request="onRequest"
     >
       <template v-slot:top>
         <div class="row full-width">
@@ -83,9 +88,12 @@ const columns: QTableColumn[] = [
   { name: 'actions', field: 'action', label: 'Actions', align: 'center' },
 ];
 
-const pagination = {
+const pagination = ref({
+  page: 1,
   rowsPerPage: 20,
-};
+  rowsNumber: 0,
+});
+const loading = ref(false);
 
 const members = computed(() => membersStore.memberList);
 const $q = useQuasar();
@@ -101,6 +109,26 @@ const openEditMemberForm = (member: Member) => {
   editingMember.value = member;
   showForm.value = true;
 };
+
+async function refreshCurrentPage() {
+  loading.value = true;
+  const { total } = await membersStore.fetchPage(
+    pagination.value.page,
+    pagination.value.rowsPerPage,
+  );
+  pagination.value.rowsNumber = total;
+  loading.value = false;
+}
+
+async function onRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
+  loading.value = true;
+  const { page, rowsPerPage } = props.pagination;
+  const { total } = await membersStore.fetchPage(page, rowsPerPage);
+  pagination.value.page = page;
+  pagination.value.rowsPerPage = rowsPerPage;
+  pagination.value.rowsNumber = total;
+  loading.value = false;
+}
 
 const handleFormOk = async (data: Partial<Member>) => {
   if (editingMember.value) {
@@ -123,6 +151,7 @@ const handleFormOk = async (data: Partial<Member>) => {
 
   showForm.value = false;
   editingMember.value = null;
+  await refreshCurrentPage();
 };
 
 const handleFormCancel = () => {
@@ -137,10 +166,15 @@ const confirmDeleteMember = (member: Member) => {
     persistent: true,
   }).onOk(() => {
     void membersStore.deleteMember(member.id!);
+    void refreshCurrentPage();
   });
 };
 
 onMounted(async () => {
-  await membersStore.init();
+  await membersStore.init(false);
+  loading.value = true;
+  const { total } = await membersStore.fetchPage(1, pagination.value.rowsPerPage);
+  pagination.value.rowsNumber = total;
+  loading.value = false;
 });
 </script>

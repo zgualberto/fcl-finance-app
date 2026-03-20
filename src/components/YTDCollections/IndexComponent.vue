@@ -65,9 +65,10 @@
       :columns="columns"
       row-key="date"
       flat
-      :pagination="pagination"
-      :rows-per-page-options="[0, 20, 50, 100]"
+      v-model:pagination="pagination"
+      :rows-per-page-options="[20, 50, 100]"
       :loading="isLoading"
+      @request="onTableRequest"
     >
       <template v-slot:body-cell-date="props">
         <q-td :props="props" class="text-weight-medium">
@@ -155,8 +156,6 @@
 import { computed, onMounted, ref } from 'vue';
 import { date as dateUtils, useQuasar, type QTableColumn } from 'quasar';
 import { useRouter } from 'vue-router';
-import { TransactionType } from 'src/enums/transaction_type';
-import type { Transaction } from 'src/databases/entities/transaction';
 import { useSettingsStore } from 'src/stores/settings-store';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 
@@ -177,12 +176,21 @@ const router = useRouter();
 const $q = useQuasar();
 
 const isLoading = ref(false);
-const rawTransactions = ref<Transaction[]>([]);
 const tableRows = ref<YtdTableRow[]>([]);
+const summaryTotalsData = ref({
+  collections: 0,
+  expenses: 0,
+});
 
-const pagination = {
+const currentYear = String(new Date().getFullYear());
+const startDate = `${currentYear}-01-01`;
+const endDate = `${currentYear}-12-31`;
+
+const pagination = ref({
+  page: 1,
   rowsPerPage: 20,
-};
+  rowsNumber: 0,
+});
 
 const nationalRateLabel = computed(() => `${Math.round(settingsStore.nationalPercent * 100)}%`);
 const districtRateLabel = computed(() => `${Math.round(settingsStore.districtPercent * 100)}%`);
@@ -210,12 +218,8 @@ const columns = computed<QTableColumn<YtdTableRow>[]>(() => [
 ]);
 
 const summaryTotals = computed(() => {
-  const collections = rawTransactions.value
-    .filter((transaction) => transaction.transaction_type === TransactionType.COLLECTIONS)
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-  const expenses = rawTransactions.value
-    .filter((transaction) => transaction.transaction_type === TransactionType.EXPENSES)
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const collections = summaryTotalsData.value.collections;
+  const expenses = summaryTotalsData.value.expenses;
 
   const gross = collections - expenses;
   const national = gross * settingsStore.nationalPercent;
@@ -244,68 +248,74 @@ function toPeso(amount: number): string {
   return `₱${formatCurrency(amount)}`;
 }
 
-function buildTableRows(transactions: Transaction[]): YtdTableRow[] {
-  const byDateMap = new Map<string, { collection: number; expenses: number }>();
+async function loadYtdSummary(): Promise<void> {
+  const totals = await transactionsStore.fetchYtdSummaryTotals(startDate, endDate);
+  summaryTotalsData.value.collections = totals.collections;
+  summaryTotalsData.value.expenses = totals.expenses;
+}
 
-  for (const transaction of transactions) {
-    if (!transaction.date) {
-      continue;
-    }
-
-    const dateKey = transaction.date;
-    const existing = byDateMap.get(dateKey) ?? { collection: 0, expenses: 0 };
-
-    if (transaction.transaction_type === TransactionType.COLLECTIONS) {
-      existing.collection += transaction.amount;
-    } else if (transaction.transaction_type === TransactionType.EXPENSES) {
-      existing.expenses += transaction.amount;
-    }
-
-    byDateMap.set(dateKey, existing);
-  }
-
-  const sortedDates = Array.from(byDateMap.keys()).sort((a, b) => b.localeCompare(a));
-
-  const rows = sortedDates.map((dateKey, index) => {
-    const values = byDateMap.get(dateKey) ?? { collection: 0, expenses: 0 };
-    const gross = values.collection - values.expenses;
+function mapPaginatedRows(
+  rows: Array<{ date: string; collection: number; expenses: number }>,
+  page: number,
+  rowsPerPage: number,
+  total: number,
+): YtdTableRow[] {
+  return rows.map((row, index) => {
+    const gross = row.collection - row.expenses;
     const national = gross * settingsStore.nationalPercent;
     const district = gross * settingsStore.districtPercent;
     const net = gross - national - district;
+    const rowPosition = (page - 1) * rowsPerPage + index;
 
     return {
-      id: sortedDates.length - index,
-      date: dateKey,
-      collection: values.collection,
-      expenses: values.expenses,
+      id: Math.max(total - rowPosition, 1),
+      date: row.date,
+      collection: row.collection,
+      expenses: row.expenses,
       gross,
       national,
       district,
       net,
     };
   });
+}
 
-  return rows.filter((row) => row.collection > 0 || row.expenses > 0);
+async function loadYtdPage(
+  page = pagination.value.page,
+  rowsPerPage = pagination.value.rowsPerPage,
+) {
+  const { rows, total } = await transactionsStore.fetchYtdPage(
+    startDate,
+    endDate,
+    page,
+    rowsPerPage,
+  );
+  pagination.value.page = page;
+  pagination.value.rowsPerPage = rowsPerPage;
+  pagination.value.rowsNumber = total;
+  tableRows.value = mapPaginatedRows(rows, page, rowsPerPage, total);
 }
 
 async function loadYtdData(): Promise<void> {
-  const currentYear = String(new Date().getFullYear());
-  const startDate = `${currentYear}-01-01`;
-  const endDate = `${currentYear}-12-31`;
-
   isLoading.value = true;
   try {
-    rawTransactions.value = await transactionsStore.fetchTransactionsByDateRange(
-      startDate,
-      endDate,
-    );
-    tableRows.value = buildTableRows(rawTransactions.value);
+    await loadYtdSummary();
+    await loadYtdPage(1, pagination.value.rowsPerPage);
   } catch {
     $q.notify({
       type: 'negative',
       message: 'Failed to load YTD records. Please try again.',
       position: 'bottom-right',
     });
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+async function onTableRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
+  isLoading.value = true;
+  try {
+    await loadYtdPage(props.pagination.page, props.pagination.rowsPerPage);
   } finally {
     isLoading.value = false;
   }
@@ -346,7 +356,7 @@ function confirmDeleteByDate(date: string): void {
 
 onMounted(async () => {
   await settingsStore.init();
-  await transactionsStore.init();
+  await transactionsStore.init(false);
   await loadYtdData();
 });
 </script>

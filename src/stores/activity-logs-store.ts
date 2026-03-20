@@ -8,6 +8,7 @@ export const useActivityLogsStore = defineStore('activityLogs', {
     activityLogRepository: null as ActivityLogRepository | null,
     page: 1,
     limit: 20,
+    totalLogs: 0,
   }),
 
   getters: {
@@ -17,10 +18,19 @@ export const useActivityLogsStore = defineStore('activityLogs', {
   actions: {
     async init() {
       this.activityLogRepository = new ActivityLogRepository();
-      this.activity_logs = await this.activityLogRepository.findAllWithPagination(
-        this.page,
-        this.limit,
-      );
+      await this.fetchPage(1);
+    },
+    async fetchPage(page: number) {
+      if (!this.activityLogRepository) {
+        this.activityLogRepository = new ActivityLogRepository();
+      }
+      this.page = page;
+      const [logs, total] = await Promise.all([
+        this.activityLogRepository.findAllWithPagination(this.page, this.limit),
+        this.activityLogRepository.countAll(),
+      ]);
+      this.activity_logs = logs;
+      this.totalLogs = total;
     },
   },
 });

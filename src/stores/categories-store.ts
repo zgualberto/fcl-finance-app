@@ -8,6 +8,7 @@ export const useCategoriesStore = defineStore('categories', {
     categories: [] as Category[],
     categoryRepository: null as CategoryRepository | null,
     activityLogService: null as ActivityLogService | null,
+    totalCategories: 0,
   }),
 
   getters: {
@@ -20,9 +21,22 @@ export const useCategoriesStore = defineStore('categories', {
     async init(loadAll = true) {
       this.categoryRepository = new CategoryRepository();
       if (loadAll) {
-        this.categories = await this.categoryRepository.findAllWithParentAndChildSorting();
+        await this.fetchPage(1);
       }
       this.activityLogService = new ActivityLogService();
+    },
+    async fetchPage(
+      page: number,
+      limit: number = 20,
+    ): Promise<{ rows: Category[]; total: number }> {
+      if (!this.categoryRepository) throw new Error('Repository not initialized');
+      const [rows, total] = await Promise.all([
+        this.categoryRepository.findAllWithParentAndChildSortingPaginated(page, limit),
+        this.categoryRepository.countAll(),
+      ]);
+      this.categories = rows;
+      this.totalCategories = total;
+      return { rows, total };
     },
     async fetchCategoriesByNames(names: string[]): Promise<Category[]> {
       if (!this.categoryRepository) {
@@ -50,7 +64,7 @@ export const useCategoriesStore = defineStore('categories', {
       if (!this.categoryRepository) throw new Error('Repository not initialized');
       try {
         void this.categoryRepository.update(category);
-        this.categories = await this.categoryRepository.findAllWithParentAndChildSorting();
+        await this.fetchPage(1);
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         this.activityLogService?.logErrActivity(message);

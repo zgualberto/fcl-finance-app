@@ -68,8 +68,11 @@ export async function runMigrations(db: SQLiteDBConnection): Promise<void> {
 
         // Record the migration
         const description = migration.description();
-        const insertSql = `INSERT INTO migrations (version, description, status) VALUES (${migration.version}, '${description.replace(/'/g, "''")}', 'completed')`;
-        await db.execute(insertSql);
+        await db.run('INSERT INTO migrations (version, description, status) VALUES (?, ?, ?)', [
+          migration.version,
+          description,
+          'completed',
+        ]);
 
         console.log(`[Migrations] Migration ${migration.version} completed: ${description}`);
       } catch (error) {
