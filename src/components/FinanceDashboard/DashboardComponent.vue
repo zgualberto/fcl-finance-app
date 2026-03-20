@@ -49,9 +49,14 @@
         <div class="col-12 col-md-4">
           <q-card class="summary-card summary-card-collection text-white full-height" flat>
             <q-card-section>
-              <div class="text-subtitle2">Total Collections YTD</div>
-              <div class="text-h4 text-weight-bold">
-                ₱{{ formatCurrency(summaryTotals.collections) }}
+              <div class="row justify-between items-start full-width">
+                <div>
+                  <div class="text-subtitle2">Total Collections YTD</div>
+                  <div class="text-h4 text-weight-bold">
+                    ₱{{ formatCurrency(summaryTotals.collections) }}
+                  </div>
+                </div>
+                <q-icon name="trending_up" size="28px" class="opacity-40" />
               </div>
             </q-card-section>
           </q-card>
@@ -59,9 +64,14 @@
         <div class="col-12 col-md-4">
           <q-card class="summary-card summary-card-expenses text-white full-height" flat>
             <q-card-section>
-              <div class="text-subtitle2">Total Expenses YTD</div>
-              <div class="text-h4 text-weight-bold">
-                ₱{{ formatCurrency(summaryTotals.expenses) }}
+              <div class="row justify-between items-start full-width">
+                <div>
+                  <div class="text-subtitle2">Total Expenses YTD</div>
+                  <div class="text-h4 text-weight-bold">
+                    ₱{{ formatCurrency(summaryTotals.expenses) }}
+                  </div>
+                </div>
+                <q-icon name="trending_down" size="28px" class="opacity-40" />
               </div>
             </q-card-section>
           </q-card>
@@ -69,10 +79,17 @@
         <div class="col-12 col-md-4">
           <q-card class="summary-card summary-card-net text-white full-height" flat>
             <q-card-section>
-              <div class="text-subtitle2">Net Collection YTD</div>
-              <div class="text-h4 text-weight-bold">₱{{ formatCurrency(summaryTotals.net) }}</div>
-              <div class="text-caption">
-                After National {{ nationalRateLabel }} & District {{ districtRateLabel }}
+              <div class="row justify-between items-start full-width">
+                <div>
+                  <div class="text-subtitle2">Net Collection YTD</div>
+                  <div class="text-h4 text-weight-bold">
+                    ₱{{ formatCurrency(summaryTotals.net) }}
+                  </div>
+                  <div class="text-caption">
+                    After National {{ nationalRateLabel }} & District {{ districtRateLabel }}
+                  </div>
+                </div>
+                <q-icon name="payments" size="28px" class="opacity-40" />
               </div>
             </q-card-section>
           </q-card>
@@ -248,7 +265,7 @@ const expenseCategoryPreviewCount = 4;
 const showAllExpenseCategories = ref(false);
 const expandedParentCategories = ref(new Set<string>());
 
-const selectedYear = ref(null);
+const selectedYear = ref<string | null>(null);
 const yearsOptions = Array.from({ length: 50 }, (_, i) => {
   const year = new Date().getFullYear() - i;
   return { label: String(year), value: String(year) };
@@ -542,6 +559,11 @@ const reminders = computed((): ReminderItem[] => {
 });
 
 async function loadDashboardData(): Promise<void> {
+  if (!selectedYear.value) {
+    rawTransactions.value = [];
+    return;
+  }
+
   isLoading.value = true;
 
   try {
