@@ -359,13 +359,20 @@ function buildCategoryMap(categories: Category[]): Record<string, Category> {
 function getHierarchyIssues(categoryMap: Record<string, Category>) {
   const missingParents: string[] = [];
   const missingChildren: string[] = [];
+  const invalidParents: Category[] = [];
   const mismatchedChildren: Category[] = [];
+  const invalidChildTypes: Category[] = [];
+  const expectedTransactionType = TransactionType.COLLECTIONS;
 
   categoryHierarchyGroups.forEach((group) => {
     const parent = categoryMap[group.parentName];
     if (!parent?.id) {
       missingParents.push(group.parentName);
       return;
+    }
+
+    if (parent.parent_id != null || parent.transaction_type !== expectedTransactionType) {
+      invalidParents.push(parent);
     }
 
     const parentId = parent.id;
@@ -380,10 +387,20 @@ function getHierarchyIssues(categoryMap: Record<string, Category>) {
       if (child.parent_id !== parentId) {
         mismatchedChildren.push(child);
       }
+
+      if (child.transaction_type !== expectedTransactionType) {
+        invalidChildTypes.push(child);
+      }
     });
   });
 
-  return { missingParents, missingChildren, mismatchedChildren };
+  return {
+    missingParents,
+    missingChildren,
+    invalidParents,
+    mismatchedChildren,
+    invalidChildTypes,
+  };
 }
 
 function getOfferingCategoryId(name: WeeklyOfferingCategoryName): number {
@@ -531,7 +548,7 @@ async function ensureCategoryHierarchy(): Promise<void> {
 
   let categories = await categoriesStore.fetchCategoriesByNames(allCategoryNames);
   let categoryMap = buildCategoryMap(categories);
-  const { missingParents } = getHierarchyIssues(categoryMap);
+  const { missingParents, invalidParents } = getHierarchyIssues(categoryMap);
 
   if (missingParents.length > 0) {
     await Promise.all(
@@ -545,10 +562,29 @@ async function ensureCategoryHierarchy(): Promise<void> {
     );
   }
 
+  if (invalidParents.length > 0) {
+    await Promise.all(
+      invalidParents.map((parent) => {
+        if (parent.id == null) {
+          return Promise.resolve();
+        }
+
+        return categoriesStore.updateCategory({
+          id: parent.id,
+          category_name: parent.category_name,
+          is_active: parent.is_active,
+          parent_id: null,
+          transaction_type: TransactionType.COLLECTIONS,
+        });
+      }),
+    );
+  }
+
   categories = await categoriesStore.fetchCategoriesByNames(allCategoryNames);
   categoryMap = buildCategoryMap(categories);
 
   const createChildPromises: Promise<void>[] = [];
+  const repairChildPromises: Promise<void>[] = [];
   categoryHierarchyGroups.forEach((group) => {
     const parent = categoryMap[group.parentName];
     if (!parent?.id) {
@@ -556,6 +592,7 @@ async function ensureCategoryHierarchy(): Promise<void> {
     }
 
     const parentId = parent.id;
+    const transactionType = parent.transaction_type ?? TransactionType.COLLECTIONS;
 
     group.childNames.forEach((childName) => {
       const child = categoryMap[childName];
@@ -565,18 +602,22 @@ async function ensureCategoryHierarchy(): Promise<void> {
             category_name: childName,
             is_active: 1,
             parent_id: parentId,
+            transaction_type: transactionType,
           }),
         );
         return;
       }
 
-      if (child.parent_id !== parentId) {
-        void categoriesStore.updateCategory({
-          id: child.id,
-          category_name: child.category_name,
-          is_active: child.is_active,
-          parent_id: parentId,
-        });
+      if (child.parent_id !== parentId || child.transaction_type !== transactionType) {
+        repairChildPromises.push(
+          categoriesStore.updateCategory({
+            id: child.id,
+            category_name: child.category_name,
+            is_active: child.is_active,
+            parent_id: parentId,
+            transaction_type: transactionType,
+          }),
+        );
       }
     });
   });
@@ -584,13 +625,18 @@ async function ensureCategoryHierarchy(): Promise<void> {
   if (createChildPromises.length > 0) {
     await Promise.all(createChildPromises);
   }
+
+  if (repairChildPromises.length > 0) {
+    await Promise.all(repairChildPromises);
+  }
 }
 
 async function loadOfferingCategories(skipDialog = false) {
   await categoriesStore.init(false);
   const categories = await categoriesStore.fetchCategoriesByNames(allCategoryNames);
   const categoryMap = buildCategoryMap(categories);
-  const { missingParents, missingChildren, mismatchedChildren } = getHierarchyIssues(categoryMap);
+  const { missingParents, missingChildren, invalidParents, mismatchedChildren, invalidChildTypes } =
+    getHierarchyIssues(categoryMap);
 
   offeringCategoryIds.value = offeringCategoryNames.reduce<Record<string, number>>((acc, name) => {
     const category = categoryMap[name];
@@ -612,12 +658,16 @@ async function loadOfferingCategories(skipDialog = false) {
   );
 
   const hasIssues =
-    missingParents.length > 0 || missingChildren.length > 0 || mismatchedChildren.length > 0;
+    missingParents.length > 0 ||
+    missingChildren.length > 0 ||
+    invalidParents.length > 0 ||
+    mismatchedChildren.length > 0 ||
+    invalidChildTypes.length > 0;
   if (hasIssues && !skipDialog) {
     $q.dialog({
-      title: 'Missing Categories',
+      title: 'Invalid Categories',
       message:
-        'One or more categories are missing or not linked to their parent. Would you like to fix them now?',
+        'One or more categories are missing, have the wrong transaction type, or are not linked to the correct parent. Would you like to fix them now?',
       ok: {
         label: 'Fix',
         color: 'primary',
@@ -634,7 +684,7 @@ async function loadOfferingCategories(skipDialog = false) {
         } catch {
           $q.notify({
             type: 'negative',
-            message: 'Failed to create missing categories. Please try again.',
+            message: 'Failed to fix category issues. Please try again.',
             position: 'bottom-right',
           });
         }

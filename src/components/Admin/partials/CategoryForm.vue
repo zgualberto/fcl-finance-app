@@ -169,6 +169,14 @@ const parentOptions = computed(() =>
     })),
 );
 
+function getCategoryById(categoryId: number | null): Category | undefined {
+  if (categoryId == null) {
+    return undefined;
+  }
+
+  return categoryStore.categories.find((category) => category.id === categoryId);
+}
+
 function applyParentFilter(searchTerm: string) {
   const normalized = searchTerm.trim().toLowerCase();
   if (!normalized || normalized.length < 3) {
@@ -205,6 +213,18 @@ watch(
     filteredParentOptions.value = [];
   },
   { immediate: true },
+);
+
+watch(
+  () => form.value.parent_id,
+  (parentId) => {
+    if (parentId == null) {
+      return;
+    }
+
+    const parentCategory = getCategoryById(parentId);
+    form.value.transaction_type = parentCategory?.transaction_type ?? '';
+  },
 );
 
 function onSubmit() {

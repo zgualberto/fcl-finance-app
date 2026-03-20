@@ -257,12 +257,16 @@ function mapCategoriesToOptions(categories: Category[]): CategoryOption[] {
   const expenseType = String(TransactionType.EXPENSES);
   return categories
     .filter((category) => {
-      // Find child categories whose parent has transaction_type === EXPENSES
-      if (category.parent_id) {
-        const parent = categories.find((c) => c.id === category.parent_id);
-        return parent?.transaction_type === expenseType;
+      if (!category.parent_id) {
+        return false;
       }
-      return false;
+
+      if (category.transaction_type === expenseType) {
+        return true;
+      }
+
+      const parent = categories.find((c) => c.id === category.parent_id);
+      return parent?.transaction_type === expenseType;
     })
     .filter((category) => category.is_active)
     .map((category) => ({

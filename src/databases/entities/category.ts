@@ -3,7 +3,7 @@ export interface Category {
   category_name: string;
   is_active: number;
   created_at?: Date;
-  parent_id?: number;
+  parent_id?: number | null;
   transaction_type?: string | null;
   parent_name?: string;
   path?: string;

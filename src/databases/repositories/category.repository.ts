@@ -6,10 +6,6 @@ const database = getDatabase();
 
 export class CategoryRepository implements BaseRepository<Category> {
   async insert(category: Partial<Category>): Promise<number> {
-    // transaction_type will be set to NULL when parent_id is not null, as child categories inherit the transaction type from their parent
-    if (category.parent_id !== null) {
-      category.transaction_type = null;
-    }
     const result = await database.run(
       `INSERT INTO categories (name, is_active, parent_id, transaction_type) VALUES (?, ?, ?, ?)`,
       [
@@ -82,10 +78,6 @@ export class CategoryRepository implements BaseRepository<Category> {
   }
 
   update(member: Partial<Category>): void {
-    // transaction_type will be set to NULL when parent_id is not null, as child categories inherit the transaction type from their parent
-    if (member.parent_id !== null) {
-      member.transaction_type = null;
-    }
     void database.run(
       `
         UPDATE categories SET
