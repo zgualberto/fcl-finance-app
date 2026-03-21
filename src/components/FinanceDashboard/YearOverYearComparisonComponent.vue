@@ -65,6 +65,7 @@
       <q-card class="rounded-borders" flat bordered>
         <q-card-section>
           <div class="text-h6 text-weight-bold q-mb-md">
+            <q-icon name="trending_up"></q-icon>
             Monthly Collections - {{ previousYearLabel }} vs {{ selectedYear }}
           </div>
 
@@ -73,34 +74,65 @@
           </div>
 
           <div v-else class="comparison-table-wrap">
-            <table class="comparison-table">
-              <thead>
-                <tr>
-                  <th>Month</th>
-                  <th>{{ previousYearLabel }} collection</th>
-                  <th>{{ selectedYear }} collection</th>
-                  <th>Change</th>
-                  <th>{{ previousYearLabel }} expenses</th>
-                  <th>{{ selectedYear }} expenses</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in monthlyRows" :key="row.monthIndex">
-                  <td class="text-weight-medium">{{ row.monthLabel }}</td>
-                  <td class="text-right">₱{{ formatCurrency(row.previousCollections) }}</td>
-                  <td class="text-right text-weight-medium">
-                    ₱{{ formatCurrency(row.currentCollections) }}
-                  </td>
-                  <td>
-                    <span class="change-pill" :class="row.changeClass">{{ row.changeLabel }}</span>
-                  </td>
-                  <td class="text-right">₱{{ formatCurrency(row.previousExpenses) }}</td>
-                  <td class="text-right text-weight-medium">
-                    ₱{{ formatCurrency(row.currentExpenses) }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <q-table
+              class="comparison-q-table"
+              :rows="monthlyRows"
+              :columns="columns"
+              row-key="monthIndex"
+              flat
+              hide-pagination
+              :rows-per-page-options="[0]"
+              :loading="isLoading"
+            >
+              <template v-slot:body-cell-monthLabel="props">
+                <q-td :props="props" class="text-weight-medium">{{ props.row.monthLabel }}</q-td>
+              </template>
+
+              <template v-slot:body-cell-previousCollections="props">
+                <q-td :props="props" class="text-right">
+                  {{
+                    formatMetricCell(
+                      props.row.previousCollections,
+                      props.row.hasPreviousCollections,
+                    )
+                  }}
+                </q-td>
+              </template>
+
+              <template v-slot:body-cell-currentCollections="props">
+                <q-td :props="props" class="text-right text-weight-medium">
+                  {{
+                    formatMetricCell(props.row.currentCollections, props.row.hasCurrentCollections)
+                  }}
+                </q-td>
+              </template>
+
+              <template v-slot:body-cell-changeLabel="props">
+                <q-td :props="props">
+                  <q-badge
+                    v-if="props.row.changeLabel && props.row.changeLabel !== '--'"
+                    class="change-pill"
+                    :class="props.row.changeClass"
+                    rounded
+                  >
+                    {{ props.row.changeLabel }}
+                  </q-badge>
+                  <span v-else>{{ props.row.changeLabel || '--' }}</span>
+                </q-td>
+              </template>
+
+              <template v-slot:body-cell-previousExpenses="props">
+                <q-td :props="props" class="text-right">
+                  {{ formatMetricCell(props.row.previousExpenses, props.row.hasPreviousExpenses) }}
+                </q-td>
+              </template>
+
+              <template v-slot:body-cell-currentExpenses="props">
+                <q-td :props="props" class="text-right text-weight-medium">
+                  {{ formatMetricCell(props.row.currentExpenses, props.row.hasCurrentExpenses) }}
+                </q-td>
+              </template>
+            </q-table>
           </div>
 
           <div class="comparison-legend q-mt-md">
@@ -122,7 +154,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useQuasar } from 'quasar';
+import { useQuasar, type QTableColumn } from 'quasar';
 import { printReportAsPdf } from 'src/services/print.service';
 import type { Transaction } from 'src/databases/entities/transaction';
 import { useAnalyticsStore } from 'src/stores/analytics-store';
@@ -282,6 +314,10 @@ function formatCollectionsChange(
   };
 }
 
+function formatMetricCell(value: number, hasData: boolean): string {
+  return hasData ? `₱${formatCurrency(value)}` : '--';
+}
+
 const previousYearMonthlyBuckets = computed(() => {
   return buildMonthlyBuckets(previousYearTransactions.value);
 });
@@ -302,7 +338,13 @@ const monthlyRows = computed((): MonthlyComparisonRow[] => {
   return monthLabels.map((monthLabel, monthIndex) => {
     const previous = previousYearMonthlyBuckets.value[monthIndex]!;
     const current = currentYearMonthlyBuckets.value[monthIndex]!;
-    const change = formatCollectionsChange(current.collections, previous.collections);
+    const hasBothCollections = previous.hasCollections && current.hasCollections;
+    const change = hasBothCollections
+      ? formatCollectionsChange(current.collections, previous.collections)
+      : {
+          label: '--',
+          className: 'change-pill--neutral',
+        };
 
     return {
       monthIndex,
@@ -311,10 +353,45 @@ const monthlyRows = computed((): MonthlyComparisonRow[] => {
       currentCollections: current.collections,
       previousExpenses: previous.expenses,
       currentExpenses: current.expenses,
+      hasPreviousCollections: previous.hasCollections,
+      hasCurrentCollections: current.hasCollections,
+      hasPreviousExpenses: previous.hasExpenses,
+      hasCurrentExpenses: current.hasExpenses,
       changeLabel: change.label,
       changeClass: change.className,
     };
   });
+});
+
+const columns = computed((): QTableColumn<MonthlyComparisonRow>[] => {
+  return [
+    { name: 'monthLabel', label: 'Month', field: 'monthLabel', align: 'left' },
+    {
+      name: 'previousCollections',
+      label: `${previousYearLabel.value} collection`,
+      field: 'previousCollections',
+      align: 'right',
+    },
+    {
+      name: 'currentCollections',
+      label: `${selectedYear.value} collection`,
+      field: 'currentCollections',
+      align: 'right',
+    },
+    { name: 'changeLabel', label: 'Change', field: 'changeLabel', align: 'left' },
+    {
+      name: 'previousExpenses',
+      label: `${previousYearLabel.value} expenses`,
+      field: 'previousExpenses',
+      align: 'right',
+    },
+    {
+      name: 'currentExpenses',
+      label: `${selectedYear.value} expenses`,
+      field: 'currentExpenses',
+      align: 'right',
+    },
+  ];
 });
 
 const previousYearNet = computed(() => previousYearTotals.value.net);
@@ -481,26 +558,24 @@ onBeforeUnmount(() => {
   overflow-x: auto;
 }
 
-.comparison-table {
-  width: 100%;
-  border-collapse: collapse;
+.comparison-q-table {
   min-width: 760px;
 }
 
-.comparison-table th,
-.comparison-table td {
+.comparison-q-table :deep(.q-table th),
+.comparison-q-table :deep(.q-table td) {
   padding: 10px 12px;
   border-bottom: 1px solid #e5e7eb;
   text-align: left;
   white-space: nowrap;
 }
 
-.comparison-table th {
+.comparison-q-table :deep(.q-table th) {
   color: #334155;
   font-weight: 700;
 }
 
-.comparison-table tbody tr:last-child td {
+.comparison-q-table :deep(.q-table tbody tr:last-child td) {
   border-bottom: none;
 }
 
