@@ -55,7 +55,13 @@
                   <div class="text-h4 text-weight-bold">
                     ₱{{ formatCurrency(summaryTotals.collections) }}
                   </div>
-                  <div class="text-caption">+12% vs 2025</div>
+                  <div
+                    v-if="collectionsComparison.isVisible"
+                    class="text-caption summary-trend"
+                    :class="collectionsComparison.className"
+                  >
+                    {{ collectionsComparison.label }}
+                  </div>
                 </div>
                 <q-icon name="trending_up" size="28px" class="opacity-40" />
               </div>
@@ -71,7 +77,13 @@
                   <div class="text-h4 text-weight-bold">
                     ₱{{ formatCurrency(summaryTotals.expenses) }}
                   </div>
-                  <div class="text-caption">+8% vs 2025</div>
+                  <div
+                    v-if="expensesComparison.isVisible"
+                    class="text-caption summary-trend"
+                    :class="expensesComparison.className"
+                  >
+                    {{ expensesComparison.label }}
+                  </div>
                 </div>
                 <q-icon name="trending_down" size="28px" class="opacity-40" />
               </div>
@@ -224,9 +236,11 @@
 
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { storeToRefs } from 'pinia';
 import { date as dateUtils, useQuasar } from 'quasar';
 import { printReportAsPdf } from 'src/services/print.service';
 import type { Transaction } from 'src/databases/entities/transaction';
+import { useAnalyticsStore } from 'src/stores/analytics-store';
 import { useSettingsStore } from 'src/stores/settings-store';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 
@@ -257,13 +271,21 @@ interface ExpenseParentItem {
   children: ExpenseChildItem[];
 }
 
+interface YearComparison {
+  isVisible: boolean;
+  label: string;
+  className: string;
+}
+
 const transactionsStore = useTransactionsStore();
 const settingsStore = useSettingsStore();
+const analyticsStore = useAnalyticsStore();
 const $q = useQuasar();
 
 const isLoading = ref(false);
 const isSharingReport = ref(false);
 const rawTransactions = ref<Transaction[]>([]);
+const previousYearTransactions = ref<Transaction[]>([]);
 const reportRef = ref<HTMLElement | null>(null);
 
 const loadReportDelayMs = 300;
@@ -272,11 +294,8 @@ const expenseCategoryPreviewCount = 4;
 const showAllExpenseCategories = ref(false);
 const expandedParentCategories = ref(new Set<string>());
 
-const selectedYear = ref<string | null>(null);
-const yearsOptions = Array.from({ length: 50 }, (_, i) => {
-  const year = new Date().getFullYear() - i;
-  return { label: String(year), value: String(year) };
-});
+const { selectedYear, yearsOptions, selectedYearNumber, previousYearLabel } =
+  storeToRefs(analyticsStore);
 
 function formatCurrency(amount: number): string {
   return amount.toLocaleString('en-US', {
@@ -307,6 +326,61 @@ const summaryTotals = computed(() => {
     district,
     net,
   };
+});
+
+const previousYearTotals = computed(() => {
+  const collections = previousYearTransactions.value
+    .filter((transaction) => transaction.transaction_type === 'Collections')
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+
+  const expenses = previousYearTransactions.value
+    .filter((transaction) => transaction.transaction_type === 'Expenses')
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+
+  return {
+    collections,
+    expenses,
+  };
+});
+
+function buildYearComparison(
+  currentValue: number,
+  previousValue: number,
+  invertSentiment = false,
+): YearComparison {
+  if (!previousYearLabel.value || previousValue === 0) {
+    return {
+      isVisible: false,
+      label: '',
+      className: '',
+    };
+  }
+
+  const percentageChange = ((currentValue - previousValue) / previousValue) * 100;
+  const roundedChange = Math.round(percentageChange);
+  const sign = roundedChange > 0 ? '+' : '';
+  const isIncrease = roundedChange > 0;
+  const isDecrease = roundedChange < 0;
+
+  let trendClass = 'summary-trend--neutral';
+  if (isIncrease || isDecrease) {
+    const isFavorable = invertSentiment ? isDecrease : isIncrease;
+    trendClass = isFavorable ? 'summary-trend--favorable' : 'summary-trend--unfavorable';
+  }
+
+  return {
+    isVisible: true,
+    label: `${sign}${roundedChange}% vs ${previousYearLabel.value}`,
+    className: trendClass,
+  };
+}
+
+const collectionsComparison = computed(() => {
+  return buildYearComparison(summaryTotals.value.collections, previousYearTotals.value.collections);
+});
+
+const expensesComparison = computed(() => {
+  return buildYearComparison(summaryTotals.value.expenses, previousYearTotals.value.expenses, true);
 });
 
 const netStatusLabel = computed(() => {
@@ -580,20 +654,28 @@ const reminders = computed((): ReminderItem[] => {
 });
 
 async function loadDashboardData(): Promise<void> {
-  if (!selectedYear.value) {
+  if (!selectedYearNumber.value) {
     rawTransactions.value = [];
+    previousYearTransactions.value = [];
     return;
   }
 
   isLoading.value = true;
 
   try {
-    const startDate = `${selectedYear.value}-01-01`;
-    const endDate = `${selectedYear.value}-12-31`;
-    rawTransactions.value = await transactionsStore.fetchTransactionsByDateRange(
-      startDate,
-      endDate,
-    );
+    const currentYear = selectedYearNumber.value;
+    const startDate = `${currentYear}-01-01`;
+    const endDate = `${currentYear}-12-31`;
+    const previousYearStartDate = `${currentYear - 1}-01-01`;
+    const previousYearEndDate = `${currentYear - 1}-12-31`;
+
+    const [currentYearTransactions, previousYearData] = await Promise.all([
+      transactionsStore.fetchTransactionsByDateRange(startDate, endDate),
+      transactionsStore.fetchTransactionsByDateRange(previousYearStartDate, previousYearEndDate),
+    ]);
+
+    rawTransactions.value = currentYearTransactions;
+    previousYearTransactions.value = previousYearData;
 
     if (rawTransactions.value.length === 0) {
       $q.notify({
@@ -603,6 +685,8 @@ async function loadDashboardData(): Promise<void> {
       });
     }
   } catch {
+    rawTransactions.value = [];
+    previousYearTransactions.value = [];
     $q.notify({
       type: 'negative',
       message: 'Failed to load dashboard data. Please try again.',
@@ -718,6 +802,26 @@ onBeforeUnmount(() => {
 
 .summary-card-net {
   background: linear-gradient(135deg, #1b8f3a 0%, #0bbf4f 100%);
+}
+
+.summary-trend {
+  display: inline-block;
+  margin-top: 4px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-weight: 700;
+}
+
+.summary-trend--favorable {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.summary-trend--unfavorable {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.summary-trend--neutral {
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .annual-header-select {
