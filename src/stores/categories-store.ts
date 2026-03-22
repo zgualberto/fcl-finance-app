@@ -51,6 +51,19 @@ export const useCategoriesStore = defineStore('categories', {
         return [];
       }
     },
+    async searchByKeyword(keyword: string, transactionType: string): Promise<Category[]> {
+      if (!this.categoryRepository) {
+        await this.init(false);
+      }
+      if (!this.categoryRepository) throw new Error('Repository not initialized');
+      try {
+        return await this.categoryRepository.searchByKeyword(keyword, transactionType);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+        return [];
+      }
+    },
     async addCategory(data: Partial<Category>): Promise<void> {
       if (!this.categoryRepository) throw new Error('Repository not initialized');
       try {

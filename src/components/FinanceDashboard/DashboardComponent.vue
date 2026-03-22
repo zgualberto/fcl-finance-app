@@ -84,6 +84,9 @@
                   >
                     {{ expensesComparison.label }}
                   </div>
+                  <div class="text-caption">
+                    Non-remittable: ₱{{ formatCurrency(summaryTotals.nonRemittableExpenses) }}
+                  </div>
                 </div>
                 <q-icon name="trending_down" size="28px" class="opacity-40" />
               </div>
@@ -158,7 +161,9 @@
                       :style="item.children.length === 0 ? 'visibility: hidden' : ''"
                       @click.stop="toggleParentCategory(item.parent)"
                     />
-                    <div class="col text-body2 text-weight-medium q-ml-xs">{{ item.parent }}</div>
+                    <div class="col text-body2 text-weight-medium q-ml-xs">
+                      {{ item.parent }}
+                    </div>
                     <div class="text-body2 text-weight-bold">{{ item.percentageLabel }}</div>
                   </div>
                   <q-linear-progress
@@ -177,7 +182,18 @@
                       :key="child.category"
                       class="row items-center justify-between q-py-xs"
                     >
-                      <div class="text-body2 text-grey-8">{{ child.category }}</div>
+                      <div class="text-body2 text-grey-8">
+                        {{ child.category }}
+                        <q-badge
+                          v-if="child.isNonRemittable"
+                          color="deep-orange"
+                          class="q-ml-xs"
+                          rounded
+                          outline
+                        >
+                          Non-remittable
+                        </q-badge>
+                      </div>
                       <div class="text-body2 text-grey-7 text-weight-medium">
                         {{ child.percentageLabel }}
                       </div>
@@ -239,6 +255,10 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia';
 import { date as dateUtils, useQuasar } from 'quasar';
 import { printReportAsPdf } from 'src/services/print.service';
+import {
+  computeNetCollection,
+  computeRemittanceDeductions,
+} from 'src/services/financial-calculations.service';
 import type { Transaction } from 'src/databases/entities/transaction';
 import { useAnalyticsStore } from 'src/stores/analytics-store';
 import { useSettingsStore } from 'src/stores/settings-store';
@@ -260,6 +280,7 @@ interface ExpenseChildItem {
   category: string;
   amount: number;
   percentageLabel: string;
+  isNonRemittable: boolean;
 }
 
 interface ExpenseParentItem {
@@ -268,6 +289,7 @@ interface ExpenseParentItem {
   ratio: number;
   percentageLabel: string;
   color: string;
+  isNonRemittable: boolean;
   children: ExpenseChildItem[];
 }
 
@@ -313,14 +335,33 @@ const summaryTotals = computed(() => {
     .filter((transaction) => transaction.transaction_type === 'Expenses')
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
-  const gross = collections - expenses;
-  const national = gross * settingsStore.nationalPercent;
-  const district = gross * settingsStore.districtPercent;
-  const net = gross - national - district;
+  const nonRemittableExpenses = rawTransactions.value
+    .filter(
+      (transaction) =>
+        transaction.transaction_type === 'Expenses' && transaction.non_remittable === 1,
+    )
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+
+  const remittableExpenses = expenses - nonRemittableExpenses;
+
+  const gross = collections - remittableExpenses;
+  const { national, district } = computeRemittanceDeductions(
+    gross,
+    settingsStore.nationalPercent,
+    settingsStore.districtPercent,
+  );
+  const net = computeNetCollection({
+    grossCollection: gross,
+    national,
+    district,
+    nonRemittableExpenses,
+  });
 
   return {
     collections,
     expenses,
+    remittableExpenses,
+    nonRemittableExpenses,
     gross,
     national,
     district,
@@ -538,17 +579,30 @@ const expenseRatioByCategory = computed((): ExpenseParentItem[] => {
   }
 
   const parentTotals = new Map<string, number>();
-  const childTotals = new Map<string, Map<string, number>>();
+  const parentNonRemittableFlags = new Map<string, boolean>();
+  const childTotals = new Map<string, Map<string, { amount: number; isNonRemittable: boolean }>>();
 
   for (const transaction of expenseTransactions) {
     const parent = transaction.parent_name || 'Uncategorized';
     const child = transaction.category_name || parent;
+    const isNonRemittable = transaction.non_remittable === 1;
+
     parentTotals.set(parent, (parentTotals.get(parent) ?? 0) + transaction.amount);
+    parentNonRemittableFlags.set(
+      parent,
+      (parentNonRemittableFlags.get(parent) ?? false) || (child === parent && isNonRemittable),
+    );
+
     if (!childTotals.has(parent)) {
       childTotals.set(parent, new Map());
     }
+
     const childMap = childTotals.get(parent)!;
-    childMap.set(child, (childMap.get(child) ?? 0) + transaction.amount);
+    const existingChild = childMap.get(child);
+    childMap.set(child, {
+      amount: (existingChild?.amount ?? 0) + transaction.amount,
+      isNonRemittable: (existingChild?.isNonRemittable ?? false) || isNonRemittable,
+    });
   }
 
   const palette = ['deep-orange', 'orange', 'amber', 'purple', 'indigo', 'cyan', 'blue'];
@@ -560,6 +614,7 @@ const expenseRatioByCategory = computed((): ExpenseParentItem[] => {
       ratio: amount / totalExpense,
       percentageLabel: `${((amount / totalExpense) * 100).toFixed(1)}%`,
       color: '',
+      isNonRemittable: parentNonRemittableFlags.get(parent) ?? false,
       children: [] as ExpenseChildItem[],
     }))
     .sort((a, b) => b.amount - a.amount)
@@ -567,10 +622,11 @@ const expenseRatioByCategory = computed((): ExpenseParentItem[] => {
       const childMap = childTotals.get(item.parent)!;
       const children: ExpenseChildItem[] = Array.from(childMap.entries())
         .filter(([childName]) => childName !== item.parent)
-        .map(([childName, childAmount]) => ({
+        .map(([childName, childData]) => ({
           category: childName,
-          amount: childAmount,
-          percentageLabel: `${((childAmount / totalExpense) * 100).toFixed(1)}%`,
+          amount: childData.amount,
+          percentageLabel: `${((childData.amount / totalExpense) * 100).toFixed(1)}%`,
+          isNonRemittable: childData.isNonRemittable,
         }))
         .sort((a, b) => b.amount - a.amount);
       return {

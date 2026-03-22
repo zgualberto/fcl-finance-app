@@ -96,9 +96,7 @@
               v-model:amount="item.amount"
               v-model:remarks="item.remarks"
               v-model:search-term="item.searchTerm"
-              :options="expenseCategoryOptions"
-              :is-loading="isCategoriesLoading"
-              :on-create-category="createExpenseCategory"
+              :on-search="searchExpenseCategories"
               @remove="removeItem(index)"
             />
 
@@ -168,7 +166,6 @@ import { useRoute } from 'vue-router';
 import { useCategoriesStore } from 'src/stores/categories-store';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 import { TransactionType } from 'src/enums/transaction_type';
-import type { Category } from 'src/databases/entities/category';
 import type { Transaction } from 'src/databases/entities/transaction';
 import { useUnsavedWarning } from 'src/composables/useUnsavedWarning';
 import ExpensesRow from './RowComponent.vue';
@@ -208,8 +205,6 @@ const createDefaultFormData = (): ExpensesFormData => ({
 const formData = ref<ExpensesFormData>(createDefaultFormData());
 const formRef = ref<QForm | null>(null);
 const isSaving = ref(false);
-const isCategoriesLoading = ref(false);
-const expenseCategoryOptions = ref<CategoryOption[]>([]);
 const availableExpenseDates = ref<string[]>([]);
 const selectedExpenseDate = ref<string | null>(null);
 
@@ -253,36 +248,16 @@ function formatCurrency(amount: number): string {
   });
 }
 
-function mapCategoriesToOptions(categories: Category[]): CategoryOption[] {
-  const expenseType = String(TransactionType.EXPENSES);
-  return categories
-    .filter((category) => {
-      if (!category.parent_id) {
-        return false;
-      }
-
-      if (category.transaction_type === expenseType) {
-        return true;
-      }
-
-      const parent = categories.find((c) => c.id === category.parent_id);
-      return parent?.transaction_type === expenseType;
-    })
-    .filter((category) => category.is_active)
-    .map((category) => ({
-      value: category.id as number,
-      label: category.category_name,
-    }));
+async function initCategories() {
+  await categoriesStore.init(false);
 }
 
-async function loadExpenseCategories() {
-  isCategoriesLoading.value = true;
-  try {
-    await categoriesStore.init(true);
-    expenseCategoryOptions.value = mapCategoriesToOptions(categoriesStore.categoryList);
-  } finally {
-    isCategoriesLoading.value = false;
-  }
+async function searchExpenseCategories(keyword: string): Promise<CategoryOption[]> {
+  const results = await categoriesStore.searchByKeyword(keyword, TransactionType.EXPENSES);
+  return results.map((category) => ({
+    value: category.id as number,
+    label: category.category_name,
+  }));
 }
 
 async function loadExpenseDates() {
@@ -459,35 +434,11 @@ async function checkForDuplicateExpenses(): Promise<boolean> {
   });
 }
 
-async function createExpenseCategory(name: string): Promise<CategoryOption | null> {
-  const normalized = name.trim();
-  if (!normalized) {
-    return null;
-  }
-
-  await categoriesStore.addCategory({
-    category_name: normalized,
-    is_active: 1,
-    transaction_type: TransactionType.EXPENSES,
-  });
-
-  await loadExpenseCategories();
-  const match = expenseCategoryOptions.value.find(
-    (option) => option.label.toLowerCase() === normalized.toLowerCase(),
-  );
-  return match ?? null;
-}
-
 function resolveCategoryLabel(item: ExpenseItem): string {
   if (item.categoryName) {
     return item.categoryName;
   }
-  if (item.categoryId == null) {
-    return '';
-  }
-  return (
-    expenseCategoryOptions.value.find((option) => option.value === item.categoryId)?.label ?? ''
-  );
+  return '';
 }
 
 function buildSummaryRows() {
@@ -587,7 +538,7 @@ async function saveExpenses() {
 
 onMounted(async () => {
   await transactionsStore.init();
-  await loadExpenseCategories();
+  await initCategories();
   await loadExpenseDates();
   await applyRouteDatePrefill();
 });

@@ -44,6 +44,9 @@
             <div class="text-h4 text-weight-bold">
               ₱{{ formatCurrency(summaryTotals.expenses) }}
             </div>
+            <div class="text-caption">
+              Non-remittable: ₱{{ formatCurrency(summaryTotals.nonRemittableExpenses) }}
+            </div>
           </q-card-section>
         </q-card>
       </div>
@@ -53,7 +56,8 @@
             <div class="text-subtitle2">Net Collection</div>
             <div class="text-h4 text-weight-bold">₱{{ formatCurrency(summaryTotals.net) }}</div>
             <div class="text-caption">
-              After National {{ nationalRateLabel }} & District {{ districtRateLabel }}
+              After National {{ nationalRateLabel }}, District {{ districtRateLabel }}, and
+              Non-remittable
             </div>
           </q-card-section>
         </q-card>
@@ -83,6 +87,11 @@
       <template v-slot:body-cell-expenses="props">
         <q-td :props="props" class="text-negative text-weight-bold text-right">
           {{ toPeso(props.row.expenses) }}
+        </q-td>
+      </template>
+      <template v-slot:body-cell-nonRemittableExpenses="props">
+        <q-td :props="props" class="text-deep-orange text-weight-medium text-right">
+          {{ toPeso(props.row.nonRemittableExpenses) }}
         </q-td>
       </template>
       <template v-slot:body-cell-gross="props">
@@ -155,6 +164,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { date as dateUtils, useQuasar, type QTableColumn } from 'quasar';
+import {
+  computeNetCollection,
+  computeRemittanceDeductions,
+} from 'src/services/financial-calculations.service';
 import { useRouter } from 'vue-router';
 import { useSettingsStore } from 'src/stores/settings-store';
 import { useTransactionsStore } from 'src/stores/transactions-store';
@@ -164,6 +177,7 @@ interface YtdTableRow {
   date: string;
   collection: number;
   expenses: number;
+  nonRemittableExpenses: number;
   gross: number;
   national: number;
   district: number;
@@ -180,6 +194,7 @@ const tableRows = ref<YtdTableRow[]>([]);
 const summaryTotalsData = ref({
   collections: 0,
   expenses: 0,
+  nonRemittableExpenses: 0,
 });
 
 const currentYear = String(new Date().getFullYear());
@@ -200,6 +215,12 @@ const columns = computed<QTableColumn<YtdTableRow>[]>(() => [
   { name: 'date', label: 'Date', field: 'date', align: 'left' },
   { name: 'collection', label: 'Collection', field: 'collection', align: 'right' },
   { name: 'expenses', label: 'Expenses', field: 'expenses', align: 'right' },
+  {
+    name: 'nonRemittableExpenses',
+    label: 'Non-remittable',
+    field: 'nonRemittableExpenses',
+    align: 'right',
+  },
   { name: 'gross', label: 'Gross', field: 'gross', align: 'right' },
   {
     name: 'national',
@@ -220,15 +241,29 @@ const columns = computed<QTableColumn<YtdTableRow>[]>(() => [
 const summaryTotals = computed(() => {
   const collections = summaryTotalsData.value.collections;
   const expenses = summaryTotalsData.value.expenses;
+  const nonRemittableExpenses = summaryTotalsData.value.nonRemittableExpenses;
+  const remittableExpenses = expenses - nonRemittableExpenses;
 
-  const gross = collections - expenses;
-  const national = gross * settingsStore.nationalPercent;
-  const district = gross * settingsStore.districtPercent;
-  const net = gross - national - district;
+  const gross = collections - remittableExpenses;
+  const { national, district } = computeRemittanceDeductions(
+    gross,
+    settingsStore.nationalPercent,
+    settingsStore.districtPercent,
+  );
+  const net = computeNetCollection({
+    grossCollection: gross,
+    national,
+    district,
+    nonRemittableExpenses,
+  });
 
   return {
     collections,
     expenses,
+    nonRemittableExpenses,
+    gross,
+    national,
+    district,
     net,
   };
 });
@@ -252,19 +287,29 @@ async function loadYtdSummary(): Promise<void> {
   const totals = await transactionsStore.fetchYtdSummaryTotals(startDate, endDate);
   summaryTotalsData.value.collections = totals.collections;
   summaryTotalsData.value.expenses = totals.expenses;
+  summaryTotalsData.value.nonRemittableExpenses = totals.nonRemittableExpenses;
 }
 
 function mapPaginatedRows(
-  rows: Array<{ date: string; collection: number; expenses: number }>,
+  rows: Array<{ date: string; collection: number; expenses: number; nonRemittableExpenses: number }>,
   page: number,
   rowsPerPage: number,
   total: number,
 ): YtdTableRow[] {
   return rows.map((row, index) => {
-    const gross = row.collection - row.expenses;
-    const national = gross * settingsStore.nationalPercent;
-    const district = gross * settingsStore.districtPercent;
-    const net = gross - national - district;
+    const remittableExpenses = row.expenses - row.nonRemittableExpenses;
+    const gross = row.collection - remittableExpenses;
+    const { national, district } = computeRemittanceDeductions(
+      gross,
+      settingsStore.nationalPercent,
+      settingsStore.districtPercent,
+    );
+    const net = computeNetCollection({
+      grossCollection: gross,
+      national,
+      district,
+      nonRemittableExpenses: row.nonRemittableExpenses,
+    });
     const rowPosition = (page - 1) * rowsPerPage + index;
 
     return {
@@ -272,6 +317,7 @@ function mapPaginatedRows(
       date: row.date,
       collection: row.collection,
       expenses: row.expenses,
+      nonRemittableExpenses: row.nonRemittableExpenses,
       gross,
       national,
       district,

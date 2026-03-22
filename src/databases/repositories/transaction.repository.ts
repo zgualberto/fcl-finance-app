@@ -36,6 +36,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          t.updated_at,
          c.name AS category_name,
          c.transaction_type AS transaction_type,
+         c.non_remittable AS non_remittable,
          c.parent_id,
          pc.name AS parent_name,
          m.name AS member_name
@@ -46,33 +47,6 @@ export class TransactionRepository implements BaseRepository<Transaction> {
        ORDER BY t.date DESC, t.created_at DESC`,
     );
     return res.values as Transaction[];
-  }
-
-  async findById(id: number): Promise<Transaction | null> {
-    const res = await database.query(
-      `SELECT
-         t.id,
-         t.member_id,
-         t.category_id,
-         t.amount,
-         t.description,
-         t.date,
-         t.created_at,
-         t.updated_at,
-         c.name AS category_name,
-         c.transaction_type AS transaction_type,
-         c.parent_id,
-         pc.name AS parent_name,
-         m.name AS member_name
-       FROM transactions t
-       LEFT JOIN categories c ON c.id = t.category_id
-       LEFT JOIN categories pc ON pc.id = c.parent_id
-       LEFT JOIN members m ON m.id = t.member_id
-       WHERE t.id = ?`,
-      [id],
-    );
-    const transactions = res.values as Transaction[];
-    return transactions[0] ?? null;
   }
 
   update(transaction: Partial<Transaction>): void {
@@ -117,6 +91,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          t.updated_at,
          c.name AS category_name,
          c.transaction_type AS transaction_type,
+         c.non_remittable AS non_remittable,
          c.parent_id,
          COALESCE(pc.name, c.name) AS parent_name,
          m.name AS member_name
@@ -166,6 +141,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          t.updated_at,
          c.name AS category_name,
          c.transaction_type AS transaction_type,
+         c.non_remittable AS non_remittable,
          c.parent_id,
          pc.name AS parent_name,
          m.name AS member_name
@@ -202,6 +178,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          t.updated_at,
          c.name AS category_name,
          c.transaction_type AS transaction_type,
+         c.non_remittable AS non_remittable,
          c.parent_id,
          pc.name AS parent_name,
          m.name AS member_name
@@ -224,20 +201,36 @@ export class TransactionRepository implements BaseRepository<Transaction> {
   async getYtdSummaryTotals(
     startDate: string,
     endDate: string,
-  ): Promise<{ collections: number; expenses: number }> {
+  ): Promise<{ collections: number; expenses: number; nonRemittableExpenses: number }> {
     const res = await database.query(
       `SELECT
          COALESCE(SUM(CASE WHEN c.transaction_type = ? THEN t.amount ELSE 0 END), 0) AS collections,
-         COALESCE(SUM(CASE WHEN c.transaction_type = ? THEN t.amount ELSE 0 END), 0) AS expenses
+         COALESCE(SUM(CASE WHEN c.transaction_type = ? THEN t.amount ELSE 0 END), 0) AS expenses,
+         COALESCE(
+           SUM(
+             CASE
+               WHEN c.transaction_type = ? AND c.non_remittable = 1 THEN t.amount
+               ELSE 0
+             END
+           ),
+           0
+         ) AS nonRemittableExpenses
        FROM transactions t
        LEFT JOIN categories c ON c.id = t.category_id
        WHERE t.date >= ? AND t.date <= ?`,
-      [TransactionType.COLLECTIONS, TransactionType.EXPENSES, startDate, endDate],
+      [
+        TransactionType.COLLECTIONS,
+        TransactionType.EXPENSES,
+        TransactionType.EXPENSES,
+        startDate,
+        endDate,
+      ],
     );
 
     return {
       collections: (res.values?.[0]?.collections as number) ?? 0,
       expenses: (res.values?.[0]?.expenses as number) ?? 0,
+      nonRemittableExpenses: (res.values?.[0]?.nonRemittableExpenses as number) ?? 0,
     };
   }
 
@@ -246,14 +239,28 @@ export class TransactionRepository implements BaseRepository<Transaction> {
     endDate: string,
     page: number = 1,
     limit: number = 20,
-  ): Promise<Array<{ date: string; collection: number; expenses: number }>> {
+  ): Promise<Array<{
+    date: string;
+    collection: number;
+    expenses: number;
+    nonRemittableExpenses: number;
+  }>> {
     const offset = (page - 1) * limit;
 
     const res = await database.query(
       `SELECT
          t.date AS date,
          COALESCE(SUM(CASE WHEN c.transaction_type = ? THEN t.amount ELSE 0 END), 0) AS collection,
-         COALESCE(SUM(CASE WHEN c.transaction_type = ? THEN t.amount ELSE 0 END), 0) AS expenses
+         COALESCE(SUM(CASE WHEN c.transaction_type = ? THEN t.amount ELSE 0 END), 0) AS expenses,
+         COALESCE(
+           SUM(
+             CASE
+               WHEN c.transaction_type = ? AND c.non_remittable = 1 THEN t.amount
+               ELSE 0
+             END
+           ),
+           0
+         ) AS nonRemittableExpenses
        FROM transactions t
        LEFT JOIN categories c ON c.id = t.category_id
        WHERE t.date >= ? AND t.date <= ?
@@ -266,6 +273,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
       [
         TransactionType.COLLECTIONS,
         TransactionType.EXPENSES,
+        TransactionType.EXPENSES,
         startDate,
         endDate,
         TransactionType.COLLECTIONS,
@@ -275,7 +283,14 @@ export class TransactionRepository implements BaseRepository<Transaction> {
       ],
     );
 
-    return (res.values as Array<{ date: string; collection: number; expenses: number }>) ?? [];
+    return (
+      res.values as Array<{
+        date: string;
+        collection: number;
+        expenses: number;
+        nonRemittableExpenses: number;
+      }>
+    ) ?? [];
   }
 
   async countYtdDates(startDate: string, endDate: string): Promise<number> {

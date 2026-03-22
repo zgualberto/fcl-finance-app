@@ -150,7 +150,7 @@ export const useTransactionsStore = defineStore('transactions', {
     async fetchYtdSummaryTotals(
       startDate: string,
       endDate: string,
-    ): Promise<{ collections: number; expenses: number }> {
+    ): Promise<{ collections: number; expenses: number; nonRemittableExpenses: number }> {
       if (!this.transactionRepository) {
         await this.init(false);
       }
@@ -160,7 +160,7 @@ export const useTransactionsStore = defineStore('transactions', {
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         this.activityLogService?.logErrActivity(message);
-        return { collections: 0, expenses: 0 };
+        return { collections: 0, expenses: 0, nonRemittableExpenses: 0 };
       }
     },
     async fetchYtdPage(
@@ -169,7 +169,12 @@ export const useTransactionsStore = defineStore('transactions', {
       page: number,
       limit: number = 20,
     ): Promise<{
-      rows: Array<{ date: string; collection: number; expenses: number }>;
+      rows: Array<{
+        date: string;
+        collection: number;
+        expenses: number;
+        nonRemittableExpenses: number;
+      }>;
       total: number;
     }> {
       if (!this.transactionRepository) {

@@ -880,7 +880,6 @@ async function checkForDuplicateCollection(): Promise<boolean> {
 }
 
 onMounted(async () => {
-  await memberStore.init(false);
   await transactionsStore.init();
   await loadOfferingCategories();
   await loadCollectionDates();

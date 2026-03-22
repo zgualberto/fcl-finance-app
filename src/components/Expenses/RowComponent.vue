@@ -1,15 +1,15 @@
 <template>
-  <q-card 
-    bordered 
-    flat 
+  <q-card
+    bordered
+    flat
     class="rounded-borders q-mb-md bg-main"
-    :class="{ 
-      'q-pa-lg': $q.screen.width > $q.screen.height, 
-      'q-pa-md': $q.platform.is.mobile 
+    :class="{
+      'q-pa-lg': $q.screen.width > $q.screen.height,
+      'q-pa-md': $q.platform.is.mobile,
     }"
   >
-    <div 
-      class="row items-start rounded-borders" 
+    <div
+      class="row items-start rounded-borders"
       :class="{ 'q-gutter-sm': $q.screen.width > $q.screen.height }"
     >
       <div class="col-12 col-sm">
@@ -22,12 +22,12 @@
           emit-value
           map-options
           :options="filteredOptions"
-          :loading="isLoading"
+          :loading="isLoading || isSearching"
           dense
           outlined
           use-input
           @filter="categoryFilterFn"
-          :input-debounce="0"
+          :input-debounce="500"
           :rules="[(val) => !!val || 'Please select a category']"
           clearable
           @update:model-value="updateCategoryName"
@@ -91,8 +91,9 @@ const props = defineProps<{
   amount: number;
   remarks: string;
   searchTerm: string;
-  options: CategoryOption[];
-  isLoading: boolean;
+  options?: CategoryOption[];
+  isLoading?: boolean;
+  onSearch?: (keyword: string) => Promise<CategoryOption[]>;
 }>();
 
 const emit = defineEmits<{
@@ -105,6 +106,8 @@ const emit = defineEmits<{
 }>();
 
 const filteredOptions = ref<CategoryOption[]>([]);
+const searchedOptions = ref<CategoryOption[]>([]);
+const isSearching = ref(false);
 
 const localCategoryId = computed({
   get: () => props.categoryId,
@@ -129,7 +132,9 @@ const localSearchTerm = computed({
 watch(
   () => props.options,
   () => {
-    applyFilter(localSearchTerm.value);
+    if (!props.onSearch) {
+      applyFilter(localSearchTerm.value);
+    }
   },
   { immediate: true },
 );
@@ -139,31 +144,54 @@ function updateCategoryName(value: number | null) {
     emit('update:categoryName', '');
     return;
   }
-  const option = props.options.find((entry) => entry.value === value);
+  const allOptions = [...(props.options ?? []), ...searchedOptions.value];
+  const option = allOptions.find((entry) => entry.value === value);
   emit('update:categoryName', option?.label ?? '');
 }
 
 function applyFilter(searchTerm: string) {
   const normalized = searchTerm.trim().toLowerCase();
+  const allOptions = [...(props.options ?? []), ...searchedOptions.value];
   if (!normalized || normalized.length < 3) {
     if (localCategoryId.value == null) {
       filteredOptions.value = [];
       return;
     }
-    const selectedOption = props.options.find((option) => option.value === localCategoryId.value);
+    const selectedOption = allOptions.find((option) => option.value === localCategoryId.value);
     filteredOptions.value = selectedOption ? [selectedOption] : [];
     return;
   }
-  filteredOptions.value = props.options.filter((option) =>
+  filteredOptions.value = allOptions.filter((option) =>
     option.label.toLowerCase().includes(normalized),
   );
 }
 
-function categoryFilterFn(val: string, update: (callback: () => void) => void) {
+async function categoryFilterFn(val: string, update: (callback: () => void) => void) {
   const searchTerm = val.trim();
   localSearchTerm.value = searchTerm;
-  update(() => {
-    applyFilter(searchTerm);
-  });
+
+  if (searchTerm.length < 3) {
+    update(() => {
+      applyFilter(searchTerm);
+    });
+    return;
+  }
+
+  if (props.onSearch) {
+    isSearching.value = true;
+    try {
+      const results = await props.onSearch(searchTerm);
+      searchedOptions.value = results;
+      update(() => {
+        filteredOptions.value = results;
+      });
+    } finally {
+      isSearching.value = false;
+    }
+  } else {
+    update(() => {
+      applyFilter(searchTerm);
+    });
+  }
 }
 </script>

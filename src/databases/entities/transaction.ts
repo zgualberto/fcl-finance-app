@@ -13,4 +13,5 @@ export interface Transaction {
   member_name?: string;
   parent_id?: number | null;
   parent_name?: string;
+  non_remittable?: number;
 }

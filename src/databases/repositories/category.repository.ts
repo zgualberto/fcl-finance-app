@@ -209,6 +209,36 @@ export class CategoryRepository implements BaseRepository<Category> {
     return res.values as Category[];
   }
 
+  async searchByKeyword(
+    keyword: string,
+    transactionType: string,
+    limit: number = 30,
+  ): Promise<Category[]> {
+    const pattern = `%${keyword.toLowerCase()}%`;
+    const res = await database.query(
+      `
+        SELECT
+          c.id,
+          c.name as category_name,
+          c.is_active,
+          c.created_at,
+          c.parent_id,
+          c.non_remittable,
+          COALESCE(c.transaction_type, p.transaction_type) as transaction_type
+        FROM categories c
+        LEFT JOIN categories p ON c.parent_id = p.id
+        WHERE c.parent_id IS NOT NULL
+          AND c.is_active = 1
+          AND (c.transaction_type = ? OR p.transaction_type = ?)
+          AND LOWER(c.name) LIKE ?
+        ORDER BY c.name ASC
+        LIMIT ?
+      `,
+      [transactionType, transactionType, pattern, limit],
+    );
+    return res.values as Category[];
+  }
+
   async countAll(): Promise<number> {
     const res = await database.query('SELECT COUNT(*) AS count FROM categories');
     return (res.values?.[0]?.count as number) ?? 0;

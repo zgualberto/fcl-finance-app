@@ -79,7 +79,9 @@
                     :key="`${item.id}`"
                     class="row justify-between q-my-xs"
                   >
-                    <span style="color: #1565c0">{{ item.category_name }}</span>
+                    <span style="color: #1565c0">
+                      {{ item.category_name }}
+                    </span>
                     <span style="color: #1565c0; font-weight: 500"
                       >₱{{ formatCurrency(item.total) }}</span
                     >
@@ -111,7 +113,18 @@
                     :key="`${item.id}`"
                     class="row justify-between q-mb-xs"
                   >
-                    <span style="color: #b71c1c">{{ item.category_name }}</span>
+                    <span style="color: #b71c1c">
+                      {{ item.category_name }}
+                      <q-badge
+                        v-if="item.non_remittable === 1"
+                        color="deep-orange"
+                        class="q-ml-xs"
+                        rounded
+                        outline
+                      >
+                        Non-remittable
+                      </q-badge>
+                    </span>
                     <span style="color: #b71c1c; font-weight: 500"
                       >₱{{ formatCurrency(item.total) }}</span
                     >
@@ -135,7 +148,7 @@
         <!-- Total Collection Card -->
         <div class="col-12 col-md-6">
           <q-card
-            class="bg-primary text-white rounded-borders"
+            class="bg-primary text-white rounded-borders full-height"
             style="min-height: 100px"
             bordered
             flat
@@ -169,6 +182,9 @@
                   <div class="text-h4" style="font-weight: 700">
                     ₱{{ formatCurrency(summaryTotals.expenses) }}
                   </div>
+                  <div class="text-caption q-mt-xs">
+                    Non-remittable: ₱{{ formatCurrency(summaryTotals.nonRemittableExpenses) }}
+                  </div>
                 </div>
                 <q-icon name="payments" size="36px" class="opacity-40" />
               </div>
@@ -188,7 +204,7 @@
           <div class="row justify-between items-center full-width">
             <div>
               <div class="text-subtitle2 q-mb-sm">GROSS Collection</div>
-              <div class="text-caption q-mb-sm">(Total Collection - Total Expenses)</div>
+              <div class="text-caption q-mb-sm">(Total Collection - Remittable Expenses)</div>
               <div class="text-h4" style="font-weight: 700">
                 ₱{{ formatCurrency(summaryTotals.gross) }}
               </div>
@@ -233,7 +249,7 @@
               <div class="text-subtitle2 q-mb-sm">NET Collection</div>
               <div class="text-caption q-mb-sm">
                 (GROSS - National {{ Math.round(settingsStore.nationalPercent * 100) }}% - District
-                {{ Math.round(settingsStore.districtPercent * 100) }}%)
+                {{ Math.round(settingsStore.districtPercent * 100) }}% - Non-remittable Expenses)
               </div>
               <div class="text-h4" style="font-weight: 700">
                 ₱{{ formatCurrency(summaryTotals.net) }}
@@ -251,6 +267,10 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { date as dateUtils, useQuasar } from 'quasar';
 import { printReportAsPdf } from 'src/services/print.service';
+import {
+  computeNetCollection,
+  computeRemittanceDeductions,
+} from 'src/services/financial-calculations.service';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 import { useSettingsStore } from 'src/stores/settings-store';
 import type { Transaction } from 'src/databases/entities/transaction';
@@ -262,6 +282,7 @@ interface CategoryGroup {
     id: string;
     category_name: string;
     total: number;
+    non_remittable: number;
   }>;
 }
 
@@ -368,6 +389,7 @@ function buildCategoryGroups(transactionType: string): CategoryGroup[] {
           id: `${transactionType}-${parentKey}-${categoryName}`,
           category_name: categoryName,
           total: 0,
+          non_remittable: transaction.non_remittable ?? 0,
         };
         group.items.push(item);
       }
@@ -388,18 +410,34 @@ const summaryTotals = computed(() => {
     .filter((t) => t.transaction_type === 'Expenses')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const gross = collections - expenses;
+  const nonRemittableExpenses = rawTransactions.value
+    .filter((t) => t.transaction_type === 'Expenses' && t.non_remittable === 1)
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const remittableExpenses = expenses - nonRemittableExpenses;
+
+  const gross = collections - remittableExpenses;
 
   const nationalPercentDec = settingsStore.nationalPercent;
   const districtPercentDec = settingsStore.districtPercent;
 
-  const national = gross * nationalPercentDec;
-  const district = gross * districtPercentDec;
-  const net = gross - national - district;
+  const { national, district } = computeRemittanceDeductions(
+    gross,
+    nationalPercentDec,
+    districtPercentDec,
+  );
+  const net = computeNetCollection({
+    grossCollection: gross,
+    national,
+    district,
+    nonRemittableExpenses,
+  });
 
   return {
     collections,
     expenses,
+    remittableExpenses,
+    nonRemittableExpenses,
     gross,
     national,
     district,
@@ -408,7 +446,6 @@ const summaryTotals = computed(() => {
 });
 
 const deductions = computed((): Deduction[] => {
-  const gross = summaryTotals.value.gross;
   const nationalPercentDec = settingsStore.nationalPercent;
   const districtPercentDec = settingsStore.districtPercent;
   const nationalPercent = Math.round(nationalPercentDec * 100);
@@ -419,13 +456,19 @@ const deductions = computed((): Deduction[] => {
       name: `National ${nationalPercent}%`,
       description: `${nationalPercent}% of GROSS Collection`,
       percentage: nationalPercent,
-      amount: gross * nationalPercentDec,
+      amount: summaryTotals.value.national,
     },
     {
       name: `District ${districtPercent}%`,
       description: `${districtPercent}% of GROSS Collection`,
       percentage: districtPercent,
-      amount: gross * districtPercentDec,
+      amount: summaryTotals.value.district,
+    },
+    {
+      name: 'Non-remittable Expenses',
+      description: 'Excluded from GROSS Collection and deducted after remittances',
+      percentage: 0,
+      amount: summaryTotals.value.nonRemittableExpenses,
     },
   ];
 });

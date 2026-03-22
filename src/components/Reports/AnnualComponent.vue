@@ -91,6 +91,9 @@
                   <div class="text-h5" style="font-weight: 700">
                     ₱{{ formatCurrency(summaryTotals.expenses) }}
                   </div>
+                  <div class="text-caption q-mt-xs">
+                    Non-remittable: ₱{{ formatCurrency(summaryTotals.nonRemittableExpenses) }}
+                  </div>
                   <div class="text-caption q-mt-xs">{{ expensePercentage }}% of Collection</div>
                 </div>
                 <q-icon name="trending_down" size="28px" class="opacity-40" />
@@ -110,7 +113,7 @@
                 <div>
                   <div class="text-subtitle2 q-mb-sm">GROSS Collection</div>
                   <div class="text-caption q-mb-sm" style="opacity: 0.8">
-                    (Total Collection - Total Expenses)
+                    (Total Collection - Remittable Expenses)
                   </div>
                   <div class="text-h5" style="font-weight: 700">
                     ₱{{ formatCurrency(summaryTotals.gross) }}
@@ -156,7 +159,8 @@
                   <div class="text-subtitle2 q-mb-sm">NET Collection</div>
                   <div class="text-caption q-mb-sm" style="opacity: 0.8">
                     (GROSS - National {{ Math.round(settingsStore.nationalPercent * 100) }}% -
-                    District {{ Math.round(settingsStore.districtPercent * 100) }}%)
+                    District {{ Math.round(settingsStore.districtPercent * 100) }}% -
+                    Non-remittable Expenses)
                   </div>
                   <div class="text-h5" style="font-weight: 700">
                     ₱{{ formatCurrency(summaryTotals.net) }}
@@ -211,6 +215,10 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { printReportAsPdf } from 'src/services/print.service';
+import {
+  computeNetCollection,
+  computeRemittanceDeductions,
+} from 'src/services/financial-calculations.service';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 import { useSettingsStore } from 'src/stores/settings-store';
 import type { Transaction } from 'src/databases/entities/transaction';
@@ -260,18 +268,34 @@ const summaryTotals = computed(() => {
     .filter((t) => t.transaction_type === 'Expenses')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const gross = collections - expenses;
+  const nonRemittableExpenses = rawTransactions.value
+    .filter((t) => t.transaction_type === 'Expenses' && t.non_remittable === 1)
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const remittableExpenses = expenses - nonRemittableExpenses;
+
+  const gross = collections - remittableExpenses;
 
   const nationalPercentDec = settingsStore.nationalPercent;
   const districtPercentDec = settingsStore.districtPercent;
 
-  const national15 = gross * nationalPercentDec;
-  const district3 = gross * districtPercentDec;
-  const net = gross - national15 - district3;
+  const { national: national15, district: district3 } = computeRemittanceDeductions(
+    gross,
+    nationalPercentDec,
+    districtPercentDec,
+  );
+  const net = computeNetCollection({
+    grossCollection: gross,
+    national: national15,
+    district: district3,
+    nonRemittableExpenses,
+  });
 
   return {
     collections,
     expenses,
+    remittableExpenses,
+    nonRemittableExpenses,
     gross,
     national15,
     district3,
@@ -286,7 +310,6 @@ const expensePercentage = computed(() => {
 });
 
 const deductions = computed((): Deduction[] => {
-  const gross = summaryTotals.value.gross;
   const nationalPercentDec = settingsStore.nationalPercent;
   const districtPercentDec = settingsStore.districtPercent;
   const nationalPercent = Math.round(nationalPercentDec * 100);
@@ -297,13 +320,19 @@ const deductions = computed((): Deduction[] => {
       name: `National ${nationalPercent}%`,
       description: `${nationalPercent}% of GROSS Collection`,
       percentage: nationalPercent,
-      amount: gross * nationalPercentDec,
+      amount: summaryTotals.value.national15,
     },
     {
       name: `District ${districtPercent}%`,
       description: `${districtPercent}% of GROSS Collection`,
       percentage: districtPercent,
-      amount: gross * districtPercentDec,
+      amount: summaryTotals.value.district3,
+    },
+    {
+      name: 'Non-remittable Expenses',
+      description: 'Excluded from GROSS Collection and deducted after remittances',
+      percentage: 0,
+      amount: summaryTotals.value.nonRemittableExpenses,
     },
   ];
 });

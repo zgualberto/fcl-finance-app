@@ -156,6 +156,10 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { printReportAsPdf } from 'src/services/print.service';
+import {
+  computeNetCollection,
+  computeRemittanceDeductions,
+} from 'src/services/financial-calculations.service';
 import type { Transaction } from 'src/databases/entities/transaction';
 import { useAnalyticsStore } from 'src/stores/analytics-store';
 import { useSettingsStore } from 'src/stores/settings-store';
@@ -263,14 +267,29 @@ function buildYearTotals(transactions: Transaction[]) {
     .filter((transaction) => transaction.transaction_type === 'Expenses')
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
-  const gross = collections - expenses;
-  const national = gross * settingsStore.nationalPercent;
-  const district = gross * settingsStore.districtPercent;
-  const net = gross - national - district;
+  const nonRemittableExpenses = transactions
+    .filter((transaction) => transaction.transaction_type === 'Expenses' && transaction.non_remittable === 1)
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+
+  const remittableExpenses = expenses - nonRemittableExpenses;
+
+  const gross = collections - remittableExpenses;
+  const { national, district } = computeRemittanceDeductions(
+    gross,
+    settingsStore.nationalPercent,
+    settingsStore.districtPercent,
+  );
+  const net = computeNetCollection({
+    grossCollection: gross,
+    national,
+    district,
+    nonRemittableExpenses,
+  });
 
   return {
     collections,
     expenses,
+    nonRemittableExpenses,
     gross,
     net,
   };

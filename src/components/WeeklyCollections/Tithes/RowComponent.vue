@@ -1,14 +1,14 @@
 <template>
-  <q-card 
-    bordered 
-    flat 
-    class="rounded-borders q-mb-md bg-main" 
-    :class="{ 
-      'q-pa-lg': $q.screen.width > $q.screen.height, 
-      'q-pa-md': $q.platform.is.mobile 
+  <q-card
+    bordered
+    flat
+    class="rounded-borders q-mb-md bg-main"
+    :class="{
+      'q-pa-lg': $q.screen.width > $q.screen.height,
+      'q-pa-md': $q.platform.is.mobile,
     }"
   >
-    <div 
+    <div
       class="row items-start rounded-borders"
       :class="{ 'q-gutter-sm': $q.screen.width > $q.screen.height }"
     >
@@ -27,7 +27,7 @@
           outlined
           use-input
           @filter="memberFilterFn"
-          :input-debounce="0"
+          :input-debounce="500"
           :rules="[(val) => !!val || 'Please select a member']"
           clearable
           @update:model-value="updateMemberName"

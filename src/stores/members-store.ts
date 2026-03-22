@@ -18,6 +18,15 @@ export const useMembersStore = defineStore('members', {
   },
 
   actions: {
+    async ensureRepository() {
+      if (!this.memberRepository) {
+        await this.init(false);
+      }
+      if (!this.memberRepository) {
+        throw new Error('Repository not initialized');
+      }
+      return this.memberRepository;
+    },
     async init(loadAll = true) {
       this.memberRepository = new MemberRepository();
       if (loadAll) {
@@ -26,9 +35,9 @@ export const useMembersStore = defineStore('members', {
       this.activityLogService = new ActivityLogService();
     },
     async searchMembers(searchTerm: string, limit = 25): Promise<Member[]> {
-      if (!this.memberRepository) throw new Error('Repository not initialized');
       try {
-        return await this.memberRepository.findByNameLike(searchTerm, limit);
+        const repository = await this.ensureRepository();
+        return await repository.findByNameLike(searchTerm, limit);
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         this.activityLogService?.logErrActivity(message);
@@ -36,9 +45,9 @@ export const useMembersStore = defineStore('members', {
       }
     },
     async findDisabledByExactName(name: string): Promise<Member | null> {
-      if (!this.memberRepository) throw new Error('Repository not initialized');
       try {
-        return await this.memberRepository.findDisabledByExactName(name);
+        const repository = await this.ensureRepository();
+        return await repository.findDisabledByExactName(name);
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         this.activityLogService?.logErrActivity(message);
@@ -46,8 +55,10 @@ export const useMembersStore = defineStore('members', {
       }
     },
     enableMember(member: Member): Member | null {
-      if (!this.memberRepository) throw new Error('Repository not initialized');
       if (member.id == null) {
+        return null;
+      }
+      if (!this.memberRepository) {
         return null;
       }
       try {
@@ -74,13 +85,13 @@ export const useMembersStore = defineStore('members', {
       await this.createMember(member);
     },
     async createMember(member: Partial<Member>): Promise<Member | null> {
-      if (!this.memberRepository) throw new Error('Repository not initialized');
       try {
+        const repository = await this.ensureRepository();
         const payload: Member = {
           name: member.name ?? '',
           is_active: member.is_active ?? 1,
         };
-        const id = await this.memberRepository.insert(payload);
+        const id = await repository.insert(payload);
         const createdMember = { ...payload, id } as Member;
         this.members.unshift(createdMember);
         return createdMember;
