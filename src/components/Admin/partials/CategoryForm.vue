@@ -70,36 +70,62 @@
           </div>
         </div>
         <div>
-          <div class="text-body1 text-grey-7 q-mb-xs">Parent Category (Optional)</div>
-          <q-select
-            filled
-            v-model="form.parent_id"
-            v-model:input-value="parentSearchTerm"
-            use-input
-            :input-debounce="0"
-            option-value="value"
-            option-label="label"
-            emit-value
-            map-options
-            :options="filteredParentOptions"
-            @filter="parentFilterFn"
-            clearable
-            dense
-          >
-            <template v-slot:no-option>
-              <q-item>
-                <q-item-section class="text-grey"> No categories found. </q-item-section>
-              </q-item>
-              <q-item v-if="parentSearchTerm.length < 3">
-                <q-item-section class="text-grey">
-                  Type at least 3 characters to search.
-                </q-item-section>
-              </q-item>
-              <q-item v-else>
-                <q-item-section class="text-grey"> No matching categories. </q-item-section>
-              </q-item>
-            </template>
-          </q-select>
+          <div class="row" :class="{ 'no-wrap': $q.screen.width > $q.screen.height }">
+            <div class="col-12 col-sm-6">
+              <div
+                :class="{ 'q-pr-sm': form.parent_id == null && $q.screen.width > $q.screen.height }"
+              >
+                <div class="text-body1 text-grey-7 q-mb-xs">Parent Category (Optional)</div>
+                <q-select
+                  filled
+                  v-model="form.parent_id"
+                  v-model:input-value="parentSearchTerm"
+                  use-input
+                  :input-debounce="0"
+                  option-value="value"
+                  option-label="label"
+                  emit-value
+                  map-options
+                  :options="filteredParentOptions"
+                  @filter="parentFilterFn"
+                  clearable
+                  dense
+                >
+                  <template v-slot:no-option>
+                    <q-item>
+                      <q-item-section class="text-grey"> No categories found. </q-item-section>
+                    </q-item>
+                    <q-item v-if="parentSearchTerm.length < 3">
+                      <q-item-section class="text-grey">
+                        Type at least 3 characters to search.
+                      </q-item-section>
+                    </q-item>
+                    <q-item v-else>
+                      <q-item-section class="text-grey"> No matching categories. </q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
+              </div>
+            </div>
+            <div class="col-12 col-sm-6">
+              <div :class="{ 'q-pl-sm': $q.screen.width > $q.screen.height }">
+                <div class="text-body1 text-grey-7 q-mb-xs">Non-remittable</div>
+                <q-select
+                  filled
+                  v-model="form.non_remittable"
+                  option-value="value"
+                  option-label="label"
+                  emit-value
+                  map-options
+                  :options="[
+                    { label: 'Yes', value: true },
+                    { label: 'No', value: false },
+                  ]"
+                  dense
+                />
+              </div>
+            </div>
+          </div>
         </div>
         <div class="row justify-start col-gap">
           <q-btn
@@ -142,6 +168,7 @@ const form = ref({
   is_active: true,
   transaction_type: '' as string | null,
   parent_id: null as number | null,
+  non_remittable: false,
 });
 
 const parentSearchTerm = ref('');
@@ -205,6 +232,7 @@ watch(
         is_active: cat.is_active == 1 ? true : false,
         transaction_type: cat.transaction_type as string | null,
         parent_id: cat.parent_id as number | null,
+        non_remittable: cat.non_remittable == 1 ? true : false,
       };
     } else {
       resetForm();
@@ -270,6 +298,7 @@ function onSubmit() {
     is_active: form.value.is_active == true ? 1 : 0,
     transaction_type: form.value.transaction_type,
     parent_id: form.value.parent_id,
+    non_remittable: form.value.non_remittable == true ? 1 : 0,
   });
 }
 
@@ -283,6 +312,7 @@ function resetForm() {
     is_active: true,
     transaction_type: '',
     parent_id: null,
+    non_remittable: false,
   };
 }
 </script>

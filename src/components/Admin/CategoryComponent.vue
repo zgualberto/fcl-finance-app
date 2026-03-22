@@ -27,7 +27,7 @@
           </div>
         </div>
 
-        <div v-if="showForm" class="q-mt-md full-width">
+        <div v-if="showForm" ref="formContainerRef" class="q-mt-md full-width">
           <CategoryForm
             v-bind="editingCategory ? { category: editingCategory } : {}"
             @ok="handleFormOk"
@@ -64,6 +64,17 @@
           </q-badge>
         </q-td>
       </template>
+      <template v-slot:body-cell-nonRemittable="props">
+        <q-td :props="props">
+          <q-badge
+            :color="props.row.non_remittable ? 'orange-2' : 'grey-3'"
+            class="q-pa-sm text-black text-weight-bold"
+            rounded
+          >
+            {{ props.row.non_remittable ? 'Yes' : 'No' }}
+          </q-badge>
+        </q-td>
+      </template>
       <template v-slot:body-cell-actions="props">
         <q-td align="center">
           <q-btn
@@ -93,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import { useCategoriesStore } from 'src/stores/categories-store';
 import { useQuasar, type QTableColumn } from 'quasar';
 import type { Category } from 'src/databases/entities/category';
@@ -113,6 +124,7 @@ const columns: QTableColumn[] = [
   { name: 'parentName', label: 'Parent Name', field: 'parent_name', align: 'left' },
   { name: 'isActive', label: 'Status', field: 'is_active', align: 'center' },
   { name: 'transactionType', label: 'Type', field: 'transaction_type', align: 'left' },
+  { name: 'nonRemittable', label: 'Non-remittable', field: 'non_remittable', align: 'center' },
   { name: 'actions', field: 'action', label: 'Actions', align: 'center' },
 ];
 
@@ -127,15 +139,23 @@ const categories = computed(() => categoryStore.categoryList);
 const $q = useQuasar();
 const showForm = ref(false);
 const editingCategory = ref<Category | null>(null);
+const formContainerRef = ref<HTMLElement | null>(null);
 
-const openAddCategoryDialog = () => {
+async function focusForm() {
+  await nextTick();
+  formContainerRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+const openAddCategoryDialog = async () => {
   editingCategory.value = null;
   showForm.value = true;
+  await focusForm();
 };
 
-const openEditCategoryDialog = (category: Category) => {
+const openEditCategoryDialog = async (category: Category) => {
   editingCategory.value = category;
   showForm.value = true;
+  await focusForm();
 };
 
 async function refreshCurrentPage() {

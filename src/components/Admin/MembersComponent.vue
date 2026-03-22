@@ -27,7 +27,7 @@
           </div>
         </div>
 
-        <div v-if="showForm" class="q-mt-md full-width">
+        <div v-if="showForm" ref="formContainerRef" class="q-mt-md full-width">
           <MemberForm
             v-bind="editingMember ? { member: editingMember } : {}"
             @ok="handleFormOk"
@@ -73,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import { useMembersStore } from 'src/stores/members-store';
 import { useQuasar, type QTableColumn } from 'quasar';
 import type { Member } from 'src/databases/entities/member';
@@ -99,15 +99,23 @@ const members = computed(() => membersStore.memberList);
 const $q = useQuasar();
 const showForm = ref(false);
 const editingMember = ref<Member | null>(null);
+const formContainerRef = ref<HTMLElement | null>(null);
 
-const openAddMemberForm = () => {
+async function focusForm() {
+  await nextTick();
+  formContainerRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+const openAddMemberForm = async () => {
   editingMember.value = null;
   showForm.value = true;
+  await focusForm();
 };
 
-const openEditMemberForm = (member: Member) => {
+const openEditMemberForm = async (member: Member) => {
   editingMember.value = member;
   showForm.value = true;
+  await focusForm();
 };
 
 async function refreshCurrentPage() {
