@@ -170,6 +170,7 @@ interface MonthlyBucket {
   monthLabel: string;
   collections: number;
   expenses: number;
+  nonRemittableExpenses: number;
   hasCollections: boolean;
   hasExpenses: boolean;
 }
@@ -232,6 +233,7 @@ function buildMonthlyBuckets(transactions: Transaction[]): MonthlyBucket[] {
     monthLabel: monthLabels[monthIndex]!,
     collections: 0,
     expenses: 0,
+    nonRemittableExpenses: 0,
     hasCollections: false,
     hasExpenses: false,
   }));
@@ -252,6 +254,9 @@ function buildMonthlyBuckets(transactions: Transaction[]): MonthlyBucket[] {
     } else if (transaction.transaction_type === 'Expenses') {
       buckets[monthFromDate]!.expenses += transaction.amount;
       buckets[monthFromDate]!.hasExpenses = true;
+      if (transaction.non_remittable === 1) {
+        buckets[monthFromDate]!.nonRemittableExpenses += transaction.amount;
+      }
     }
   }
 
@@ -268,7 +273,10 @@ function buildYearTotals(transactions: Transaction[]) {
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
   const nonRemittableExpenses = transactions
-    .filter((transaction) => transaction.transaction_type === 'Expenses' && transaction.non_remittable === 1)
+    .filter(
+      (transaction) =>
+        transaction.transaction_type === 'Expenses' && transaction.non_remittable === 1,
+    )
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
   const remittableExpenses = expenses - nonRemittableExpenses;
@@ -333,6 +341,22 @@ function formatCollectionsChange(
   };
 }
 
+function computeMonthlyNet(bucket: MonthlyBucket): number {
+  const remittableExpenses = bucket.expenses - bucket.nonRemittableExpenses;
+  const gross = bucket.collections - remittableExpenses;
+  const { national, district } = computeRemittanceDeductions(
+    gross,
+    settingsStore.nationalPercent,
+    settingsStore.districtPercent,
+  );
+  return computeNetCollection({
+    grossCollection: gross,
+    national,
+    district,
+    nonRemittableExpenses: bucket.nonRemittableExpenses,
+  });
+}
+
 function formatMetricCell(value: number, hasData: boolean): string {
   return hasData ? `₱${formatCurrency(value)}` : '--';
 }
@@ -359,7 +383,7 @@ const monthlyRows = computed((): MonthlyComparisonRow[] => {
     const current = currentYearMonthlyBuckets.value[monthIndex]!;
     const hasBothCollections = previous.hasCollections && current.hasCollections;
     const change = hasBothCollections
-      ? formatCollectionsChange(current.collections, previous.collections)
+      ? formatCollectionsChange(computeMonthlyNet(current), computeMonthlyNet(previous))
       : {
           label: '--',
           className: 'change-pill--neutral',

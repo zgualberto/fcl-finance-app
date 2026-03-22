@@ -105,7 +105,11 @@ const emit = defineEmits<{
   (event: 'remove'): void;
 }>();
 
-const filteredOptions = ref<CategoryOption[]>([]);
+const filteredOptions = ref<CategoryOption[]>(
+  props.categoryId != null && props.categoryName
+    ? [{ value: props.categoryId, label: props.categoryName }]
+    : [],
+);
 const searchedOptions = ref<CategoryOption[]>([]);
 const isSearching = ref(false);
 
@@ -157,7 +161,11 @@ function applyFilter(searchTerm: string) {
       filteredOptions.value = [];
       return;
     }
-    const selectedOption = allOptions.find((option) => option.value === localCategoryId.value);
+    const selectedOption =
+      allOptions.find((option) => option.value === localCategoryId.value) ??
+      (localCategoryId.value != null && props.categoryName
+        ? { value: localCategoryId.value, label: props.categoryName }
+        : null);
     filteredOptions.value = selectedOption ? [selectedOption] : [];
     return;
   }
