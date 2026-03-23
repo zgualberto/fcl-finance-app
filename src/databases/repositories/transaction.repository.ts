@@ -6,19 +6,23 @@ import { TransactionType } from 'src/enums/transaction_type';
 const database = getDatabase();
 
 export class TransactionRepository implements BaseRepository<Transaction> {
+  private buildInsertParams(transaction: Partial<Transaction>): Array<number | string | null> {
+    return [
+      transaction.member_id ?? null,
+      transaction.category_id ?? null,
+      transaction.amount ?? 0,
+      transaction.description ?? '',
+      transaction.date ?? '',
+    ];
+  }
+
   async insert(transaction: Partial<Transaction>): Promise<number> {
     const result = await database.run(
       `INSERT INTO transactions (member_id, category_id, amount, description, date)
        VALUES (?, ?, ?, ?, ?)`
         .replace(/\s+/g, ' ')
         .trim(),
-      [
-        transaction.member_id ?? null,
-        transaction.category_id ?? null,
-        transaction.amount,
-        transaction.description ?? '',
-        transaction.date,
-      ],
+      this.buildInsertParams(transaction),
     );
     return result.changes?.lastId ?? 0;
   }
@@ -76,6 +80,24 @@ export class TransactionRepository implements BaseRepository<Transaction> {
 
   async deleteByDate(date: string): Promise<void> {
     await database.run(`DELETE FROM transactions WHERE date = ?`, [date]);
+  }
+
+  async replaceByDate(date: string, transactions: Partial<Transaction>[]): Promise<void> {
+    const statements = [
+      {
+        statement: `DELETE FROM transactions WHERE date = ?`,
+        values: [date],
+      },
+      ...transactions.map((transaction) => ({
+        statement: `INSERT INTO transactions (member_id, category_id, amount, description, date)
+         VALUES (?, ?, ?, ?, ?)`
+          .replace(/\s+/g, ' ')
+          .trim(),
+        values: this.buildInsertParams(transaction),
+      })),
+    ];
+
+    await database.executeSet(statements, true, 'no');
   }
 
   async findByDateRange(startDate: string, endDate: string): Promise<Transaction[]> {
@@ -239,12 +261,14 @@ export class TransactionRepository implements BaseRepository<Transaction> {
     endDate: string,
     page: number = 1,
     limit: number = 20,
-  ): Promise<Array<{
-    date: string;
-    collection: number;
-    expenses: number;
-    nonRemittableExpenses: number;
-  }>> {
+  ): Promise<
+    Array<{
+      date: string;
+      collection: number;
+      expenses: number;
+      nonRemittableExpenses: number;
+    }>
+  > {
     const offset = (page - 1) * limit;
 
     const res = await database.query(
@@ -284,13 +308,13 @@ export class TransactionRepository implements BaseRepository<Transaction> {
     );
 
     return (
-      res.values as Array<{
+      (res.values as Array<{
         date: string;
         collection: number;
         expenses: number;
         nonRemittableExpenses: number;
-      }>
-    ) ?? [];
+      }>) ?? []
+    );
   }
 
   async countYtdDates(startDate: string, endDate: string): Promise<number> {

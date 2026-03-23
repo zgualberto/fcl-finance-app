@@ -113,9 +113,17 @@ const filteredOptions = ref<CategoryOption[]>(
 const searchedOptions = ref<CategoryOption[]>([]);
 const isSearching = ref(false);
 
+function normalizeCategoryId(value: number | string | null): number | null {
+  if (value == null || value === '') {
+    return null;
+  }
+  const numericValue = Number(value);
+  return Number.isNaN(numericValue) ? null : numericValue;
+}
+
 const localCategoryId = computed({
   get: () => props.categoryId,
-  set: (value) => emit('update:categoryId', value),
+  set: (value) => emit('update:categoryId', normalizeCategoryId(value as number | string | null)),
 });
 
 const localAmount = computed({
@@ -143,13 +151,31 @@ watch(
   { immediate: true },
 );
 
-function updateCategoryName(value: number | null) {
-  if (value == null) {
+watch(
+  () => [props.categoryId, props.categoryName] as const,
+  ([categoryId, categoryName]) => {
+    const normalizedCategoryId = normalizeCategoryId(categoryId);
+    if (normalizedCategoryId == null || !categoryName) {
+      return;
+    }
+
+    const selectedOption = { value: normalizedCategoryId, label: categoryName };
+    const optionsWithoutSelected = filteredOptions.value.filter(
+      (option) => option.value !== normalizedCategoryId,
+    );
+    filteredOptions.value = [selectedOption, ...optionsWithoutSelected];
+  },
+  { immediate: true },
+);
+
+function updateCategoryName(value: number | string | null) {
+  const normalizedValue = normalizeCategoryId(value);
+  if (normalizedValue == null) {
     emit('update:categoryName', '');
     return;
   }
   const allOptions = [...(props.options ?? []), ...searchedOptions.value];
-  const option = allOptions.find((entry) => entry.value === value);
+  const option = allOptions.find((entry) => entry.value === normalizedValue);
   emit('update:categoryName', option?.label ?? '');
 }
 
@@ -157,14 +183,17 @@ function applyFilter(searchTerm: string) {
   const normalized = searchTerm.trim().toLowerCase();
   const allOptions = [...(props.options ?? []), ...searchedOptions.value];
   if (!normalized || normalized.length < 3) {
-    if (localCategoryId.value == null) {
+    const normalizedCategoryId = normalizeCategoryId(
+      localCategoryId.value as number | string | null,
+    );
+    if (normalizedCategoryId == null) {
       filteredOptions.value = [];
       return;
     }
     const selectedOption =
-      allOptions.find((option) => option.value === localCategoryId.value) ??
-      (localCategoryId.value != null && props.categoryName
-        ? { value: localCategoryId.value, label: props.categoryName }
+      allOptions.find((option) => option.value === normalizedCategoryId) ??
+      (normalizedCategoryId != null && props.categoryName
+        ? { value: normalizedCategoryId, label: props.categoryName }
         : null);
     filteredOptions.value = selectedOption ? [selectedOption] : [];
     return;

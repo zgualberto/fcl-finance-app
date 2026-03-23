@@ -519,7 +519,14 @@ async function saveCollection() {
   isSaving.value = true;
   try {
     const transactions = buildTransactions();
-    await transactionsStore.addTransactionsBatch(transactions);
+    if (shouldReplace) {
+      await transactionsStore.replaceTransactionsByDate(
+        formData.value.collectionDate,
+        transactions,
+      );
+    } else {
+      await transactionsStore.addTransactionsBatch(transactions);
+    }
 
     // Refresh available dates after saving
     await loadCollectionDates();
@@ -854,24 +861,7 @@ async function checkForDuplicateCollection(): Promise<boolean> {
       cancel: { label: 'Cancel', flat: true, class: 'bg-blue-1', rounded: true, noCaps: true },
     })
       .onOk(() => {
-        // Delete old transactions for this date
-        try {
-          for (const transaction of existingCollections) {
-            if (transaction.id) {
-              transactionsStore.deleteTransaction(transaction.id);
-            }
-          }
-          resolve(true);
-        } catch (error: unknown) {
-          const message = error instanceof Error ? error.message : String(error);
-          $q.notify({
-            type: 'negative',
-            message: 'Failed to delete old collection. Please try again.',
-            caption: message,
-            position: 'bottom-right',
-          });
-          resolve(false);
-        }
+        resolve(true);
       })
       .onCancel(() => {
         resolve(false);

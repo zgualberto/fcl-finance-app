@@ -46,6 +46,21 @@ export const useTransactionsStore = defineStore('transactions', {
         await this.addTransaction(transaction);
       }
     },
+    async replaceTransactionsByDate(date: string, data: Partial<Transaction>[]): Promise<void> {
+      if (!this.transactionRepository) {
+        await this.init(false);
+      }
+      if (!this.transactionRepository) throw new Error('Repository not initialized');
+
+      try {
+        await this.transactionRepository.replaceByDate(date, data);
+        this.transactions = this.transactions.filter((t) => t.date !== date);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+        throw error;
+      }
+    },
     updateTransaction(transaction: Partial<Transaction>) {
       if (!this.transactionRepository) throw new Error('Repository not initialized');
       try {
