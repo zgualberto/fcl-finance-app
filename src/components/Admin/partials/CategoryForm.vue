@@ -187,13 +187,7 @@ const statusOptions = [
   { label: 'Disable', value: false },
 ];
 
-function getCategoryById(categoryId: number | null): Category | undefined {
-  if (categoryId == null) {
-    return undefined;
-  }
-
-  return categoryStore.categories.find((category) => category.id === categoryId);
-}
+const parentLookupRequestId = ref(0);
 
 function parentFilterFn(val: string, update: (callback: () => void) => void, abort: () => void) {
   const searchTerm = val.trim();
@@ -245,12 +239,17 @@ watch(
 
 watch(
   () => form.value.parent_id,
-  (parentId) => {
+  async (parentId) => {
     if (parentId == null) {
       return;
     }
 
-    const parentCategory = getCategoryById(parentId);
+    const requestId = ++parentLookupRequestId.value;
+    const parentCategory = await categoryStore.fetchParentById(parentId);
+    if (requestId !== parentLookupRequestId.value) {
+      return;
+    }
+
     form.value.transaction_type = parentCategory?.transaction_type ?? '';
   },
 );
