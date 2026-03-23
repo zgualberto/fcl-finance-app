@@ -14,10 +14,25 @@
       @request="onRequest"
     >
       <template v-slot:top>
-        <div class="row full-width">
+        <div class="row full-width items-center q-col-gutter-sm">
           <div class="col">
             <div class="text-h5 text-weight-bold">Category Dashboard</div>
             <div class="text-body1 text-grey-7">Manage collection and expense categories</div>
+          </div>
+          <div class="col-12 col-sm-auto">
+            <q-input
+              v-model="searchTerm"
+              filled
+              dense
+              clearable
+              debounce="300"
+              placeholder="Search categories"
+              style="min-width: 240px"
+            >
+              <template v-slot:prepend>
+                <q-icon name="search" />
+              </template>
+            </q-input>
           </div>
           <div class="col-auto">
             <q-btn color="primary" @click="openAddCategoryDialog" rounded unelevated no-caps>
@@ -104,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useCategoriesStore } from 'src/stores/categories-store';
 import { useQuasar, type QTableColumn } from 'quasar';
 import type { Category } from 'src/databases/entities/category';
@@ -134,12 +149,12 @@ const pagination = ref({
   rowsNumber: 0,
 });
 const loading = ref(false);
-
 const categories = computed(() => categoryStore.categoryList);
 const $q = useQuasar();
 const showForm = ref(false);
 const editingCategory = ref<Category | null>(null);
 const formContainerRef = ref<HTMLElement | null>(null);
+const searchTerm = ref('');
 
 async function focusForm() {
   await nextTick();
@@ -160,10 +175,14 @@ const openEditCategoryDialog = async (category: Category) => {
 
 async function refreshCurrentPage() {
   loading.value = true;
-  const { total } = await categoryStore.fetchPage(
-    pagination.value.page,
-    pagination.value.rowsPerPage,
-  );
+  const keyword = searchTerm.value.trim();
+  const { total } = keyword
+    ? await categoryStore.searchCategories(
+        keyword,
+        pagination.value.page,
+        pagination.value.rowsPerPage,
+      )
+    : await categoryStore.fetchPage(pagination.value.page, pagination.value.rowsPerPage);
   pagination.value.rowsNumber = total;
   loading.value = false;
 }
@@ -171,12 +190,26 @@ async function refreshCurrentPage() {
 async function onRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
   loading.value = true;
   const { page, rowsPerPage } = props.pagination;
-  const { total } = await categoryStore.fetchPage(page, rowsPerPage);
+  const keyword = searchTerm.value.trim();
+  const { total } = keyword
+    ? await categoryStore.searchCategories(keyword, page, rowsPerPage)
+    : await categoryStore.fetchPage(page, rowsPerPage);
   pagination.value.page = page;
   pagination.value.rowsPerPage = rowsPerPage;
   pagination.value.rowsNumber = total;
   loading.value = false;
 }
+
+watch(searchTerm, async (value) => {
+  loading.value = true;
+  pagination.value.page = 1;
+  const keyword = value.trim();
+  const { total } = keyword
+    ? await categoryStore.searchCategories(keyword, 1, pagination.value.rowsPerPage)
+    : await categoryStore.fetchPage(1, pagination.value.rowsPerPage);
+  pagination.value.rowsNumber = total;
+  loading.value = false;
+});
 
 const handleFormOk = async (data: Partial<Category>) => {
   if (editingCategory.value) {

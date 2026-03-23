@@ -154,7 +154,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 import type { Category } from 'src/databases/entities/category';
 import { useCategoriesStore } from 'src/stores/categories-store';
 import { TransactionType } from 'src/enums/transaction_type';
@@ -187,15 +187,6 @@ const statusOptions = [
   { label: 'Disable', value: false },
 ];
 
-const parentOptions = computed(() =>
-  categoryStore.categories
-    .filter((c) => c.id !== undefined)
-    .map((c) => ({
-      value: c.id!,
-      label: c.category_name,
-    })),
-);
-
 function getCategoryById(categoryId: number | null): Category | undefined {
   if (categoryId == null) {
     return undefined;
@@ -204,28 +195,30 @@ function getCategoryById(categoryId: number | null): Category | undefined {
   return categoryStore.categories.find((category) => category.id === categoryId);
 }
 
-function applyParentFilter(searchTerm: string) {
-  const normalized = searchTerm.trim().toLowerCase();
-  if (!normalized || normalized.length < 3) {
-    filteredParentOptions.value = [];
-    return;
-  }
-  filteredParentOptions.value = parentOptions.value.filter((option) =>
-    option.label.toLowerCase().includes(normalized),
-  );
-}
-
-function parentFilterFn(val: string, update: (callback: () => void) => void) {
+function parentFilterFn(val: string, update: (callback: () => void) => void, abort: () => void) {
   const searchTerm = val.trim();
   parentSearchTerm.value = searchTerm;
-  update(() => {
-    applyParentFilter(searchTerm);
-  });
+  if (searchTerm.length < 3) {
+    update(() => {
+      filteredParentOptions.value = [];
+    });
+    return;
+  }
+  categoryStore
+    .searchParentCandidates(searchTerm, props.category?.id)
+    .then((results) => {
+      update(() => {
+        filteredParentOptions.value = results
+          .filter((c) => c.id !== undefined)
+          .map((c) => ({ value: c.id!, label: c.category_name }));
+      });
+    })
+    .catch(() => abort());
 }
 
 watch(
   () => props.category,
-  (cat) => {
+  async (cat) => {
     if (cat) {
       form.value = {
         category_name: cat.category_name,
@@ -239,8 +232,10 @@ watch(
     }
     parentSearchTerm.value = '';
     if (cat?.parent_id != null) {
-      const existing = parentOptions.value.find((opt) => opt.value === cat.parent_id);
-      filteredParentOptions.value = existing ? [existing] : [];
+      const parent = await categoryStore.fetchParentById(cat.parent_id);
+      filteredParentOptions.value = parent?.id
+        ? [{ value: parent.id, label: parent.category_name }]
+        : [];
     } else {
       filteredParentOptions.value = [];
     }

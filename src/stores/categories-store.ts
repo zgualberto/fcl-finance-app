@@ -64,6 +64,55 @@ export const useCategoriesStore = defineStore('categories', {
         return [];
       }
     },
+    async searchParentCandidates(keyword: string, excludeId?: number): Promise<Category[]> {
+      if (!this.categoryRepository) {
+        await this.init(false);
+      }
+      if (!this.categoryRepository) throw new Error('Repository not initialized');
+      try {
+        return await this.categoryRepository.searchParentCandidatesByKeyword(keyword, excludeId);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+        return [];
+      }
+    },
+    async searchCategories(
+      keyword: string,
+      page: number,
+      limit: number,
+    ): Promise<{ rows: Category[]; total: number }> {
+      if (!this.categoryRepository) {
+        await this.init(false);
+      }
+      if (!this.categoryRepository) throw new Error('Repository not initialized');
+      try {
+        const [rows, total] = await Promise.all([
+          this.categoryRepository.searchAllByKeyword(keyword, page, limit),
+          this.categoryRepository.countSearchResults(keyword),
+        ]);
+        this.categories = rows;
+        this.totalCategories = total;
+        return { rows, total };
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+        return { rows: [], total: 0 };
+      }
+    },
+    async fetchParentById(id: number): Promise<Category | null> {
+      if (!this.categoryRepository) {
+        await this.init(false);
+      }
+      if (!this.categoryRepository) throw new Error('Repository not initialized');
+      try {
+        return await this.categoryRepository.findById(id);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+        return null;
+      }
+    },
     async addCategory(data: Partial<Category>): Promise<void> {
       if (!this.categoryRepository) throw new Error('Repository not initialized');
       try {
