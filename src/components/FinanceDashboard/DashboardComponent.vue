@@ -102,6 +102,9 @@
                   <div class="text-h4 text-weight-bold">
                     ₱{{ formatCurrency(summaryTotals.net) }}
                   </div>
+                  <div class="text-caption summary-trend" :class="netComparison.className">
+                    {{ netComparison.label }}
+                  </div>
                   <div class="text-caption">{{ netStatusLabel }}</div>
                 </div>
                 <q-icon :name="netStatusIcon" size="28px" class="opacity-40" />
@@ -388,6 +391,7 @@ function buildYearComparison(
   currentValue: number,
   previousValue: number,
   invertSentiment = false,
+  decimalPlaces = 0,
 ): YearComparison {
   if (!previousYearLabel.value || previousValue === 0) {
     return {
@@ -398,10 +402,11 @@ function buildYearComparison(
   }
 
   const percentageChange = ((currentValue - previousValue) / previousValue) * 100;
-  const roundedChange = Math.round(percentageChange);
-  const sign = roundedChange > 0 ? '+' : '';
-  const isIncrease = roundedChange > 0;
-  const isDecrease = roundedChange < 0;
+  const roundedChange = Number(percentageChange.toFixed(decimalPlaces));
+  const normalizedChange = Object.is(roundedChange, -0) ? 0 : roundedChange;
+  const sign = normalizedChange > 0 ? '+' : '';
+  const isIncrease = normalizedChange > 0;
+  const isDecrease = normalizedChange < 0;
 
   let trendClass = 'summary-trend--neutral';
   if (isIncrease || isDecrease) {
@@ -411,7 +416,7 @@ function buildYearComparison(
 
   return {
     isVisible: true,
-    label: `${sign}${roundedChange}% vs ${previousYearLabel.value}`,
+    label: `${sign}${normalizedChange.toFixed(decimalPlaces)}% vs ${previousYearLabel.value}`,
     className: trendClass,
   };
 }
@@ -422,6 +427,22 @@ const collectionsComparison = computed(() => {
 
 const expensesComparison = computed(() => {
   return buildYearComparison(summaryTotals.value.expenses, previousYearTotals.value.expenses, true);
+});
+
+const netComparison = computed((): YearComparison => {
+  const currentSimpleNet = summaryTotals.value.collections - summaryTotals.value.expenses;
+  const previousSimpleNet =
+    previousYearTotals.value.collections - previousYearTotals.value.expenses;
+
+  if (!previousYearLabel.value || previousSimpleNet === 0) {
+    return {
+      isVisible: true,
+      label: '--',
+      className: 'summary-trend--neutral',
+    };
+  }
+
+  return buildYearComparison(currentSimpleNet, previousSimpleNet, false, 1);
 });
 
 const netStatusLabel = computed(() => {

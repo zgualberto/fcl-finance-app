@@ -341,22 +341,6 @@ function formatCollectionsChange(
   };
 }
 
-function computeMonthlyNet(bucket: MonthlyBucket): number {
-  const remittableExpenses = bucket.expenses - bucket.nonRemittableExpenses;
-  const gross = bucket.collections - remittableExpenses;
-  const { national, district } = computeRemittanceDeductions(
-    gross,
-    settingsStore.nationalPercent,
-    settingsStore.districtPercent,
-  );
-  return computeNetCollection({
-    grossCollection: gross,
-    national,
-    district,
-    nonRemittableExpenses: bucket.nonRemittableExpenses,
-  });
-}
-
 function formatMetricCell(value: number, hasData: boolean): string {
   return hasData ? `₱${formatCurrency(value)}` : '--';
 }
@@ -377,13 +361,21 @@ const currentYearTotals = computed(() => {
   return buildYearTotals(currentYearTransactions.value);
 });
 
+function hasMonthlyData(bucket: MonthlyBucket): boolean {
+  return bucket.hasCollections || bucket.hasExpenses;
+}
+
 const monthlyRows = computed((): MonthlyComparisonRow[] => {
   return monthLabels.map((monthLabel, monthIndex) => {
     const previous = previousYearMonthlyBuckets.value[monthIndex]!;
     const current = currentYearMonthlyBuckets.value[monthIndex]!;
-    const hasBothCollections = previous.hasCollections && current.hasCollections;
-    const change = hasBothCollections
-      ? formatCollectionsChange(computeMonthlyNet(current), computeMonthlyNet(previous))
+    const previousNet = previous.collections - previous.expenses;
+    const currentNet = current.collections - current.expenses;
+    const hasPreviousNet = hasMonthlyData(previous);
+    const hasCurrentNet = hasMonthlyData(current);
+    const hasBothNetData = hasPreviousNet && hasCurrentNet;
+    const change = hasBothNetData
+      ? formatCollectionsChange(currentNet, previousNet)
       : {
           label: '--',
           className: 'change-pill--neutral',

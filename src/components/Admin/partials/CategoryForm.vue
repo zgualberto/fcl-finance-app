@@ -238,7 +238,12 @@ watch(
       resetForm();
     }
     parentSearchTerm.value = '';
-    filteredParentOptions.value = [];
+    if (cat?.parent_id != null) {
+      const existing = parentOptions.value.find((opt) => opt.value === cat.parent_id);
+      filteredParentOptions.value = existing ? [existing] : [];
+    } else {
+      filteredParentOptions.value = [];
+    }
   },
   { immediate: true },
 );
