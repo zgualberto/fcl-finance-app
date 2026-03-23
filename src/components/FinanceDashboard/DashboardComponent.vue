@@ -329,16 +329,16 @@ function formatCurrency(amount: number): string {
   });
 }
 
-const summaryTotals = computed(() => {
-  const collections = rawTransactions.value
+function buildYearTotals(transactions: Transaction[]) {
+  const collections = transactions
     .filter((transaction) => transaction.transaction_type === 'Collections')
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
-  const expenses = rawTransactions.value
+  const expenses = transactions
     .filter((transaction) => transaction.transaction_type === 'Expenses')
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
-  const nonRemittableExpenses = rawTransactions.value
+  const nonRemittableExpenses = transactions
     .filter(
       (transaction) =>
         transaction.transaction_type === 'Expenses' && transaction.non_remittable === 1,
@@ -370,21 +370,14 @@ const summaryTotals = computed(() => {
     district,
     net,
   };
+}
+
+const summaryTotals = computed(() => {
+  return buildYearTotals(rawTransactions.value);
 });
 
 const previousYearTotals = computed(() => {
-  const collections = previousYearTransactions.value
-    .filter((transaction) => transaction.transaction_type === 'Collections')
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-  const expenses = previousYearTransactions.value
-    .filter((transaction) => transaction.transaction_type === 'Expenses')
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-  return {
-    collections,
-    expenses,
-  };
+  return buildYearTotals(previousYearTransactions.value);
 });
 
 function buildYearComparison(
@@ -430,11 +423,10 @@ const expensesComparison = computed(() => {
 });
 
 const netComparison = computed((): YearComparison => {
-  const currentSimpleNet = summaryTotals.value.collections - summaryTotals.value.expenses;
-  const previousSimpleNet =
-    previousYearTotals.value.collections - previousYearTotals.value.expenses;
+  const currentNet = summaryTotals.value.net;
+  const previousNet = previousYearTotals.value.net;
 
-  if (!previousYearLabel.value || previousSimpleNet === 0) {
+  if (!previousYearLabel.value || previousNet === 0) {
     return {
       isVisible: true,
       label: '--',
@@ -442,7 +434,7 @@ const netComparison = computed((): YearComparison => {
     };
   }
 
-  return buildYearComparison(currentSimpleNet, previousSimpleNet, false, 1);
+  return buildYearComparison(currentNet, previousNet, false, 1);
 });
 
 const netStatusLabel = computed(() => {
