@@ -12,6 +12,9 @@
         <div class="col">
           <div class="text-h5 text-weight-bold">Finance Dashboard</div>
           <div class="text-body1 text-grey-7">FCL Church - {{ selectedYear }} overview</div>
+          <div v-if="comparisonCutoffLabel" class="text-caption text-weight-medium">
+            {{ comparisonCutoffLabel }}
+          </div>
         </div>
         <div class="col-auto">
           <div class="row q-col-gutter-sm" v-show="isSharingReport == false">
@@ -318,6 +321,20 @@ const loadReportTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 const expenseCategoryPreviewCount = 4;
 const showAllExpenseCategories = ref(false);
 const expandedParentCategories = ref(new Set<string>());
+const monthLabels = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
 const { selectedYear, yearsOptions, selectedYearNumber, previousYearLabel } =
   storeToRefs(analyticsStore);
@@ -410,6 +427,22 @@ const summaryTotals = computed(() => {
 
 const latestSelectedYearMonthIndex = computed(() => {
   return getLatestTransactionMonthIndex(rawTransactions.value);
+});
+
+const comparisonCutoffLabel = computed(() => {
+  const latestMonthIndex = latestSelectedYearMonthIndex.value;
+
+  if (
+    latestMonthIndex === null ||
+    latestMonthIndex === monthLabels.length - 1 ||
+    !selectedYear.value ||
+    !previousYearLabel.value
+  ) {
+    return '';
+  }
+
+  const cutoffMonthLabel = monthLabels[latestMonthIndex];
+  return `Data shown is from January to ${cutoffMonthLabel} for both years`;
 });
 
 const currentYearComparisonTransactions = computed(() => {
@@ -523,20 +556,6 @@ const netStatusIcon = computed(() => {
 });
 
 const monthlyTotals = computed((): MonthlyTotals[] => {
-  const monthLabels = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
   const buckets = Array.from({ length: 12 }, (_, monthIndex) => ({
     monthIndex,
     monthLabel: monthLabels[monthIndex]!,

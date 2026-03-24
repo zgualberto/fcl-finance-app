@@ -14,6 +14,9 @@
           <div class="text-body1 text-grey-7">
             Annual trend analysis for {{ previousYearLabel }} vs {{ selectedYear }}
           </div>
+          <div v-if="comparisonCutoffLabel" class="text-caption text-weight-medium">
+            {{ comparisonCutoffLabel }}
+          </div>
         </div>
         <div class="col-auto">
           <div class="row q-col-gutter-sm">
@@ -387,6 +390,22 @@ const currentYearMonthlyBuckets = computed(() => {
 
 const latestSelectedYearMonthIndex = computed(() => {
   return getLatestTransactionMonthIndex(currentYearTransactions.value);
+});
+
+const comparisonCutoffLabel = computed(() => {
+  const latestMonthIndex = latestSelectedYearMonthIndex.value;
+
+  if (
+    latestMonthIndex === null ||
+    latestMonthIndex === monthLabels.length - 1 ||
+    !selectedYear.value ||
+    !previousYearLabel.value
+  ) {
+    return '';
+  }
+
+  const cutoffMonthLabel = monthLabels[latestMonthIndex];
+  return `Data shown is from January to ${cutoffMonthLabel} for both years`;
 });
 
 const currentYearComparisonTransactions = computed(() => {
