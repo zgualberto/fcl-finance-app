@@ -329,6 +329,38 @@ function formatCurrency(amount: number): string {
   });
 }
 
+function getLatestTransactionMonthIndex(transactions: Transaction[]): number | null {
+  let latestDate = '';
+
+  for (const transaction of transactions) {
+    if (!transaction.date) {
+      continue;
+    }
+
+    if (transaction.date > latestDate) {
+      latestDate = transaction.date;
+    }
+  }
+
+  if (!latestDate) {
+    return null;
+  }
+
+  const monthFromDate = Number.parseInt(latestDate.slice(5, 7), 10) - 1;
+  if (monthFromDate < 0 || monthFromDate > 11) {
+    return null;
+  }
+
+  return monthFromDate;
+}
+
+function getMonthEndDateString(year: number, monthIndex: number): string {
+  const monthEnd = new Date(year, monthIndex + 1, 0);
+  const month = `${monthEnd.getMonth() + 1}`.padStart(2, '0');
+  const day = `${monthEnd.getDate()}`.padStart(2, '0');
+  return `${monthEnd.getFullYear()}-${month}-${day}`;
+}
+
 function buildYearTotals(transactions: Transaction[]) {
   const collections = transactions
     .filter((transaction) => transaction.transaction_type === 'Collections')
@@ -376,8 +408,44 @@ const summaryTotals = computed(() => {
   return buildYearTotals(rawTransactions.value);
 });
 
+const latestSelectedYearMonthIndex = computed(() => {
+  return getLatestTransactionMonthIndex(rawTransactions.value);
+});
+
+const currentYearComparisonTransactions = computed(() => {
+  const currentYear = selectedYearNumber.value;
+  const latestMonthIndex = latestSelectedYearMonthIndex.value;
+
+  if (!currentYear || latestMonthIndex === null) {
+    return [] as Transaction[];
+  }
+
+  const currentYearCutoffDate = getMonthEndDateString(currentYear, latestMonthIndex);
+  return rawTransactions.value.filter(
+    (transaction) => transaction.date && transaction.date <= currentYearCutoffDate,
+  );
+});
+
+const previousYearComparisonTransactions = computed(() => {
+  const currentYear = selectedYearNumber.value;
+  const latestMonthIndex = latestSelectedYearMonthIndex.value;
+
+  if (!currentYear || latestMonthIndex === null) {
+    return [] as Transaction[];
+  }
+
+  const previousYearCutoffDate = getMonthEndDateString(currentYear - 1, latestMonthIndex);
+  return previousYearTransactions.value.filter(
+    (transaction) => transaction.date && transaction.date <= previousYearCutoffDate,
+  );
+});
+
+const currentYearComparisonTotals = computed(() => {
+  return buildYearTotals(currentYearComparisonTransactions.value);
+});
+
 const previousYearTotals = computed(() => {
-  return buildYearTotals(previousYearTransactions.value);
+  return buildYearTotals(previousYearComparisonTransactions.value);
 });
 
 function buildYearComparison(
@@ -415,15 +483,22 @@ function buildYearComparison(
 }
 
 const collectionsComparison = computed(() => {
-  return buildYearComparison(summaryTotals.value.collections, previousYearTotals.value.collections);
+  return buildYearComparison(
+    currentYearComparisonTotals.value.collections,
+    previousYearTotals.value.collections,
+  );
 });
 
 const expensesComparison = computed(() => {
-  return buildYearComparison(summaryTotals.value.expenses, previousYearTotals.value.expenses, true);
+  return buildYearComparison(
+    currentYearComparisonTotals.value.expenses,
+    previousYearTotals.value.expenses,
+    true,
+  );
 });
 
 const netComparison = computed((): YearComparison => {
-  const currentNet = summaryTotals.value.net;
+  const currentNet = currentYearComparisonTotals.value.net;
   const previousNet = previousYearTotals.value.net;
 
   if (!previousYearLabel.value || previousNet === 0) {

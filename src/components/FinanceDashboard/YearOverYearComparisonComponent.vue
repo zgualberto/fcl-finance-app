@@ -227,6 +227,38 @@ function formatCurrency(amount: number): string {
   });
 }
 
+function getLatestTransactionMonthIndex(transactions: Transaction[]): number | null {
+  let latestDate = '';
+
+  for (const transaction of transactions) {
+    if (!transaction.date) {
+      continue;
+    }
+
+    if (transaction.date > latestDate) {
+      latestDate = transaction.date;
+    }
+  }
+
+  if (!latestDate) {
+    return null;
+  }
+
+  const monthFromDate = Number.parseInt(latestDate.slice(5, 7), 10) - 1;
+  if (monthFromDate < 0 || monthFromDate > 11) {
+    return null;
+  }
+
+  return monthFromDate;
+}
+
+function getMonthEndDateString(year: number, monthIndex: number): string {
+  const monthEnd = new Date(year, monthIndex + 1, 0);
+  const month = `${monthEnd.getMonth() + 1}`.padStart(2, '0');
+  const day = `${monthEnd.getDate()}`.padStart(2, '0');
+  return `${monthEnd.getFullYear()}-${month}-${day}`;
+}
+
 function buildMonthlyBuckets(transactions: Transaction[]): MonthlyBucket[] {
   const buckets = Array.from({ length: 12 }, (_, monthIndex) => ({
     monthIndex,
@@ -346,19 +378,51 @@ function formatMetricCell(value: number, hasData: boolean): string {
 }
 
 const previousYearMonthlyBuckets = computed(() => {
-  return buildMonthlyBuckets(previousYearTransactions.value);
+  return buildMonthlyBuckets(previousYearComparisonTransactions.value);
 });
 
 const currentYearMonthlyBuckets = computed(() => {
-  return buildMonthlyBuckets(currentYearTransactions.value);
+  return buildMonthlyBuckets(currentYearComparisonTransactions.value);
+});
+
+const latestSelectedYearMonthIndex = computed(() => {
+  return getLatestTransactionMonthIndex(currentYearTransactions.value);
+});
+
+const currentYearComparisonTransactions = computed(() => {
+  const currentYear = selectedYearNumber.value;
+  const latestMonthIndex = latestSelectedYearMonthIndex.value;
+
+  if (!currentYear || latestMonthIndex === null) {
+    return [] as Transaction[];
+  }
+
+  const currentYearCutoffDate = getMonthEndDateString(currentYear, latestMonthIndex);
+  return currentYearTransactions.value.filter(
+    (transaction) => transaction.date && transaction.date <= currentYearCutoffDate,
+  );
+});
+
+const previousYearComparisonTransactions = computed(() => {
+  const currentYear = selectedYearNumber.value;
+  const latestMonthIndex = latestSelectedYearMonthIndex.value;
+
+  if (!currentYear || latestMonthIndex === null) {
+    return [] as Transaction[];
+  }
+
+  const previousYearCutoffDate = getMonthEndDateString(currentYear - 1, latestMonthIndex);
+  return previousYearTransactions.value.filter(
+    (transaction) => transaction.date && transaction.date <= previousYearCutoffDate,
+  );
 });
 
 const previousYearTotals = computed(() => {
-  return buildYearTotals(previousYearTransactions.value);
+  return buildYearTotals(previousYearComparisonTransactions.value);
 });
 
 const currentYearTotals = computed(() => {
-  return buildYearTotals(currentYearTransactions.value);
+  return buildYearTotals(currentYearComparisonTransactions.value);
 });
 
 function hasMonthlyData(bucket: MonthlyBucket): boolean {
