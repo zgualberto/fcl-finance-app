@@ -381,11 +381,11 @@ function formatMetricCell(value: number, hasData: boolean): string {
 }
 
 const previousYearMonthlyBuckets = computed(() => {
-  return buildMonthlyBuckets(previousYearComparisonTransactions.value);
+  return buildMonthlyBuckets(previousYearTransactions.value);
 });
 
 const currentYearMonthlyBuckets = computed(() => {
-  return buildMonthlyBuckets(currentYearComparisonTransactions.value);
+  return buildMonthlyBuckets(currentYearTransactions.value);
 });
 
 const latestSelectedYearMonthIndex = computed(() => {
@@ -405,7 +405,7 @@ const comparisonCutoffLabel = computed(() => {
   }
 
   const cutoffMonthLabel = monthLabels[latestMonthIndex];
-  return `Data shown is from January to ${cutoffMonthLabel} for both years`;
+  return `Growth is compared from January to ${cutoffMonthLabel} for both years`;
 });
 
 const currentYearComparisonTransactions = computed(() => {
