@@ -2,6 +2,12 @@ import { defineStore, acceptHMRUpdate } from 'pinia';
 import type { ActivityLog } from 'src/databases/entities/activity-logs';
 import { ActivityLogRepository } from 'src/databases/repositories/activity-log.repository';
 
+export interface ActivityLogFilters {
+  searchText?: string;
+  fromDate?: string;
+  toDate?: string;
+}
+
 export const useActivityLogsStore = defineStore('activityLogs', {
   state: () => ({
     activity_logs: [] as ActivityLog[],
@@ -16,21 +22,40 @@ export const useActivityLogsStore = defineStore('activityLogs', {
   },
 
   actions: {
-    async init() {
+    async init(loadAll = true) {
       this.activityLogRepository = new ActivityLogRepository();
-      await this.fetchPage(1);
+      if (loadAll) {
+        await this.fetchPage(1);
+      }
     },
-    async fetchPage(page: number) {
+    async fetchPage(
+      page: number,
+      limit?: number,
+      filters: ActivityLogFilters = {},
+    ): Promise<{ rows: ActivityLog[]; total: number }> {
       if (!this.activityLogRepository) {
         this.activityLogRepository = new ActivityLogRepository();
       }
+      const effectiveLimit = limit ?? this.limit;
       this.page = page;
+      this.limit = effectiveLimit;
       const [logs, total] = await Promise.all([
-        this.activityLogRepository.findAllWithPagination(this.page, this.limit),
-        this.activityLogRepository.countAll(),
+        this.activityLogRepository.findAllWithPaginationByFilters(
+          this.page,
+          effectiveLimit,
+          filters.searchText,
+          filters.fromDate,
+          filters.toDate,
+        ),
+        this.activityLogRepository.countAllByFilters(
+          filters.searchText,
+          filters.fromDate,
+          filters.toDate,
+        ),
       ]);
       this.activity_logs = logs;
       this.totalLogs = total;
+      return { rows: logs, total };
     },
   },
 });

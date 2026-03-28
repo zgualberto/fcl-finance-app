@@ -51,6 +51,11 @@ export const linksList: EssentialLinkProps[] = [
         icon: 'fa-solid fa-gear',
         routeName: 'admin.settings',
       },
+      {
+        title: 'Activity Logs',
+        icon: 'fa-solid fa-list',
+        routeName: 'admin.activity-logs',
+      },
     ],
   },
   {
