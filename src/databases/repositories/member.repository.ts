@@ -66,4 +66,26 @@ export class MemberRepository implements BaseRepository<Member> {
     const res = await database.query('SELECT COUNT(*) AS count FROM members');
     return (res.values?.[0]?.count as number) ?? 0;
   }
+
+  async searchAllByKeyword(
+    keyword: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<Member[]> {
+    const likeTerm = `%${keyword}%`;
+    const offset = (page - 1) * limit;
+    const res = await database.query(
+      'SELECT * FROM members WHERE name LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      [likeTerm, limit, offset],
+    );
+    return res.values as Member[];
+  }
+
+  async countSearchResults(keyword: string): Promise<number> {
+    const likeTerm = `%${keyword}%`;
+    const res = await database.query('SELECT COUNT(*) AS count FROM members WHERE name LIKE ?', [
+      likeTerm,
+    ]);
+    return (res.values?.[0]?.count as number) ?? 0;
+  }
 }

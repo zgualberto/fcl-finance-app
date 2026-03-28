@@ -14,10 +14,24 @@
       @request="onRequest"
     >
       <template v-slot:top>
-        <div class="row full-width">
+        <div class="row full-width items-center q-col-gutter-sm">
           <div class="col">
             <div class="text-h5 text-weight-bold">Members</div>
             <div class="text-body1 text-grey-7">Manage member list</div>
+          </div>
+          <div class="col-12 col-sm-auto">
+            <q-input
+              v-model="searchTerm"
+              filled
+              dense
+              debounce="300"
+              placeholder="Search members"
+              style="min-width: 240px"
+            >
+              <template v-slot:prepend>
+                <q-icon name="search" />
+              </template>
+            </q-input>
           </div>
           <div class="col-auto">
             <q-btn color="primary" @click="openAddMemberForm" rounded unelevated no-caps>
@@ -73,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useMembersStore } from 'src/stores/members-store';
 import { useQuasar, type QTableColumn } from 'quasar';
 import type { Member } from 'src/databases/entities/member';
@@ -100,6 +114,7 @@ const $q = useQuasar();
 const showForm = ref(false);
 const editingMember = ref<Member | null>(null);
 const formContainerRef = ref<HTMLElement | null>(null);
+const searchTerm = ref('');
 
 async function focusForm() {
   await nextTick();
@@ -120,10 +135,14 @@ const openEditMemberForm = async (member: Member) => {
 
 async function refreshCurrentPage() {
   loading.value = true;
-  const { total } = await membersStore.fetchPage(
-    pagination.value.page,
-    pagination.value.rowsPerPage,
-  );
+  const keyword = searchTerm.value.trim();
+  const { total } = keyword
+    ? await membersStore.searchMembersPage(
+        keyword,
+        pagination.value.page,
+        pagination.value.rowsPerPage,
+      )
+    : await membersStore.fetchPage(pagination.value.page, pagination.value.rowsPerPage);
   pagination.value.rowsNumber = total;
   loading.value = false;
 }
@@ -131,12 +150,26 @@ async function refreshCurrentPage() {
 async function onRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
   loading.value = true;
   const { page, rowsPerPage } = props.pagination;
-  const { total } = await membersStore.fetchPage(page, rowsPerPage);
+  const keyword = searchTerm.value.trim();
+  const { total } = keyword
+    ? await membersStore.searchMembersPage(keyword, page, rowsPerPage)
+    : await membersStore.fetchPage(page, rowsPerPage);
   pagination.value.page = page;
   pagination.value.rowsPerPage = rowsPerPage;
   pagination.value.rowsNumber = total;
   loading.value = false;
 }
+
+watch(searchTerm, async (value) => {
+  loading.value = true;
+  pagination.value.page = 1;
+  const keyword = value.trim();
+  const { total } = keyword
+    ? await membersStore.searchMembersPage(keyword, 1, pagination.value.rowsPerPage)
+    : await membersStore.fetchPage(1, pagination.value.rowsPerPage);
+  pagination.value.rowsNumber = total;
+  loading.value = false;
+});
 
 const handleFormOk = async (data: Partial<Member>) => {
   if (editingMember.value) {

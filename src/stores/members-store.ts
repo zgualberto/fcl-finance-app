@@ -44,6 +44,26 @@ export const useMembersStore = defineStore('members', {
         return [];
       }
     },
+    async searchMembersPage(
+      keyword: string,
+      page: number,
+      limit: number,
+    ): Promise<{ rows: Member[]; total: number }> {
+      try {
+        const repository = await this.ensureRepository();
+        const [rows, total] = await Promise.all([
+          repository.searchAllByKeyword(keyword, page, limit),
+          repository.countSearchResults(keyword),
+        ]);
+        this.members = rows;
+        this.totalMembers = total;
+        return { rows, total };
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+        return { rows: [], total: 0 };
+      }
+    },
     async findDisabledByExactName(name: string): Promise<Member | null> {
       try {
         const repository = await this.ensureRepository();
