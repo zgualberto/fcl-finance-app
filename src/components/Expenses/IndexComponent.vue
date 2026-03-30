@@ -494,7 +494,11 @@ async function saveExpenses() {
   try {
     const transactions = buildTransactions();
     if (shouldReplace) {
-      await transactionsStore.replaceTransactionsByDate(formData.value.expenseDate, transactions);
+      await transactionsStore.replaceTransactionsByDate(
+        formData.value.expenseDate,
+        TransactionType.EXPENSES,
+        transactions,
+      );
     } else {
       await transactionsStore.addTransactionsBatch(transactions);
     }

@@ -522,6 +522,7 @@ async function saveCollection() {
     if (shouldReplace) {
       await transactionsStore.replaceTransactionsByDate(
         formData.value.collectionDate,
+        TransactionType.COLLECTIONS,
         transactions,
       );
     } else {

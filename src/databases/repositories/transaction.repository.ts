@@ -82,11 +82,21 @@ export class TransactionRepository implements BaseRepository<Transaction> {
     await database.run(`DELETE FROM transactions WHERE date = ?`, [date]);
   }
 
-  async replaceByDate(date: string, transactions: Partial<Transaction>[]): Promise<void> {
+  async replaceByDate(
+    date: string,
+    transactionType: TransactionType,
+    transactions: Partial<Transaction>[],
+  ): Promise<void> {
     const statements = [
       {
-        statement: `DELETE FROM transactions WHERE date = ?`,
-        values: [date],
+        statement: `DELETE FROM transactions
+          WHERE date = ?
+            AND category_id IN (
+              SELECT id FROM categories WHERE transaction_type = ?
+            )`
+          .replace(/\s+/g, ' ')
+          .trim(),
+        values: [date, transactionType],
       },
       ...transactions.map((transaction) => ({
         statement: `INSERT INTO transactions (member_id, category_id, amount, description, date)
