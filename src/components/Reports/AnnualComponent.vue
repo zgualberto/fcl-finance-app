@@ -222,6 +222,7 @@ import {
   computeNetCollection,
   computeRemittanceDeductions,
 } from 'src/services/financial-calculations.service';
+import { TransactionType } from 'src/enums/transaction_type';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 import { useSettingsStore } from 'src/stores/settings-store';
 import type { Transaction } from 'src/databases/entities/transaction';
@@ -264,15 +265,15 @@ function formatCurrency(amount: number): string {
 
 const summaryTotals = computed(() => {
   const collections = rawTransactions.value
-    .filter((t) => t.transaction_type === 'Collections')
+    .filter((t) => t.transaction_type === TransactionType.COLLECTIONS)
     .reduce((sum, t) => sum + t.amount, 0);
 
   const expenses = rawTransactions.value
-    .filter((t) => t.transaction_type === 'Expenses')
+    .filter((t) => t.transaction_type === TransactionType.EXPENSES)
     .reduce((sum, t) => sum + t.amount, 0);
 
   const nonRemittableExpenses = rawTransactions.value
-    .filter((t) => t.transaction_type === 'Expenses' && t.non_remittable === 1)
+    .filter((t) => t.transaction_type === TransactionType.EXPENSES && t.non_remittable === 1)
     .reduce((sum, t) => sum + t.amount, 0);
 
   const remittableExpenses = expenses - nonRemittableExpenses;

@@ -57,7 +57,9 @@
       <template v-slot:body-cell-transactionType="props">
         <q-td :props="props">
           <q-badge
-            :color="props.row.transaction_type === 'Collections' ? 'blue-2' : 'orange-2'"
+            :color="
+              props.row.transaction_type === TransactionType.COLLECTIONS ? 'blue-2' : 'orange-2'
+            "
             class="q-pa-sm rounded-border text-black text-weight-bold"
             v-if="props.row.transaction_type"
             rounded
@@ -130,6 +132,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useCategoriesStore } from 'src/stores/categories-store';
 import { date as dateUtils, useQuasar, type QTableColumn } from 'quasar';
 import type { Category } from 'src/databases/entities/category';
+import { TransactionType } from 'src/enums/transaction_type';
 import CategoryForm from './partials/CategoryForm.vue';
 
 const categoryStore = useCategoriesStore();

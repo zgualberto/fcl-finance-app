@@ -271,6 +271,7 @@ import {
   computeNetCollection,
   computeRemittanceDeductions,
 } from 'src/services/financial-calculations.service';
+import { TransactionType } from 'src/enums/transaction_type';
 import type { Transaction } from 'src/databases/entities/transaction';
 import { useAnalyticsStore } from 'src/stores/analytics-store';
 import { useSettingsStore } from 'src/stores/settings-store';
@@ -386,17 +387,18 @@ function getMonthEndDateString(year: number, monthIndex: number): string {
 
 function buildYearTotals(transactions: Transaction[]) {
   const collections = transactions
-    .filter((transaction) => transaction.transaction_type === 'Collections')
+    .filter((transaction) => transaction.transaction_type === TransactionType.COLLECTIONS)
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
   const expenses = transactions
-    .filter((transaction) => transaction.transaction_type === 'Expenses')
+    .filter((transaction) => transaction.transaction_type === TransactionType.EXPENSES)
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
   const nonRemittableExpenses = transactions
     .filter(
       (transaction) =>
-        transaction.transaction_type === 'Expenses' && transaction.non_remittable === 1,
+        transaction.transaction_type === TransactionType.EXPENSES &&
+        transaction.non_remittable === 1,
     )
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
@@ -579,9 +581,9 @@ const monthlyTotals = computed((): MonthlyTotals[] => {
       continue;
     }
 
-    if (transaction.transaction_type === 'Collections') {
+    if (transaction.transaction_type === TransactionType.COLLECTIONS) {
       buckets[monthFromDate]!.collections += transaction.amount;
-    } else if (transaction.transaction_type === 'Expenses') {
+    } else if (transaction.transaction_type === TransactionType.EXPENSES) {
       buckets[monthFromDate]!.expenses += transaction.amount;
     }
   }
@@ -680,7 +682,7 @@ const monthlyBarChartOptions = computed(
 
 const expenseRatioByCategory = computed((): ExpenseParentItem[] => {
   const expenseTransactions = rawTransactions.value.filter(
-    (transaction) => transaction.transaction_type === 'Expenses',
+    (transaction) => transaction.transaction_type === TransactionType.EXPENSES,
   );
 
   const totalExpense = expenseTransactions.reduce(
