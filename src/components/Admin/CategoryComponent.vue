@@ -89,6 +89,14 @@
           </q-badge>
         </q-td>
       </template>
+      <template v-slot:body-cell-effectiveDate="props">
+        <q-td :props="props">
+          <span v-if="props.row.effective_date">
+            {{ dateUtils.formatDate(props.row.effective_date, 'MMM D, YYYY') }}
+          </span>
+          <span v-else class="text-italic">Not set</span>
+        </q-td>
+      </template>
       <template v-slot:body-cell-actions="props">
         <q-td align="center">
           <q-btn
@@ -120,7 +128,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useCategoriesStore } from 'src/stores/categories-store';
-import { useQuasar, type QTableColumn } from 'quasar';
+import { date as dateUtils, useQuasar, type QTableColumn } from 'quasar';
 import type { Category } from 'src/databases/entities/category';
 import CategoryForm from './partials/CategoryForm.vue';
 
@@ -139,6 +147,12 @@ const columns: QTableColumn[] = [
   { name: 'isActive', label: 'Status', field: 'is_active', align: 'center' },
   { name: 'transactionType', label: 'Type', field: 'transaction_type', align: 'left' },
   { name: 'nonRemittable', label: 'Non-remittable', field: 'non_remittable', align: 'center' },
+  {
+    name: 'effectiveDate',
+    label: 'Effective Date',
+    field: 'effective_date',
+    align: 'left',
+  },
   { name: 'actions', field: 'action', label: 'Actions', align: 'center' },
 ];
 

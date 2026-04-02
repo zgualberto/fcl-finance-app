@@ -135,7 +135,7 @@
             </div>
           </div>
 
-          <q-btn type="submit" label="Save Expenses" color="negative" class="full-width" no-caps />
+          <q-btn type="submit" label="Save Expenses" color="positive" class="full-width" no-caps />
         </section>
       </q-form>
 

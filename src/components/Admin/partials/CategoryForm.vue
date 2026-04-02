@@ -25,12 +25,17 @@
       >
         <div>
           <div class="text-body1 text-grey-7 q-mb-xs">Category Name</div>
-          <q-input v-model="form.category_name" filled required dense />
+          <q-input
+            v-model="form.category_name"
+            filled
+            dense
+            :rules="[(val) => !!val || 'This field is required']"
+          />
         </div>
         <div class="row" :class="{ 'no-wrap': $q.screen.width > $q.screen.height }">
           <div class="col-12 col-sm-6">
             <div
-              :class="{ 'q-pr-sm': form.parent_id == null && $q.screen.width > $q.screen.height }"
+              :class="{ 'q-pr-md': form.parent_id == null && $q.screen.width > $q.screen.height }"
             >
               <div class="text-body1 text-grey-7 q-mb-xs">Status</div>
               <q-select
@@ -46,69 +51,65 @@
             </div>
           </div>
           <div class="col-12 col-sm-6">
-            <div :class="{ 'q-pl-sm': $q.screen.width > $q.screen.height }">
-              <div class="text-body1 text-grey-7 q-mb-xs">Transaction Type</div>
+            <div class="text-body1 text-grey-7 q-mb-xs">Transaction Type</div>
+            <q-select
+              v-model="form.transaction_type"
+              option-value="value"
+              option-label="label"
+              emit-value
+              map-options
+              filled
+              required
+              :options="transactionTypeOptions"
+              dense
+              :rules="[
+                (val) =>
+                  form.parent_id !== null ||
+                  !!val ||
+                  'Transaction type is required for parent categories',
+              ]"
+              :disable="form.parent_id !== null"
+            />
+          </div>
+        </div>
+        <div class="q-mb-lg">
+          <div class="row q-mb-lg" :class="{ 'no-wrap': $q.screen.width > $q.screen.height }">
+            <div class="col-12">
+              <div class="text-body1 text-grey-7 q-mb-xs">Parent Category (Optional)</div>
               <q-select
-                v-model="form.transaction_type"
+                filled
+                v-model="form.parent_id"
+                v-model:input-value="parentSearchTerm"
+                use-input
+                :input-debounce="0"
                 option-value="value"
                 option-label="label"
                 emit-value
                 map-options
-                filled
-                required
-                :options="transactionTypeOptions"
+                :options="filteredParentOptions"
+                @filter="parentFilterFn"
+                clearable
                 dense
-                :rules="[
-                  (val) =>
-                    form.parent_id !== null ||
-                    !!val ||
-                    'Transaction type is required for parent categories',
-                ]"
-                :disable="form.parent_id !== null"
-              />
+              >
+                <template v-slot:no-option>
+                  <q-item>
+                    <q-item-section class="text-grey"> No categories found. </q-item-section>
+                  </q-item>
+                  <q-item v-if="parentSearchTerm.length < 3">
+                    <q-item-section class="text-grey">
+                      Type at least 3 characters to search.
+                    </q-item-section>
+                  </q-item>
+                  <q-item v-else>
+                    <q-item-section class="text-grey"> No matching categories. </q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
             </div>
           </div>
-        </div>
-        <div>
-          <div class="row" :class="{ 'no-wrap': $q.screen.width > $q.screen.height }">
+          <div class="row">
             <div class="col-12 col-sm-6">
-              <div
-                :class="{ 'q-pr-sm': form.parent_id == null && $q.screen.width > $q.screen.height }"
-              >
-                <div class="text-body1 text-grey-7 q-mb-xs">Parent Category (Optional)</div>
-                <q-select
-                  filled
-                  v-model="form.parent_id"
-                  v-model:input-value="parentSearchTerm"
-                  use-input
-                  :input-debounce="0"
-                  option-value="value"
-                  option-label="label"
-                  emit-value
-                  map-options
-                  :options="filteredParentOptions"
-                  @filter="parentFilterFn"
-                  clearable
-                  dense
-                >
-                  <template v-slot:no-option>
-                    <q-item>
-                      <q-item-section class="text-grey"> No categories found. </q-item-section>
-                    </q-item>
-                    <q-item v-if="parentSearchTerm.length < 3">
-                      <q-item-section class="text-grey">
-                        Type at least 3 characters to search.
-                      </q-item-section>
-                    </q-item>
-                    <q-item v-else>
-                      <q-item-section class="text-grey"> No matching categories. </q-item-section>
-                    </q-item>
-                  </template>
-                </q-select>
-              </div>
-            </div>
-            <div class="col-12 col-sm-6">
-              <div :class="{ 'q-pl-sm': $q.screen.width > $q.screen.height }">
+              <div :class="{ 'q-pr-md': $q.screen.width > $q.screen.height }">
                 <div class="text-body1 text-grey-7 q-mb-xs">Non-remittable</div>
                 <q-select
                   filled
@@ -124,6 +125,10 @@
                   dense
                 />
               </div>
+            </div>
+            <div class="col-12 col-sm-6">
+              <div class="text-body1 text-grey-7 q-mb-xs">Effective Date (Optional)</div>
+              <q-input filled v-model="form.effective_date" type="date" clearable dense />
             </div>
           </div>
         </div>
@@ -158,10 +163,24 @@ import { ref, watch } from 'vue';
 import type { Category } from 'src/databases/entities/category';
 import { useCategoriesStore } from 'src/stores/categories-store';
 import { TransactionType } from 'src/enums/transaction_type';
-import { useQuasar } from 'quasar';
+import { date as dateUtils, useQuasar } from 'quasar';
 
 const props = defineProps<{ category?: Category }>();
 const emit = defineEmits(['ok', 'cancel']);
+
+const todayDate = () => dateUtils.formatDate(new Date(), 'YYYY-MM-DD');
+
+function normalizeDateInput(value: Category['effective_date'] | string): string | null {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === 'string') {
+    return value.substring(0, 10);
+  }
+
+  return dateUtils.formatDate(value, 'YYYY-MM-DD');
+}
 
 const form = ref({
   category_name: '',
@@ -169,6 +188,7 @@ const form = ref({
   transaction_type: '' as string | null,
   parent_id: null as number | null,
   non_remittable: false,
+  effective_date: todayDate() as string | null,
 });
 
 const parentSearchTerm = ref('');
@@ -220,6 +240,7 @@ watch(
         transaction_type: cat.transaction_type as string | null,
         parent_id: cat.parent_id as number | null,
         non_remittable: cat.non_remittable == 1 ? true : false,
+        effective_date: normalizeDateInput(cat.effective_date),
       };
     } else {
       resetForm();
@@ -298,6 +319,7 @@ function onSubmit() {
     transaction_type: form.value.transaction_type,
     parent_id: form.value.parent_id,
     non_remittable: form.value.non_remittable == true ? 1 : 0,
+    effective_date: form.value.effective_date || null,
   });
 }
 
@@ -312,6 +334,7 @@ function resetForm() {
     transaction_type: '',
     parent_id: null,
     non_remittable: false,
+    effective_date: todayDate(),
   };
 }
 </script>

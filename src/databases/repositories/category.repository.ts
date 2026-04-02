@@ -7,13 +7,14 @@ const database = getDatabase();
 export class CategoryRepository implements BaseRepository<Category> {
   async insert(category: Partial<Category>): Promise<number> {
     const result = await database.run(
-      `INSERT INTO categories (name, is_active, parent_id, transaction_type, non_remittable) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO categories (name, is_active, parent_id, transaction_type, non_remittable, effective_date) VALUES (?, ?, ?, ?, ?, ?)`,
       [
         category.category_name,
         category.is_active ? 1 : 0,
         category.parent_id,
         category.transaction_type,
         category.non_remittable ? 1 : 0,
+        category.effective_date ?? null,
       ],
     );
     return result.changes?.lastId ?? 0;
@@ -28,6 +29,7 @@ export class CategoryRepository implements BaseRepository<Category> {
         created_at,
         parent_id,
         non_remittable,
+        effective_date,
         transaction_type
       FROM categories
       ORDER BY created_at DESC
@@ -45,6 +47,7 @@ export class CategoryRepository implements BaseRepository<Category> {
           created_at,
           parent_id,
           non_remittable,
+          effective_date,
           transaction_type
         FROM categories
         WHERE id = ?
@@ -71,6 +74,7 @@ export class CategoryRepository implements BaseRepository<Category> {
           created_at,
           parent_id,
           non_remittable,
+          effective_date,
           transaction_type
         FROM categories
         WHERE LOWER(name) IN (${placeholders})
@@ -89,7 +93,8 @@ export class CategoryRepository implements BaseRepository<Category> {
           is_active = ?,
           parent_id = ?,
           transaction_type = ?,
-          non_remittable = COALESCE(?, non_remittable)
+          non_remittable = COALESCE(?, non_remittable),
+          effective_date = ?
         WHERE id = ?
       `,
       [
@@ -98,6 +103,7 @@ export class CategoryRepository implements BaseRepository<Category> {
         member.parent_id,
         member.transaction_type,
         member.non_remittable == null ? null : member.non_remittable ? 1 : 0,
+        member.effective_date ?? null,
         member.id,
       ],
     );
@@ -119,6 +125,7 @@ export class CategoryRepository implements BaseRepository<Category> {
             c.is_active,
             c.transaction_type,
             c.non_remittable,
+            c.effective_date,
             NULL AS parent_name,
             c.name AS path
           FROM categories c
@@ -134,6 +141,7 @@ export class CategoryRepository implements BaseRepository<Category> {
             child.is_active,
             parent.transaction_type,
             child.non_remittable,
+            child.effective_date,
             parent.name AS parent_name,
             ct.path || ' / ' || child.name AS path
           FROM categories child
@@ -147,6 +155,7 @@ export class CategoryRepository implements BaseRepository<Category> {
           is_active,
           transaction_type,
           non_remittable,
+          effective_date,
           parent_name,
           path
         FROM category_tree
@@ -171,6 +180,7 @@ export class CategoryRepository implements BaseRepository<Category> {
             c.is_active,
             c.transaction_type,
             c.non_remittable,
+            c.effective_date,
             NULL AS parent_name,
             c.name AS path
           FROM categories c
@@ -185,6 +195,7 @@ export class CategoryRepository implements BaseRepository<Category> {
             child.is_active,
             child.transaction_type,
             child.non_remittable,
+            child.effective_date,
             parent.name AS parent_name,
             ct.path || ' / ' || child.name AS path
           FROM categories child
@@ -198,6 +209,7 @@ export class CategoryRepository implements BaseRepository<Category> {
           is_active,
           transaction_type,
           non_remittable,
+          effective_date,
           parent_name,
           path
         FROM category_tree
@@ -292,6 +304,7 @@ export class CategoryRepository implements BaseRepository<Category> {
             c.is_active,
             c.transaction_type,
             c.non_remittable,
+            c.effective_date,
             NULL AS parent_name,
             c.name AS path
           FROM categories c
@@ -306,6 +319,7 @@ export class CategoryRepository implements BaseRepository<Category> {
             child.is_active,
             child.transaction_type,
             child.non_remittable,
+            child.effective_date,
             parent.name AS parent_name,
             ct.path || ' / ' || child.name AS path
           FROM categories child
@@ -319,6 +333,7 @@ export class CategoryRepository implements BaseRepository<Category> {
           is_active,
           transaction_type,
           non_remittable,
+          effective_date,
           parent_name,
           path
         FROM category_tree
