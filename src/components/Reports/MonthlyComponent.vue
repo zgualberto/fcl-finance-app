@@ -50,12 +50,13 @@
             label="Download Report"
             unelevated
             rounded
-            @click="shareReportPdf"
             :loading="isSharingReport"
             :disable="!rawTransactions.length || isLoading"
             class="report-filter-button"
             no-caps
-          />
+          >
+            <ReportDownloadMenu @download-pdf="shareReportPdf" @download-png="shareReportPng" />
+          </q-btn>
         </div>
       </q-card>
 
@@ -264,9 +265,11 @@
 </template>
 
 <script setup lang="ts">
+import ReportDownloadMenu from '../ReportDownloadMenu.vue';
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { date as dateUtils, useQuasar } from 'quasar';
-import { printReportAsPdf } from 'src/services/print.service';
+import { printReportAsPdf, printReportAsPng } from 'src/services/print.service';
 import {
   computeNetCollection,
   computeRemittanceDeductions,
@@ -565,6 +568,70 @@ async function shareReportPdf() {
     $q.notify({
       type: 'negative',
       message: `Failed to export report PDF. ${errorMessage}`,
+      position: 'bottom-right',
+      timeout: 0,
+      closeBtn: true,
+    });
+  } finally {
+    isSharingReport.value = false;
+  }
+}
+
+async function shareReportPng() {
+  if (!rawTransactions.value.length) {
+    $q.notify({
+      type: 'info',
+      message: 'No report data available to export.',
+      position: 'bottom-right',
+    });
+    return;
+  }
+
+  if (!reportRef.value) {
+    $q.notify({
+      type: 'negative',
+      message: 'Report content is not ready to export yet.',
+      position: 'bottom-right',
+    });
+    return;
+  }
+
+  const selectedDateValue = selectedDate.value;
+  if (!selectedDateValue) {
+    $q.notify({
+      type: 'info',
+      message: 'Please select a month and year to export.',
+      position: 'bottom-right',
+    });
+    return;
+  }
+
+  if (isSharingReport.value) {
+    return;
+  }
+
+  isSharingReport.value = true;
+  try {
+    await nextTick();
+
+    await printReportAsPng({
+      reportElement: reportRef.value,
+      selectedMonth: dateUtils.formatDate(selectedDateValue + '-01', 'YYYY-MM'),
+      shareTitle: 'Monthly Financial Report (PNG)',
+      shareText: `Monthly Financial Report PNG for ${formatMonthYear(selectedDateValue)}`,
+      dialogTitle: 'Share or Save Report',
+    });
+
+    $q.notify({
+      type: 'positive',
+      message: 'Report PNG is ready to share or save.',
+      position: 'bottom-right',
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    $q.notify({
+      type: 'negative',
+      message: `Failed to export report PNG. ${errorMessage}`,
       position: 'bottom-right',
       timeout: 0,
       closeBtn: true,

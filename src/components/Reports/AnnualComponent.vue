@@ -43,12 +43,13 @@
               label="Download"
               unelevated
               rounded
-              @click="shareReportPdf"
               :loading="isSharingReport"
               :disable="!rawTransactions.length || isLoading"
               class="annual-download-button"
               no-caps
-            />
+            >
+              <ReportDownloadMenu @download-pdf="shareReportPdf" @download-png="shareReportPng" />
+            </q-btn>
           </div>
         </q-card>
       </div>
@@ -159,8 +160,8 @@
                   <div class="text-subtitle2 q-mb-sm">NET Collection</div>
                   <div class="text-caption q-mb-sm" style="opacity: 0.8">
                     (GROSS - National {{ Math.round(settingsStore.nationalPercent * 100) }}% -
-                    District {{ Math.round(settingsStore.districtPercent * 100) }}% -
-                    Non-remittable Expenses)
+                    District {{ Math.round(settingsStore.districtPercent * 100) }}% - Non-remittable
+                    Expenses)
                   </div>
                   <div class="text-h5" style="font-weight: 700">
                     ₱{{ formatCurrency(summaryTotals.net) }}
@@ -212,9 +213,11 @@
 </template>
 
 <script setup lang="ts">
+import ReportDownloadMenu from '../ReportDownloadMenu.vue';
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
-import { printReportAsPdf } from 'src/services/print.service';
+import { printReportAsPdf, printReportAsPng } from 'src/services/print.service';
 import {
   computeNetCollection,
   computeRemittanceDeductions,
@@ -550,6 +553,69 @@ async function shareReportPdf() {
     $q.notify({
       type: 'negative',
       message: `Failed to export report PDF. ${errorMessage}`,
+      position: 'bottom-right',
+      timeout: 0,
+      closeBtn: true,
+    });
+  } finally {
+    isSharingReport.value = false;
+  }
+}
+
+async function shareReportPng() {
+  if (!rawTransactions.value.length) {
+    $q.notify({
+      type: 'info',
+      message: 'No report data available to export.',
+      position: 'bottom-right',
+    });
+    return;
+  }
+
+  if (!reportRef.value) {
+    $q.notify({
+      type: 'negative',
+      message: 'Report content is not ready to export yet.',
+      position: 'bottom-right',
+    });
+    return;
+  }
+
+  if (!selectedYear.value) {
+    $q.notify({
+      type: 'info',
+      message: 'Please select a year to export.',
+      position: 'bottom-right',
+    });
+    return;
+  }
+
+  if (isSharingReport.value) {
+    return;
+  }
+
+  isSharingReport.value = true;
+  try {
+    await nextTick();
+
+    await printReportAsPng({
+      reportElement: reportRef.value,
+      selectedMonth: `${selectedYear.value}-01`,
+      shareTitle: 'Annual Financial Report (PNG)',
+      shareText: `Annual Financial Report PNG for ${selectedYear.value}`,
+      dialogTitle: 'Share or Save Report',
+    });
+
+    $q.notify({
+      type: 'positive',
+      message: 'Report PNG is ready to share or save.',
+      position: 'bottom-right',
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    $q.notify({
+      type: 'negative',
+      message: `Failed to export report PNG. ${errorMessage}`,
       position: 'bottom-right',
       timeout: 0,
       closeBtn: true,

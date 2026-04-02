@@ -81,7 +81,7 @@
       <template v-slot:body-cell-nonRemittable="props">
         <q-td :props="props">
           <q-badge
-            :color="props.row.non_remittable ? 'orange-2' : 'grey-3'"
+            :color="props.row.non_remittable ? 'blue-2' : 'grey-3'"
             class="q-pa-sm text-black text-weight-bold"
             rounded
           >

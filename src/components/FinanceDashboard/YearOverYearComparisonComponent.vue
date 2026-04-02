@@ -31,8 +31,9 @@
                 no-caps
                 :loading="isSharingReport"
                 :disable="isLoading || !hasAnyData"
-                @click="shareReportPdf"
-              />
+              >
+                <ReportDownloadMenu @download-pdf="shareReportPdf" @download-png="shareReportPng" />
+              </q-btn>
             </div>
           </div>
         </div>
@@ -155,10 +156,12 @@
 </template>
 
 <script lang="ts" setup>
+import ReportDownloadMenu from '../ReportDownloadMenu.vue';
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useQuasar, type QTableColumn } from 'quasar';
-import { printReportAsPdf } from 'src/services/print.service';
+import { printReportAsPdf, printReportAsPng } from 'src/services/print.service';
 import {
   computeNetCollection,
   computeRemittanceDeductions,
@@ -619,6 +622,69 @@ async function shareReportPdf(): Promise<void> {
     $q.notify({
       type: 'negative',
       message: `Failed to export comparison PDF. ${errorMessage}`,
+      position: 'bottom-right',
+      timeout: 0,
+      closeBtn: true,
+    });
+  } finally {
+    isSharingReport.value = false;
+  }
+}
+
+async function shareReportPng(): Promise<void> {
+  if (!hasAnyData.value) {
+    $q.notify({
+      type: 'info',
+      message: 'No comparison data available to export.',
+      position: 'bottom-right',
+    });
+    return;
+  }
+
+  if (!reportRef.value) {
+    $q.notify({
+      type: 'negative',
+      message: 'Comparison content is not ready to export yet.',
+      position: 'bottom-right',
+    });
+    return;
+  }
+
+  if (!selectedYear.value) {
+    $q.notify({
+      type: 'info',
+      message: 'Please select a year to export.',
+      position: 'bottom-right',
+    });
+    return;
+  }
+
+  if (isSharingReport.value) {
+    return;
+  }
+
+  isSharingReport.value = true;
+  try {
+    await nextTick();
+
+    await printReportAsPng({
+      reportElement: reportRef.value,
+      selectedMonth: `${selectedYear.value}-01`,
+      shareTitle: 'Year-over-Year Comparison (PNG)',
+      shareText: `Year-over-Year Comparison PNG for ${previousYearLabel.value} vs ${selectedYear.value}`,
+      dialogTitle: 'Share or Save Comparison',
+    });
+
+    $q.notify({
+      type: 'positive',
+      message: 'Comparison PNG is ready to share or save.',
+      position: 'bottom-right',
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    $q.notify({
+      type: 'negative',
+      message: `Failed to export comparison PNG. ${errorMessage}`,
       position: 'bottom-right',
       timeout: 0,
       closeBtn: true,

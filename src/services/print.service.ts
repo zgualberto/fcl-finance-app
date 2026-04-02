@@ -3,6 +3,8 @@ import { Share } from '@capacitor/share';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
+const pngExportPaddingClass = 'q-pa-lg';
+
 interface PrintReportOptions {
   reportElement: HTMLElement;
   selectedMonth: string;
@@ -69,31 +71,39 @@ function renderCanvasToA4PdfBase64(canvas: HTMLCanvasElement): string {
   return pdfDataUri.split(',')[1] ?? '';
 }
 
-export async function printReportAsPdf(options: PrintReportOptions): Promise<void> {
-  const {
-    reportElement,
-    selectedMonth,
-    shareTitle = 'Financial Report',
-    shareText = 'Financial Report',
-    dialogTitle = 'Share Report',
-  } = options;
-
-  const canvas = await html2canvas(reportElement, {
+async function renderReportCanvas(reportElement: HTMLElement): Promise<HTMLCanvasElement> {
+  return html2canvas(reportElement, {
     scale: 2,
     backgroundColor: '#ffffff',
     useCORS: true,
   });
+}
 
-  const base64Pdf = renderCanvasToA4PdfBase64(canvas);
-  const timestamp = buildTimestampWithSeconds(new Date());
-  const fileName = `report-${selectedMonth}-${timestamp}.pdf`;
-  const filePath = `reports/${fileName}`;
+async function renderReportCanvasWithClass(
+  reportElement: HTMLElement,
+  className: string,
+): Promise<HTMLCanvasElement> {
+  reportElement.classList.add(className);
 
+  try {
+    return await renderReportCanvas(reportElement);
+  } finally {
+    reportElement.classList.remove(className);
+  }
+}
+
+async function writeAndShareFile(
+  base64Data: string,
+  filePath: string,
+  shareTitle: string,
+  shareText: string,
+  dialogTitle: string,
+): Promise<void> {
   await ensureReportsDirectory();
 
   await Filesystem.writeFile({
     path: filePath,
-    data: base64Pdf,
+    data: base64Data,
     directory: Directory.Cache,
     recursive: true,
   });
@@ -109,4 +119,38 @@ export async function printReportAsPdf(options: PrintReportOptions): Promise<voi
     url: fileUri.uri,
     dialogTitle,
   });
+}
+
+export async function printReportAsPdf(options: PrintReportOptions): Promise<void> {
+  const {
+    reportElement,
+    selectedMonth,
+    shareTitle = 'Financial Report',
+    shareText = 'Financial Report',
+    dialogTitle = 'Share Report',
+  } = options;
+
+  const canvas = await renderReportCanvas(reportElement);
+  const base64Pdf = renderCanvasToA4PdfBase64(canvas);
+  const timestamp = buildTimestampWithSeconds(new Date());
+  const fileName = `report-${selectedMonth}-${timestamp}.pdf`;
+
+  await writeAndShareFile(base64Pdf, `reports/${fileName}`, shareTitle, shareText, dialogTitle);
+}
+
+export async function printReportAsPng(options: PrintReportOptions): Promise<void> {
+  const {
+    reportElement,
+    selectedMonth,
+    shareTitle = 'Financial Report',
+    shareText = 'Financial Report',
+    dialogTitle = 'Share Report',
+  } = options;
+
+  const canvas = await renderReportCanvasWithClass(reportElement, pngExportPaddingClass);
+  const base64Png = canvas.toDataURL('image/png', 1.0).split(',')[1] ?? '';
+  const timestamp = buildTimestampWithSeconds(new Date());
+  const fileName = `report-${selectedMonth}-${timestamp}.png`;
+
+  await writeAndShareFile(base64Png, `reports/${fileName}`, shareTitle, shareText, dialogTitle);
 }
