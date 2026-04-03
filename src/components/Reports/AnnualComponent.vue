@@ -222,6 +222,7 @@ import {
   computeNetCollection,
   computeRemittanceDeductions,
 } from 'src/services/financial-calculations.service';
+import { isNonRemittableActive } from 'src/utils/non-remittable';
 import { TransactionType } from 'src/enums/transaction_type';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 import { useSettingsStore } from 'src/stores/settings-store';
@@ -273,7 +274,12 @@ const summaryTotals = computed(() => {
     .reduce((sum, t) => sum + t.amount, 0);
 
   const nonRemittableExpenses = rawTransactions.value
-    .filter((t) => t.transaction_type === TransactionType.EXPENSES && t.non_remittable === 1)
+    .filter(
+      (t) =>
+        t.transaction_type === TransactionType.EXPENSES &&
+        t.non_remittable === 1 &&
+        isNonRemittableActive(t.effective_date),
+    )
     .reduce((sum, t) => sum + t.amount, 0);
 
   const remittableExpenses = expenses - nonRemittableExpenses;

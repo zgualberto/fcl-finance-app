@@ -195,7 +195,7 @@
                       <div class="text-body2 text-grey-8">
                         {{ child.category }}
                         <q-badge
-                          v-if="child.isNonRemittable"
+                          v-if="child.isNonRemittable && isNonRemittableActive(child.effectiveDate)"
                           color="deep-orange"
                           class="q-ml-xs"
                           rounded
@@ -271,6 +271,7 @@ import {
   computeNetCollection,
   computeRemittanceDeductions,
 } from 'src/services/financial-calculations.service';
+import { isNonRemittableActive } from 'src/utils/non-remittable';
 import { TransactionType } from 'src/enums/transaction_type';
 import type { Transaction } from 'src/databases/entities/transaction';
 import { useAnalyticsStore } from 'src/stores/analytics-store';
@@ -294,6 +295,7 @@ interface ExpenseChildItem {
   amount: number;
   percentageLabel: string;
   isNonRemittable: boolean;
+  effectiveDate: string | Date | null;
 }
 
 interface ExpenseParentItem {
@@ -398,7 +400,8 @@ function buildYearTotals(transactions: Transaction[]) {
     .filter(
       (transaction) =>
         transaction.transaction_type === TransactionType.EXPENSES &&
-        transaction.non_remittable === 1,
+        transaction.non_remittable === 1 &&
+        isNonRemittableActive(transaction.effective_date),
     )
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
@@ -695,12 +698,16 @@ const expenseRatioByCategory = computed((): ExpenseParentItem[] => {
 
   const parentTotals = new Map<string, number>();
   const parentNonRemittableFlags = new Map<string, boolean>();
-  const childTotals = new Map<string, Map<string, { amount: number; isNonRemittable: boolean }>>();
+  const childTotals = new Map<
+    string,
+    Map<string, { amount: number; isNonRemittable: boolean; effectiveDate: string | Date | null }>
+  >();
 
   for (const transaction of expenseTransactions) {
     const parent = transaction.parent_name || 'Uncategorized';
     const child = transaction.category_name || parent;
-    const isNonRemittable = transaction.non_remittable === 1;
+    const isNonRemittable =
+      transaction.non_remittable === 1 && isNonRemittableActive(transaction.effective_date);
 
     parentTotals.set(parent, (parentTotals.get(parent) ?? 0) + transaction.amount);
     parentNonRemittableFlags.set(
@@ -717,6 +724,7 @@ const expenseRatioByCategory = computed((): ExpenseParentItem[] => {
     childMap.set(child, {
       amount: (existingChild?.amount ?? 0) + transaction.amount,
       isNonRemittable: (existingChild?.isNonRemittable ?? false) || isNonRemittable,
+      effectiveDate: existingChild?.effectiveDate ?? transaction.effective_date ?? null,
     });
   }
 
@@ -742,6 +750,7 @@ const expenseRatioByCategory = computed((): ExpenseParentItem[] => {
           amount: childData.amount,
           percentageLabel: `${((childData.amount / totalExpense) * 100).toFixed(1)}%`,
           isNonRemittable: childData.isNonRemittable,
+          effectiveDate: childData.effectiveDate,
         }))
         .sort((a, b) => b.amount - a.amount);
       return {

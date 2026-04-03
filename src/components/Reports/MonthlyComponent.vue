@@ -117,7 +117,9 @@
                     <span style="color: #b71c1c">
                       {{ item.category_name }}
                       <q-badge
-                        v-if="item.non_remittable === 1"
+                        v-if="
+                          item.non_remittable === 1 && isNonRemittableActive(item.effective_date)
+                        "
                         color="deep-orange"
                         class="q-ml-xs"
                         rounded
@@ -274,6 +276,7 @@ import {
   computeNetCollection,
   computeRemittanceDeductions,
 } from 'src/services/financial-calculations.service';
+import { isNonRemittableActive } from 'src/utils/non-remittable';
 import { TransactionType } from 'src/enums/transaction_type';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 import { useSettingsStore } from 'src/stores/settings-store';
@@ -287,6 +290,7 @@ interface CategoryGroup {
     category_name: string;
     total: number;
     non_remittable: number;
+    effective_date: string | Date | null;
   }>;
 }
 
@@ -394,6 +398,7 @@ function buildCategoryGroups(transactionType: string): CategoryGroup[] {
           category_name: categoryName,
           total: 0,
           non_remittable: transaction.non_remittable ?? 0,
+          effective_date: transaction.effective_date ?? null,
         };
         group.items.push(item);
       }
@@ -415,7 +420,12 @@ const summaryTotals = computed(() => {
     .reduce((sum, t) => sum + t.amount, 0);
 
   const nonRemittableExpenses = rawTransactions.value
-    .filter((t) => t.transaction_type === TransactionType.EXPENSES && t.non_remittable === 1)
+    .filter(
+      (t) =>
+        t.transaction_type === TransactionType.EXPENSES &&
+        t.non_remittable === 1 &&
+        isNonRemittableActive(t.effective_date),
+    )
     .reduce((sum, t) => sum + t.amount, 0);
 
   const remittableExpenses = expenses - nonRemittableExpenses;

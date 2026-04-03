@@ -14,4 +14,5 @@ export interface Transaction {
   parent_id?: number | null;
   parent_name?: string;
   non_remittable?: number;
+  effective_date?: string | null;
 }

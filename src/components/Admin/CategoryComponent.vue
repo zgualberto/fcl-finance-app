@@ -24,7 +24,7 @@
               v-model="searchTerm"
               filled
               dense
-              debounce="300"
+              debounce="1000"
               placeholder="Search categories"
               style="min-width: 240px"
             >

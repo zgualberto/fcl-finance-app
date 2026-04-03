@@ -41,6 +41,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          c.name AS category_name,
          c.transaction_type AS transaction_type,
          c.non_remittable AS non_remittable,
+         c.effective_date AS effective_date,
          c.parent_id,
          pc.name AS parent_name,
          m.name AS member_name
@@ -124,6 +125,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          c.name AS category_name,
          c.transaction_type AS transaction_type,
          c.non_remittable AS non_remittable,
+         c.effective_date AS effective_date,
          c.parent_id,
          COALESCE(pc.name, c.name) AS parent_name,
          m.name AS member_name
@@ -174,6 +176,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          c.name AS category_name,
          c.transaction_type AS transaction_type,
          c.non_remittable AS non_remittable,
+         c.effective_date AS effective_date,
          c.parent_id,
          pc.name AS parent_name,
          m.name AS member_name
@@ -211,6 +214,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          c.name AS category_name,
          c.transaction_type AS transaction_type,
          c.non_remittable AS non_remittable,
+         c.effective_date AS effective_date,
          c.parent_id,
          pc.name AS parent_name,
          m.name AS member_name
@@ -241,7 +245,10 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          COALESCE(
            SUM(
              CASE
-               WHEN c.transaction_type = ? AND c.non_remittable = 1 THEN t.amount
+               WHEN c.transaction_type = ?
+                 AND c.non_remittable = 1
+                 AND (c.effective_date IS NULL OR c.effective_date <= DATE('now', 'localtime'))
+               THEN t.amount
                ELSE 0
              END
            ),
@@ -289,7 +296,10 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          COALESCE(
            SUM(
              CASE
-               WHEN c.transaction_type = ? AND c.non_remittable = 1 THEN t.amount
+               WHEN c.transaction_type = ?
+                 AND c.non_remittable = 1
+                 AND (c.effective_date IS NULL OR c.effective_date <= DATE('now', 'localtime'))
+               THEN t.amount
                ELSE 0
              END
            ),

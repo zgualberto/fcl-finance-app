@@ -34,9 +34,7 @@
         </div>
         <div class="row" :class="{ 'no-wrap': $q.screen.width > $q.screen.height }">
           <div class="col-12 col-sm-6">
-            <div
-              :class="{ 'q-pr-md': form.parent_id == null && $q.screen.width > $q.screen.height }"
-            >
+            <div :class="{ 'q-pr-md': $q.screen.width > $q.screen.height }">
               <div class="text-body1 text-grey-7 q-mb-xs">Status</div>
               <q-select
                 v-model="form.is_active"

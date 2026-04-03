@@ -166,6 +166,7 @@ import {
   computeNetCollection,
   computeRemittanceDeductions,
 } from 'src/services/financial-calculations.service';
+import { isNonRemittableActive } from 'src/utils/non-remittable';
 import { TransactionType } from 'src/enums/transaction_type';
 import type { Transaction } from 'src/databases/entities/transaction';
 import { useAnalyticsStore } from 'src/stores/analytics-store';
@@ -293,7 +294,7 @@ function buildMonthlyBuckets(transactions: Transaction[]): MonthlyBucket[] {
     } else if (transaction.transaction_type === TransactionType.EXPENSES) {
       buckets[monthFromDate]!.expenses += transaction.amount;
       buckets[monthFromDate]!.hasExpenses = true;
-      if (transaction.non_remittable === 1) {
+      if (transaction.non_remittable === 1 && isNonRemittableActive(transaction.effective_date)) {
         buckets[monthFromDate]!.nonRemittableExpenses += transaction.amount;
       }
     }
@@ -315,7 +316,8 @@ function buildYearTotals(transactions: Transaction[]) {
     .filter(
       (transaction) =>
         transaction.transaction_type === TransactionType.EXPENSES &&
-        transaction.non_remittable === 1,
+        transaction.non_remittable === 1 &&
+        isNonRemittableActive(transaction.effective_date),
     )
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
