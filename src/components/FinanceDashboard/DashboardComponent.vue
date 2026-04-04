@@ -195,7 +195,7 @@
                       <div class="text-body2 text-grey-8">
                         {{ child.category }}
                         <q-badge
-                          v-if="child.isNonRemittable && isNonRemittableActive(child.effectiveDate)"
+                          v-if="child.isNonRemittable"
                           color="deep-orange"
                           class="q-ml-xs"
                           rounded
@@ -401,7 +401,7 @@ function buildYearTotals(transactions: Transaction[]) {
       (transaction) =>
         transaction.transaction_type === TransactionType.EXPENSES &&
         transaction.non_remittable === 1 &&
-        isNonRemittableActive(transaction.effective_date),
+        isNonRemittableActive(transaction.effective_date, transaction.date),
     )
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
@@ -707,7 +707,8 @@ const expenseRatioByCategory = computed((): ExpenseParentItem[] => {
     const parent = transaction.parent_name || 'Uncategorized';
     const child = transaction.category_name || parent;
     const isNonRemittable =
-      transaction.non_remittable === 1 && isNonRemittableActive(transaction.effective_date);
+      transaction.non_remittable === 1 &&
+      isNonRemittableActive(transaction.effective_date, transaction.date);
 
     parentTotals.set(parent, (parentTotals.get(parent) ?? 0) + transaction.amount);
     parentNonRemittableFlags.set(

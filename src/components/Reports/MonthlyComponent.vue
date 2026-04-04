@@ -117,9 +117,7 @@
                     <span style="color: #b71c1c">
                       {{ item.category_name }}
                       <q-badge
-                        v-if="
-                          item.non_remittable === 1 && isNonRemittableActive(item.effective_date)
-                        "
+                        v-if="item.non_remittable === 1 && item.is_non_remittable_active"
                         color="deep-orange"
                         class="q-ml-xs"
                         rounded
@@ -291,6 +289,7 @@ interface CategoryGroup {
     total: number;
     non_remittable: number;
     effective_date: string | Date | null;
+    is_non_remittable_active: boolean;
   }>;
 }
 
@@ -399,11 +398,16 @@ function buildCategoryGroups(transactionType: string): CategoryGroup[] {
           total: 0,
           non_remittable: transaction.non_remittable ?? 0,
           effective_date: transaction.effective_date ?? null,
+          is_non_remittable_active: false,
         };
         group.items.push(item);
       }
 
       item.total += transaction.amount;
+      item.is_non_remittable_active =
+        item.is_non_remittable_active ||
+        (transaction.non_remittable === 1 &&
+          isNonRemittableActive(transaction.effective_date, transaction.date));
       group.subtotal += transaction.amount;
     });
 
@@ -424,7 +428,7 @@ const summaryTotals = computed(() => {
       (t) =>
         t.transaction_type === TransactionType.EXPENSES &&
         t.non_remittable === 1 &&
-        isNonRemittableActive(t.effective_date),
+        isNonRemittableActive(t.effective_date, t.date),
     )
     .reduce((sum, t) => sum + t.amount, 0);
 

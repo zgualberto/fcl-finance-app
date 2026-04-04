@@ -278,7 +278,7 @@ const summaryTotals = computed(() => {
       (t) =>
         t.transaction_type === TransactionType.EXPENSES &&
         t.non_remittable === 1 &&
-        isNonRemittableActive(t.effective_date),
+        isNonRemittableActive(t.effective_date, t.date),
     )
     .reduce((sum, t) => sum + t.amount, 0);
 

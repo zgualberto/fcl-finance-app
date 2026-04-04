@@ -247,7 +247,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
              CASE
                WHEN c.transaction_type = ?
                  AND c.non_remittable = 1
-                 AND (c.effective_date IS NULL OR c.effective_date <= DATE('now', 'localtime'))
+                 AND (c.effective_date IS NULL OR c.effective_date <= t.date)
                THEN t.amount
                ELSE 0
              END
@@ -298,7 +298,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
              CASE
                WHEN c.transaction_type = ?
                  AND c.non_remittable = 1
-                 AND (c.effective_date IS NULL OR c.effective_date <= DATE('now', 'localtime'))
+                 AND (c.effective_date IS NULL OR c.effective_date <= t.date)
                THEN t.amount
                ELSE 0
              END

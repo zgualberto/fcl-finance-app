@@ -294,7 +294,10 @@ function buildMonthlyBuckets(transactions: Transaction[]): MonthlyBucket[] {
     } else if (transaction.transaction_type === TransactionType.EXPENSES) {
       buckets[monthFromDate]!.expenses += transaction.amount;
       buckets[monthFromDate]!.hasExpenses = true;
-      if (transaction.non_remittable === 1 && isNonRemittableActive(transaction.effective_date)) {
+      if (
+        transaction.non_remittable === 1 &&
+        isNonRemittableActive(transaction.effective_date, transaction.date)
+      ) {
         buckets[monthFromDate]!.nonRemittableExpenses += transaction.amount;
       }
     }
@@ -317,7 +320,7 @@ function buildYearTotals(transactions: Transaction[]) {
       (transaction) =>
         transaction.transaction_type === TransactionType.EXPENSES &&
         transaction.non_remittable === 1 &&
-        isNonRemittableActive(transaction.effective_date),
+        isNonRemittableActive(transaction.effective_date, transaction.date),
     )
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
