@@ -176,6 +176,12 @@ const columns: QTableColumn[] = [
     align: 'left',
   },
   {
+    name: 'amount',
+    label: 'Amount',
+    field: 'amount',
+    align: 'right',
+  },
+  {
     name: 'transactionType',
     label: 'Type',
     field: 'transaction_type',
