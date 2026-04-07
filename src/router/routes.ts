@@ -47,6 +47,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/Admin/CategoriesPage.vue'),
       },
       {
+        path: 'transactions',
+        name: 'admin.transactions',
+        component: () => import('pages/Admin/TransactionsPage.vue'),
+      },
+      {
         path: 'activity-logs',
         name: 'admin.activity-logs',
         component: () => import('pages/Admin/ActivityLogsPage.vue'),

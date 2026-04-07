@@ -355,4 +355,106 @@ export class TransactionRepository implements BaseRepository<Transaction> {
 
     return (res.values?.[0]?.count as number) ?? 0;
   }
+
+  async searchByKeyword(
+    keyword: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<Transaction[]> {
+    const offset = (page - 1) * limit;
+    const pattern = `%${keyword.toLowerCase()}%`;
+    const res = await database.query(
+      `SELECT
+         t.id,
+         t.member_id,
+         t.category_id,
+         t.amount,
+         t.description,
+         t.date,
+         t.created_at,
+         t.updated_at,
+         c.name AS category_name,
+         c.transaction_type AS transaction_type,
+         c.non_remittable AS non_remittable,
+         c.effective_date AS effective_date,
+         c.parent_id,
+         pc.name AS parent_name,
+         m.name AS member_name
+       FROM transactions t
+       LEFT JOIN categories c ON c.id = t.category_id
+       LEFT JOIN categories pc ON pc.id = c.parent_id
+       LEFT JOIN members m ON m.id = t.member_id
+       WHERE LOWER(t.description) LIKE ?
+         OR LOWER(COALESCE(c.name, '')) LIKE ?
+         OR LOWER(COALESCE(m.name, '')) LIKE ?
+         OR LOWER(COALESCE(pc.name, '')) LIKE ?
+       ORDER BY t.date DESC, t.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [pattern, pattern, pattern, pattern, limit, offset],
+    );
+    return res.values as Transaction[];
+  }
+
+  async countSearchResults(keyword: string): Promise<number> {
+    const pattern = `%${keyword.toLowerCase()}%`;
+    const res = await database.query(
+      `SELECT COUNT(*) AS count
+       FROM transactions t
+       LEFT JOIN categories c ON c.id = t.category_id
+       LEFT JOIN categories pc ON pc.id = c.parent_id
+       LEFT JOIN members m ON m.id = t.member_id
+       WHERE LOWER(t.description) LIKE ?
+         OR LOWER(COALESCE(c.name, '')) LIKE ?
+         OR LOWER(COALESCE(m.name, '')) LIKE ?
+         OR LOWER(COALESCE(pc.name, '')) LIKE ?`,
+      [pattern, pattern, pattern, pattern],
+    );
+    return (res.values?.[0]?.count as number) ?? 0;
+  }
+
+  async findByDateRangePaginated(
+    startDate: string,
+    endDate: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<Transaction[]> {
+    const offset = (page - 1) * limit;
+    const res = await database.query(
+      `SELECT
+         t.id,
+         t.member_id,
+         t.category_id,
+         t.amount,
+         t.description,
+         t.date,
+         t.created_at,
+         t.updated_at,
+         c.name AS category_name,
+         c.transaction_type AS transaction_type,
+         c.non_remittable AS non_remittable,
+         c.effective_date AS effective_date,
+         c.parent_id,
+         pc.name AS parent_name,
+         m.name AS member_name
+       FROM transactions t
+       LEFT JOIN categories c ON c.id = t.category_id
+       LEFT JOIN categories pc ON pc.id = c.parent_id
+       LEFT JOIN members m ON m.id = t.member_id
+       WHERE t.date >= ? AND t.date <= ?
+       ORDER BY t.date DESC, t.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [startDate, endDate, limit, offset],
+    );
+    return res.values as Transaction[];
+  }
+
+  async countByDateRange(startDate: string, endDate: string): Promise<number> {
+    const res = await database.query(
+      `SELECT COUNT(*) AS count
+       FROM transactions t
+       WHERE t.date >= ? AND t.date <= ?`,
+      [startDate, endDate],
+    );
+    return (res.values?.[0]?.count as number) ?? 0;
+  }
 }

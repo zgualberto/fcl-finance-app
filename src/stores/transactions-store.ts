@@ -160,6 +160,7 @@ export const useTransactionsStore = defineStore('transactions', {
           this.transactionRepository.findAllPaginated(page, limit),
           this.transactionRepository.countAll(),
         ]);
+        this.transactions = rows;
         this.totalTransactions = total;
         return { rows, total };
       } catch (error: unknown) {
@@ -208,6 +209,53 @@ export const useTransactionsStore = defineStore('transactions', {
           this.transactionRepository.countYtdDates(startDate, endDate),
         ]);
 
+        return { rows, total };
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+        return { rows: [], total: 0 };
+      }
+    },
+    async searchTransactions(
+      keyword: string,
+      page: number,
+      limit: number = 20,
+    ): Promise<{ rows: Transaction[]; total: number }> {
+      if (!this.transactionRepository) {
+        await this.init(false);
+      }
+      if (!this.transactionRepository) throw new Error('Repository not initialized');
+      try {
+        const [rows, total] = await Promise.all([
+          this.transactionRepository.searchByKeyword(keyword, page, limit),
+          this.transactionRepository.countSearchResults(keyword),
+        ]);
+        this.transactions = rows;
+        this.totalTransactions = total;
+        return { rows, total };
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+        return { rows: [], total: 0 };
+      }
+    },
+    async fetchPageByDateRange(
+      startDate: string,
+      endDate: string,
+      page: number,
+      limit: number = 20,
+    ): Promise<{ rows: Transaction[]; total: number }> {
+      if (!this.transactionRepository) {
+        await this.init(false);
+      }
+      if (!this.transactionRepository) throw new Error('Repository not initialized');
+      try {
+        const [rows, total] = await Promise.all([
+          this.transactionRepository.findByDateRangePaginated(startDate, endDate, page, limit),
+          this.transactionRepository.countByDateRange(startDate, endDate),
+        ]);
+        this.transactions = rows;
+        this.totalTransactions = total;
         return { rows, total };
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);

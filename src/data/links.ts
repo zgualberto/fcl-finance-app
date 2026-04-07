@@ -42,6 +42,11 @@ export const linksList: EssentialLinkProps[] = [
         routeName: 'admin.categories',
       },
       {
+        title: 'Transactions',
+        icon: 'fa-solid fa-wallet',
+        routeName: 'admin.transactions',
+      },
+      {
         title: 'Backups',
         icon: 'fa-solid fa-box-archive',
         routeName: 'admin.backups',
