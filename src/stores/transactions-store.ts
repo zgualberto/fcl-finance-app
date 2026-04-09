@@ -131,6 +131,34 @@ export const useTransactionsStore = defineStore('transactions', {
         return [];
       }
     },
+    async fetchCollectionDatesPage(
+      transactionType?: TransactionType,
+      page: number = 1,
+      limit: number = 25,
+      searchTerm?: string,
+    ): Promise<{ dates: string[]; total: number }> {
+      if (!this.transactionRepository) {
+        await this.init(false);
+      }
+      if (!this.transactionRepository) throw new Error('Repository not initialized');
+      try {
+        const [dates, total] = await Promise.all([
+          this.transactionRepository.findDistinctCollectionDatesPaginated(
+            transactionType,
+            page,
+            limit,
+            searchTerm,
+          ),
+          this.transactionRepository.countDistinctCollectionDates(transactionType, searchTerm),
+        ]);
+
+        return { dates, total };
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+        return { dates: [], total: 0 };
+      }
+    },
     async fetchTransactionByDate(
       date: string,
       transactionType?: TransactionType,

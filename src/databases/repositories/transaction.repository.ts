@@ -166,6 +166,76 @@ export class TransactionRepository implements BaseRepository<Transaction> {
     return dates.map((row) => row.date);
   }
 
+  async findDistinctCollectionDatesPaginated(
+    transactionType?: TransactionType,
+    page: number = 1,
+    limit: number = 25,
+    searchTerm?: string,
+  ): Promise<string[]> {
+    const offset = (page - 1) * limit;
+    let query = `SELECT DISTINCT t.date
+       FROM transactions t`;
+    const params: Array<string | number> = [];
+    const filters: string[] = [];
+
+    if (transactionType !== undefined) {
+      query += `
+       LEFT JOIN categories c ON c.id = t.category_id`;
+      filters.push('c.transaction_type = ?');
+      params.push(transactionType);
+    }
+
+    if (searchTerm?.trim()) {
+      filters.push('t.date LIKE ?');
+      params.push(`%${searchTerm.trim()}%`);
+    }
+
+    if (filters.length > 0) {
+      query += `
+       WHERE ${filters.join(' AND ')}`;
+    }
+
+    query += `
+       ORDER BY t.date DESC
+       LIMIT ? OFFSET ?`;
+
+    params.push(limit, offset);
+
+    const res = await database.query(query, params);
+    const dates = res.values as Array<{ date: string }>;
+    return dates.map((row) => row.date);
+  }
+
+  async countDistinctCollectionDates(
+    transactionType?: TransactionType,
+    searchTerm?: string,
+  ): Promise<number> {
+    let query = `SELECT COUNT(DISTINCT t.date) AS count
+       FROM transactions t`;
+    const params: string[] = [];
+    const filters: string[] = [];
+
+    if (transactionType !== undefined) {
+      query += `
+       LEFT JOIN categories c ON c.id = t.category_id`;
+      filters.push('c.transaction_type = ?');
+      params.push(transactionType);
+    }
+
+    if (searchTerm?.trim()) {
+      filters.push('t.date LIKE ?');
+      params.push(`%${searchTerm.trim()}%`);
+    }
+
+    if (filters.length > 0) {
+      query += `
+       WHERE ${filters.join(' AND ')}`;
+    }
+
+    const res = await database.query(query, params);
+    return (res.values?.[0]?.count as number) ?? 0;
+  }
+
   async findByCollectionDate(
     date: string,
     transactionType?: TransactionType,

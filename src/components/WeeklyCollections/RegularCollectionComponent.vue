@@ -19,6 +19,10 @@
             clearable
             emit-value
             map-options
+            use-input
+            input-debounce="250"
+            @filter="onCollectionDateFilter"
+            @virtual-scroll="onCollectionDateVirtualScroll"
             @update:model-value="loadCollectionByDate"
           >
             <template v-slot:prepend>
@@ -237,6 +241,11 @@ const formData = ref<FormData>(createDefaultFormData());
 const formRef = ref<QForm | null>(null);
 const availableCollectionDates = ref<string[]>([]);
 const selectedCollectionDate = ref<string | null>(null);
+const collectionDatesPage = ref(1);
+const collectionDatesPageSize = 30;
+const collectionDatesTotal = ref(0);
+const collectionDatesSearch = ref('');
+const isCollectionDatesLoading = ref(false);
 
 const totalAmount = computed(() => {
   const offerings =
@@ -676,14 +685,77 @@ async function loadOfferingCategories(skipDialog = false) {
 }
 
 async function loadCollectionDates() {
+  if (isCollectionDatesLoading.value) {
+    return;
+  }
+
+  isCollectionDatesLoading.value = true;
+
   try {
-    availableCollectionDates.value = await transactionsStore.fetchCollectionDates(
+    const { dates, total } = await transactionsStore.fetchCollectionDatesPage(
       TransactionType.COLLECTIONS,
+      collectionDatesPage.value,
+      collectionDatesPageSize,
+      collectionDatesSearch.value,
     );
+
+    collectionDatesTotal.value = total;
+
+    if (collectionDatesPage.value === 1) {
+      availableCollectionDates.value = dates;
+    } else {
+      availableCollectionDates.value = [...availableCollectionDates.value, ...dates];
+    }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Failed to load collection dates:', message);
+  } finally {
+    isCollectionDatesLoading.value = false;
   }
+}
+
+function shouldLoadMoreCollectionDates(toIndex: number): boolean {
+  const loadedCount = availableCollectionDates.value.length;
+  const threshold = 5;
+
+  if (isCollectionDatesLoading.value) {
+    return false;
+  }
+
+  if (loadedCount >= collectionDatesTotal.value) {
+    return false;
+  }
+
+  return toIndex >= loadedCount - threshold;
+}
+
+function onCollectionDateVirtualScroll(details: {
+  index: number;
+  from: number;
+  to: number;
+  direction: 'increase' | 'decrease';
+  ref: { refresh: () => void };
+}): void {
+  if (!shouldLoadMoreCollectionDates(details.to)) {
+    return;
+  }
+
+  collectionDatesPage.value += 1;
+  void loadCollectionDates();
+}
+
+function onCollectionDateFilter(
+  value: string,
+  update: (fn: () => void, afterFn?: (ref: { refresh: () => void }) => void) => void,
+): void {
+  update(() => {
+    collectionDatesSearch.value = value.trim();
+    collectionDatesPage.value = 1;
+    availableCollectionDates.value = [];
+    collectionDatesTotal.value = 0;
+  });
+
+  void loadCollectionDates();
 }
 
 function getRouteDateQuery(): string | null {
