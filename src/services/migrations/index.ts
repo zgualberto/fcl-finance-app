@@ -11,6 +11,7 @@ import { migration as migration5 } from './5_rename_settings_to_application_sett
 import { migration as migration6 } from './6_add_performance_indexes';
 import { migration as migration7 } from './7_add_non_remittable_to_categories';
 import { migration as migration8 } from './8_add_effectivity_date_to_categories';
+import { migration as migration9 } from './9_add_is_legacy_to_transactions';
 
 export const migrations: Migration[] = [
   migration1,
@@ -21,4 +22,5 @@ export const migrations: Migration[] = [
   migration6,
   migration7,
   migration8,
+  migration9,
 ];

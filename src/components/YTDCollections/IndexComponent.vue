@@ -291,7 +291,12 @@ async function loadYtdSummary(): Promise<void> {
 }
 
 function mapPaginatedRows(
-  rows: Array<{ date: string; collection: number; expenses: number; nonRemittableExpenses: number }>,
+  rows: Array<{
+    date: string;
+    collection: number;
+    expenses: number;
+    nonRemittableExpenses: number;
+  }>,
   page: number,
   rowsPerPage: number,
   total: number,

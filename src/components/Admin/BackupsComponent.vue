@@ -173,6 +173,12 @@ const pagination = {
 
 const formatTimestamp = (timestamp: Date) => timestamp.toLocaleString();
 
+const reloadAppAfterRestore = () => {
+  window.setTimeout(() => {
+    window.location.reload();
+  }, 250);
+};
+
 const loadBackups = async () => {
   backups.value = await getAvailableBackups();
 };
@@ -259,6 +265,8 @@ const handleRestoreBackup = async (backupKey: string) => {
       message: 'Backup restored successfully',
       position: 'bottom-right',
     });
+
+    reloadAppAfterRestore();
   } catch {
     $q.notify({
       type: 'negative',
@@ -351,6 +359,8 @@ const handleImportConfirmed = async () => {
       message: 'Backup imported successfully',
       position: 'bottom-right',
     });
+
+    reloadAppAfterRestore();
     selectedFile.value = null;
   } catch {
     $q.notify({

@@ -16,891 +16,203 @@
         <h1 class="q-my-none text-h5 text-weight-bold">FCL Weekly Collection</h1>
         <p class="q-my-xs text-body1 text-grey-7">Finance Team - Church Collections</p>
       </div>
-
-      <q-form ref="formRef" @submit="saveCollection">
-        <!-- Load Existing Collection -->
-        <section
-          class="form-section"
-          :class="{ 'q-mb-lg': $q.screen.width > $q.screen.height, 'q-mb-sm': $q.screen.lt.sm }"
+      <div>
+        <q-card
+          bordered
+          flat
+          class="entry-type-card rounded-borders q-mb-md"
+          :class="{
+            'q-pa-lg': $q.screen.width > $q.screen.height,
+            'q-pa-md': $q.platform.is.mobile,
+          }"
         >
-          <div class="text-h6">Load Existing Collection</div>
-          <q-separator class="q-mb-md"></q-separator>
-          <div class="row">
-            <div class="col-12 col-sm-4">
-              <div class="text-body1 text-grey-7 q-mb-xs">Select Date</div>
-              <q-select
-                v-model="selectedCollectionDate"
-                :options="availableCollectionDates"
-                outlined
-                dense
-                class="full-width"
-                clearable
-                emit-value
-                map-options
-                @update:model-value="loadCollectionByDate"
+          <div class="row items-start no-wrap q-col-gutter-sm q-mb-md">
+            <div class="col-auto">
+              <q-icon name="info" size="20px" color="primary" class="entry-type-icon" />
+            </div>
+            <div class="col">
+              <div class="text-h6 text-weight-bold">Entry Type</div>
+              <p class="q-my-xs text-body2 entry-type-subtitle">
+                Select the type of collection entry
+              </p>
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-md">
+            <div class="col-12 col-sm-6">
+              <button
+                type="button"
+                class="entry-type-option full-width text-left"
+                :class="{ 'entry-type-option--active': activeTab === 'regular' }"
+                @click="void switchTab('regular')"
               >
-                <template v-slot:prepend>
-                  <q-icon name="history" />
-                </template>
-                <template v-slot:hint>
-                  Select a date to load and edit a previous collection
-                </template>
-              </q-select>
+                <span class="entry-type-option__title">Regular Collection</span>
+                <span class="entry-type-option__description">
+                  Enter detailed weekly collections (offerings, tithes, etc.)
+                </span>
+              </button>
+            </div>
+            <div class="col-12 col-sm-6">
+              <button
+                type="button"
+                class="entry-type-option full-width text-left"
+                :class="{ 'entry-type-option--active': activeTab === 'legacy' }"
+                @click="void switchTab('legacy')"
+              >
+                <span class="entry-type-option__title">Previous Year NET Entry</span>
+                <span class="entry-type-option__description">
+                  Quick entry for turned-over NET from 2023 or 2024
+                </span>
+              </button>
             </div>
           </div>
-        </section>
-
-        <!-- Create/Edit Collection -->
-        <section
-          class="form-section"
-          :class="{ 'q-mb-lg': $q.screen.width > $q.screen.height, 'q-mb-sm': $q.screen.lt.sm }"
-        >
-          <div class="text-h6">Collection Date</div>
-          <q-separator class="q-mb-md"></q-separator>
-          <div class="row">
-            <div class="col-12 col-sm-4">
-              <div class="text-body1 text-grey-7 q-mb-xs">Collection Date</div>
-              <q-input
-                v-model="formData.collectionDate"
-                type="date"
-                outlined
-                dense
-                class="full-width"
-                :rules="[(val) => !!val || 'This field is required']"
-                icon="event"
-              />
-            </div>
-          </div>
-        </section>
-
-        <!-- Service Offerings -->
-        <section class="form-section">
-          <div class="text-h6">Service Offerings</div>
-          <q-separator class="q-mb-md"></q-separator>
-          <ServiceOfferingsRow
-            v-model:sunday-offering="formData.sundayOffering"
-            v-model:midweek-offering="formData.midweekOffering"
-            v-model:sunday-school-offering="formData.sundaySchoolOffering"
-          />
-        </section>
-
-        <!-- Other Offerings -->
-        <section
-          class="form-section"
-          :class="{ 'q-mt-lg': $q.screen.width > $q.screen.height, 'q-mt-md': $q.screen.lt.sm }"
-        >
-          <div class="text-h6">Other Offerings</div>
-          <q-separator class="q-mb-md"></q-separator>
-          <OtherOfferingsRow
-            v-model:everybodys-birthday="formData.everybodysBirthday"
-            v-model:special-funding="formData.specialFunding"
-          />
-        </section>
-
-        <!-- Tithes -->
-        <section
-          class="form-section"
-          :class="{ 'q-mt-lg': $q.screen.width > $q.screen.height, 'q-mt-md': $q.screen.lt.sm }"
-        >
-          <div class="row items-center q-col-gutter-sm q-mb-sm">
-            <div class="col-12 col-sm">
-              <div class="text-h6">Tithes ({{ formData.tithes.length }} entries)</div>
-            </div>
-            <div class="col-12 col-sm-auto"></div>
-          </div>
-          <q-separator class="q-mb-md"></q-separator>
-
-          <div class="q-mt-md q-mb-lg">
-            <WeeklyCollectionsTitheRow
-              v-for="(tithe, index) in formData.tithes"
-              :key="index"
-              v-model:member-id="tithe.memberId"
-              v-model:member-name="tithe.memberName"
-              v-model:search-term="tithe.searchTerm"
-              v-model:amount="tithe.amount"
-              @remove="removeTithe(index)"
-            />
-
-            <q-separator class="q-mb-md"></q-separator>
-            <div
-              class="row q-col-gutter-md"
-              :class="{ 'justify-center': !$q.screen.lt.sm, 'justify-between': $q.screen.lt.sm }"
-            >
-              <div class="col-sm-auto">
-                <q-btn
-                  rounded
-                  unelevated
-                  flat
-                  color="primary"
-                  @click="addTithes(10)"
-                  no-caps
-                  :class="['bg-blue-1', { 'full-width': $q.screen.lt.sm }]"
-                  class="q-px-xl"
-                >
-                  <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
-                  Add 10
-                </q-btn>
-              </div>
-              <div class="col-sm-auto">
-                <q-btn
-                  rounded
-                  unelevated
-                  flat
-                  color="primary"
-                  @click="addTithes(5)"
-                  no-caps
-                  :class="['bg-blue-1', { 'full-width': $q.screen.lt.sm }]"
-                  class="q-px-xl"
-                >
-                  <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
-                  Add 5
-                </q-btn>
-              </div>
-              <div class="col-sm-auto">
-                <q-btn
-                  unelevated
-                  color="primary"
-                  @click="addTithes(1)"
-                  rounded
-                  no-caps
-                  :class="{ 'full-width': $q.screen.lt.sm }"
-                  class="q-px-xl"
-                >
-                  <q-icon name="add" size="xs" class="q-mr-sm"></q-icon>
-                  Add 1
-                </q-btn>
-              </div>
-            </div>
-          </div>
-          <!-- Save Button -->
-          <q-btn
-            type="submit"
-            label="Save Collection"
-            color="positive"
-            class="full-width"
-            no-caps
-          />
-        </section>
-      </q-form>
-
-      <q-separator class="q-my-lg" />
-      <!-- Total Display -->
-      <div class="total-box q-mt-md q-pa-lg text-white rounded-borders">
-        <p class="q-my-none text-caption">Total Weekly Collection</p>
-        <div class="row items-end">
-          <div class="col">
-            <h2 class="q-my-none text-h4 text-weight-bold">₱{{ formatCurrency(totalAmount) }}</h2>
-          </div>
-          <div class="col-auto">
-            <q-icon name="payments" size="36px" class="opacity-40" />
-          </div>
-        </div>
+        </q-card>
       </div>
 
-      <q-inner-loading :showing="isSaving">
-        <q-spinner-rings size="50px" color="primary" />
-      </q-inner-loading>
+      <RegularCollectionComponent v-if="activeTab === 'regular'" ref="regularRef" />
+      <PreviousYearNetEntryComponent v-else ref="legacyRef" />
     </q-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { date as dateUtils, type QForm, useQuasar } from 'quasar';
-import { useRoute } from 'vue-router';
+import { ref } from 'vue';
+import { useQuasar } from 'quasar';
 
-import { useMembersStore } from 'src/stores/members-store';
-import { useCategoriesStore } from 'src/stores/categories-store';
-import { useTransactionsStore } from 'src/stores/transactions-store';
-import { WeeklyOfferingCategoryName } from 'src/enums/weekly_offering_category';
-import { CollectionsCategoryName } from 'src/enums/collections_category';
-import { OtherOfferingCategoryName } from 'src/enums/other_offering_category';
-import { TransactionType } from 'src/enums/transaction_type';
-import type { Transaction } from 'src/databases/entities/transaction';
-import type { Category } from 'src/databases/entities/category';
-import { useUnsavedWarning } from 'src/composables/useUnsavedWarning';
+import RegularCollectionComponent from './RegularCollectionComponent.vue';
+import PreviousYearNetEntryComponent from './PreviousYearNetEntryComponent.vue';
 
-import WeeklyCollectionsTitheRow from './Tithes/RowComponent.vue';
-import ServiceOfferingsRow from './ServiceOfferings/RowComponent.vue';
-import OtherOfferingsRow from './OtherOfferings/RowComponent.vue';
-import CollectionSummaryDialog from './SummaryDialogComponent.vue';
-
-interface Tithe {
-  memberId: number | null;
-  memberName: string;
-  amount: number;
-  searchTerm: string;
-}
-
-interface FormData {
-  collectionDate: string;
-  sundayOffering: number;
-  midweekOffering: number;
-  sundaySchoolOffering: number;
-  everybodysBirthday: number;
-  specialFunding: number;
-  tithes: Tithe[];
-}
-
-const createDefaultTithe = (): Tithe => ({
-  memberId: null,
-  memberName: '',
-  amount: 0,
-  searchTerm: '',
-});
-
-const createDefaultFormData = (): FormData => ({
-  collectionDate: dateUtils.formatDate(new Date(), 'YYYY-MM-DD'),
-  sundayOffering: 0,
-  midweekOffering: 0,
-  sundaySchoolOffering: 0,
-  everybodysBirthday: 0,
-  specialFunding: 0,
-  tithes: [createDefaultTithe()],
-});
-
-const formData = ref<FormData>(createDefaultFormData());
-const formRef = ref<QForm | null>(null);
-const availableCollectionDates = ref<string[]>([]);
-const selectedCollectionDate = ref<string | null>(null);
-
-const totalAmount = computed(() => {
-  const offerings =
-    (formData.value.sundayOffering || 0) +
-    (formData.value.midweekOffering || 0) +
-    (formData.value.sundaySchoolOffering || 0) +
-    (formData.value.everybodysBirthday || 0) +
-    (formData.value.specialFunding || 0);
-
-  const tithesTotal = formData.value.tithes.reduce((sum, tithe) => {
-    return sum + (tithe.amount || 0);
-  }, 0);
-
-  return offerings + tithesTotal;
-});
-
-const memberStore = useMembersStore();
-const categoriesStore = useCategoriesStore();
-const transactionsStore = useTransactionsStore();
-const $q = useQuasar();
-const route = useRoute();
-
-function resetForm() {
-  formData.value = createDefaultFormData();
-  void nextTick(() => {
-    formRef.value?.resetValidation();
-  });
-}
-
-// Track unsaved changes and warn before leaving
-useUnsavedWarning({
-  formData,
-  defaultData: createDefaultFormData(),
-  onReset: resetForm,
-});
-
-function addTithes(count: number) {
-  for (let i = 0; i < count; i++) {
-    formData.value.tithes.push(createDefaultTithe());
-  }
-}
-
-function removeTithe(index: number) {
-  formData.value.tithes.splice(index, 1);
-}
-
-function formatCurrency(amount: number): string {
-  return amount.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
-const offeringCategoryNames: WeeklyOfferingCategoryName[] = [
-  WeeklyOfferingCategoryName.MIDWEEK_SERVICE_OFFERING,
-  WeeklyOfferingCategoryName.SUNDAY_SCHOOL_OFFERING,
-  WeeklyOfferingCategoryName.SUNDAY_SERVICE_OFFERING,
-  WeeklyOfferingCategoryName.TITHES,
-];
-const otherOfferingCategoryNames: OtherOfferingCategoryName[] = [
-  OtherOfferingCategoryName.EVERYBODYS_BIRTHDAY,
-  OtherOfferingCategoryName.SPECIAL_FUNDING,
-];
-type HierarchyGroup = {
-  parentName: CollectionsCategoryName;
-  childNames: string[];
+type ActiveTab = 'regular' | 'legacy';
+type ExposedComponentState = {
+  isFormDirty?: { value: boolean };
+  onTabFocused?: () => Promise<void>;
 };
 
-const categoryHierarchyGroups: HierarchyGroup[] = [
-  {
-    parentName: CollectionsCategoryName.SERVICE_OFFERINGS,
-    childNames: [...offeringCategoryNames],
-  },
-  {
-    parentName: CollectionsCategoryName.OTHER_COLLECTIONS,
-    childNames: [...otherOfferingCategoryNames],
-  },
-];
-const allCategoryNames: string[] = [
-  ...categoryHierarchyGroups.map((group) => group.parentName),
-  ...categoryHierarchyGroups.flatMap((group) => group.childNames),
-];
-const offeringCategoryIds = ref<Record<string, number>>({});
-const otherOfferingCategoryIds = ref<Record<string, number>>({});
-const isSaving = ref(false);
+const $q = useQuasar();
 
-function buildCategoryMap(categories: Category[]): Record<string, Category> {
-  return categories.reduce<Record<string, Category>>((acc, category) => {
-    acc[category.category_name] = category;
-    return acc;
-  }, {});
+const activeTab = ref<ActiveTab>('regular');
+const regularRef = ref<ExposedComponentState | null>(null);
+const legacyRef = ref<ExposedComponentState | null>(null);
+
+function getCurrentRef(tab: ActiveTab): ExposedComponentState | null {
+  return tab === 'regular' ? regularRef.value : legacyRef.value;
 }
 
-function getHierarchyIssues(categoryMap: Record<string, Category>) {
-  const missingParents: string[] = [];
-  const missingChildren: string[] = [];
-  const invalidParents: Category[] = [];
-  const mismatchedChildren: Category[] = [];
-  const invalidChildTypes: Category[] = [];
-  const expectedTransactionType = TransactionType.COLLECTIONS;
-
-  categoryHierarchyGroups.forEach((group) => {
-    const parent = categoryMap[group.parentName];
-    if (!parent?.id) {
-      missingParents.push(group.parentName);
-      return;
-    }
-
-    if (parent.parent_id != null || parent.transaction_type !== expectedTransactionType) {
-      invalidParents.push(parent);
-    }
-
-    const parentId = parent.id;
-
-    group.childNames.forEach((childName) => {
-      const child = categoryMap[childName];
-      if (!child?.id) {
-        missingChildren.push(childName);
-        return;
-      }
-
-      if (child.parent_id !== parentId) {
-        mismatchedChildren.push(child);
-      }
-
-      if (child.transaction_type !== expectedTransactionType) {
-        invalidChildTypes.push(child);
-      }
-    });
-  });
-
-  return {
-    missingParents,
-    missingChildren,
-    invalidParents,
-    mismatchedChildren,
-    invalidChildTypes,
-  };
-}
-
-function getOfferingCategoryId(name: WeeklyOfferingCategoryName): number {
-  const id = offeringCategoryIds.value[name];
-  if (id == null) {
-    throw new Error(`Missing offering category: ${name}`);
-  }
-  return id;
-}
-
-function getOtherOfferingCategoryId(name: OtherOfferingCategoryName): number {
-  const id = otherOfferingCategoryIds.value[name];
-  if (id == null) {
-    throw new Error(`Missing other offering category: ${name}`);
-  }
-  return id;
-}
-
-function handleOpenSummary() {
-  console.log('Opening summary for:', formData.value);
-  // Open $q.dialog with QTable showing summary of transactions just added.
-  $q.dialog({
-    component: CollectionSummaryDialog,
-    componentProps: {
-      rows: buildTransactions(),
-    },
-  });
-}
-
-function resolveMemberLabel(tithe: Tithe): string | null {
-  if (tithe.memberName) {
-    return tithe.memberName;
-  }
-  if (tithe.memberId == null) {
-    return null;
-  }
-  return memberStore.member(tithe.memberId)?.name ?? null;
-}
-
-function buildTransactions(): Partial<Transaction>[] {
-  const tithesCategoryId = getOfferingCategoryId(WeeklyOfferingCategoryName.TITHES);
-  const collectionDate = formData.value.collectionDate;
-  const transactions: Partial<Transaction>[] = [
-    {
-      category_id: getOfferingCategoryId(WeeklyOfferingCategoryName.SUNDAY_SERVICE_OFFERING),
-      amount: formData.value.sundayOffering,
-      description: WeeklyOfferingCategoryName.SUNDAY_SERVICE_OFFERING,
-      date: collectionDate,
-    },
-    {
-      category_id: getOfferingCategoryId(WeeklyOfferingCategoryName.MIDWEEK_SERVICE_OFFERING),
-      amount: formData.value.midweekOffering,
-      description: WeeklyOfferingCategoryName.MIDWEEK_SERVICE_OFFERING,
-      date: collectionDate,
-    },
-    {
-      category_id: getOfferingCategoryId(WeeklyOfferingCategoryName.SUNDAY_SCHOOL_OFFERING),
-      amount: formData.value.sundaySchoolOffering,
-      description: WeeklyOfferingCategoryName.SUNDAY_SCHOOL_OFFERING,
-      date: collectionDate,
-    },
-    {
-      category_id: getOtherOfferingCategoryId(OtherOfferingCategoryName.EVERYBODYS_BIRTHDAY),
-      amount: formData.value.everybodysBirthday,
-      description: OtherOfferingCategoryName.EVERYBODYS_BIRTHDAY,
-      date: collectionDate,
-    },
-    {
-      category_id: getOtherOfferingCategoryId(OtherOfferingCategoryName.SPECIAL_FUNDING),
-      amount: formData.value.specialFunding,
-      description: OtherOfferingCategoryName.SPECIAL_FUNDING,
-      date: collectionDate,
-    },
-  ];
-
-  formData.value.tithes.forEach((tithe) => {
-    const memberId = tithe.memberId as number;
-    const memberLabel = resolveMemberLabel(tithe);
-    const description = memberLabel ? `Tithe - ${memberLabel}` : `Tithe - Member ${memberId}`;
-
-    transactions.push({
-      category_id: tithesCategoryId,
-      member_id: memberId,
-      amount: tithe.amount,
-      description,
-      date: collectionDate,
-    });
-  });
-
-  return transactions;
-}
-
-async function saveCollection() {
-  if (isSaving.value) {
-    return;
-  }
-
-  const missingMemberIndex = formData.value.tithes.findIndex((tithe) => tithe.memberId == null);
-  if (missingMemberIndex !== -1) {
-    $q.notify({
-      type: 'negative',
-      message:
-        'Please select a member for each tithe entry before saving. All fields are required.',
-      caption: `Missing member on tithe entry #${missingMemberIndex + 1}`,
-      position: 'bottom-right',
-    });
-    return;
-  }
-
-  // Check for duplicate collection and ask for confirmation if it exists
-  const shouldReplace = await checkForDuplicateCollection();
-  if (!shouldReplace && availableCollectionDates.value.includes(formData.value.collectionDate)) {
-    return;
-  }
-
-  isSaving.value = true;
-  try {
-    const transactions = buildTransactions();
-    if (shouldReplace) {
-      await transactionsStore.replaceTransactionsByDate(
-        formData.value.collectionDate,
-        TransactionType.COLLECTIONS,
-        transactions,
-      );
-    } else {
-      await transactionsStore.addTransactionsBatch(transactions);
-    }
-
-    // Refresh available dates after saving
-    await loadCollectionDates();
-
-    $q.notify({
-      type: 'positive',
-      message: 'Weekly collection saved successfully.',
-      position: 'bottom-right',
-    });
-    handleOpenSummary();
-    resetForm();
-    selectedCollectionDate.value = null;
-  } catch {
-    $q.notify({
-      type: 'negative',
-      message: 'Failed to save weekly collection. Please try again.',
-      position: 'bottom-right',
-    });
-  } finally {
-    isSaving.value = false;
-  }
-}
-
-async function ensureCategoryHierarchy(): Promise<void> {
-  await categoriesStore.init(false);
-
-  let categories = await categoriesStore.fetchCategoriesByNames(allCategoryNames);
-  let categoryMap = buildCategoryMap(categories);
-  const { missingParents, invalidParents } = getHierarchyIssues(categoryMap);
-
-  if (missingParents.length > 0) {
-    await Promise.all(
-      missingParents.map((name) =>
-        categoriesStore.addCategory({
-          category_name: name,
-          is_active: 1,
-          transaction_type: TransactionType.COLLECTIONS,
-        }),
-      ),
-    );
-  }
-
-  if (invalidParents.length > 0) {
-    await Promise.all(
-      invalidParents.map((parent) => {
-        if (parent.id == null) {
-          return Promise.resolve();
-        }
-
-        return categoriesStore.updateCategory({
-          id: parent.id,
-          category_name: parent.category_name,
-          is_active: parent.is_active,
-          parent_id: null,
-          transaction_type: TransactionType.COLLECTIONS,
-        });
-      }),
-    );
-  }
-
-  categories = await categoriesStore.fetchCategoriesByNames(allCategoryNames);
-  categoryMap = buildCategoryMap(categories);
-
-  const createChildPromises: Promise<void>[] = [];
-  const repairChildPromises: Promise<void>[] = [];
-  categoryHierarchyGroups.forEach((group) => {
-    const parent = categoryMap[group.parentName];
-    if (!parent?.id) {
-      return;
-    }
-
-    const parentId = parent.id;
-    const transactionType = parent.transaction_type ?? TransactionType.COLLECTIONS;
-
-    group.childNames.forEach((childName) => {
-      const child = categoryMap[childName];
-      if (!child?.id) {
-        createChildPromises.push(
-          categoriesStore.addCategory({
-            category_name: childName,
-            is_active: 1,
-            parent_id: parentId,
-            transaction_type: transactionType,
-          }),
-        );
-        return;
-      }
-
-      if (child.parent_id !== parentId || child.transaction_type !== transactionType) {
-        repairChildPromises.push(
-          categoriesStore.updateCategory({
-            id: child.id,
-            category_name: child.category_name,
-            is_active: child.is_active,
-            parent_id: parentId,
-            transaction_type: transactionType,
-          }),
-        );
-      }
-    });
-  });
-
-  if (createChildPromises.length > 0) {
-    await Promise.all(createChildPromises);
-  }
-
-  if (repairChildPromises.length > 0) {
-    await Promise.all(repairChildPromises);
-  }
-}
-
-async function loadOfferingCategories(skipDialog = false) {
-  await categoriesStore.init(false);
-  const categories = await categoriesStore.fetchCategoriesByNames(allCategoryNames);
-  const categoryMap = buildCategoryMap(categories);
-  const { missingParents, missingChildren, invalidParents, mismatchedChildren, invalidChildTypes } =
-    getHierarchyIssues(categoryMap);
-
-  offeringCategoryIds.value = offeringCategoryNames.reduce<Record<string, number>>((acc, name) => {
-    const category = categoryMap[name];
-    if (category?.id) {
-      acc[name] = category.id;
-    }
-    return acc;
-  }, {});
-
-  otherOfferingCategoryIds.value = otherOfferingCategoryNames.reduce<Record<string, number>>(
-    (acc, name) => {
-      const category = categoryMap[name];
-      if (category?.id) {
-        acc[name] = category.id;
-      }
-      return acc;
-    },
-    {},
-  );
-
-  const hasIssues =
-    missingParents.length > 0 ||
-    missingChildren.length > 0 ||
-    invalidParents.length > 0 ||
-    mismatchedChildren.length > 0 ||
-    invalidChildTypes.length > 0;
-  if (hasIssues && !skipDialog) {
+async function confirmDiscardChanges(): Promise<boolean> {
+  return await new Promise((resolve) => {
     $q.dialog({
-      title: 'Invalid Categories',
-      message:
-        'One or more categories are missing, have the wrong transaction type, or are not linked to the correct parent. Would you like to fix them now?',
+      title: 'Unsaved Changes',
+      message: 'You have unsaved changes in this tab. Switch anyway and discard changes?',
       ok: {
-        label: 'Fix',
-        color: 'primary',
-        unelevated: true,
-        rounded: true,
-        noCaps: true,
-      },
-      cancel: { label: 'Cancel', flat: true, class: 'bg-blue-1', rounded: true, noCaps: true },
-    }).onOk(() => {
-      void (async () => {
-        try {
-          await ensureCategoryHierarchy();
-          await loadOfferingCategories(true);
-        } catch {
-          $q.notify({
-            type: 'negative',
-            message: 'Failed to fix category issues. Please try again.',
-            position: 'bottom-right',
-          });
-        }
-      })();
-    });
-  }
-}
-
-async function loadCollectionDates() {
-  try {
-    availableCollectionDates.value = await transactionsStore.fetchCollectionDates(
-      TransactionType.COLLECTIONS,
-    );
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error('Failed to load collection dates:', message);
-  }
-}
-
-function getRouteDateQuery(): string | null {
-  const queryDate = route.query.date;
-  if (Array.isArray(queryDate)) {
-    return queryDate[0] ?? null;
-  }
-  if (typeof queryDate === 'string' && queryDate.trim()) {
-    return queryDate;
-  }
-  return null;
-}
-
-async function applyRouteDatePrefill() {
-  const routeDate = getRouteDateQuery();
-  if (!routeDate) {
-    return;
-  }
-
-  if (!availableCollectionDates.value.includes(routeDate)) {
-    $q.notify({
-      type: 'info',
-      message: `No collection found for ${routeDate}.`,
-      position: 'bottom-right',
-    });
-    return;
-  }
-
-  selectedCollectionDate.value = routeDate;
-  await loadCollectionByDate();
-}
-
-function transformTransactionsToFormData(transactions: Transaction[]): FormData {
-  const data = createDefaultFormData();
-
-  if (transactions.length === 0) {
-    return data;
-  }
-
-  // Set the collection date from first transaction
-  const firstDate = transactions[0]?.date;
-  if (firstDate) {
-    data.collectionDate = firstDate;
-  }
-  data.tithes = []; // Reset tithes
-
-  // Group transactions by category
-  transactions.forEach((transaction) => {
-    const categoryName = transaction.category_name ?? '';
-
-    // Match category to form fields using string values
-    switch (categoryName) {
-      case 'Sunday Service Offering':
-        data.sundayOffering += transaction.amount || 0;
-        break;
-      case 'Midweek Service Offering':
-        data.midweekOffering += transaction.amount || 0;
-        break;
-      case 'Sunday School Offering':
-        data.sundaySchoolOffering += transaction.amount || 0;
-        break;
-      case "Everybody's Birthday":
-        data.everybodysBirthday += transaction.amount || 0;
-        break;
-      case 'Special Funding':
-        data.specialFunding += transaction.amount || 0;
-        break;
-      case 'Tithes': {
-        // Tithes have individual member entries
-        const memberId = transaction.member_id ?? null;
-        const memberName = transaction.member_name || '';
-        data.tithes.push({
-          memberId,
-          memberName,
-          amount: transaction.amount || 0,
-          searchTerm: '',
-        });
-        break;
-      }
-    }
-  });
-
-  return data;
-}
-
-async function loadCollectionByDate() {
-  if (!selectedCollectionDate.value) {
-    resetForm();
-    selectedCollectionDate.value = null;
-    return;
-  }
-
-  try {
-    const transactions = await transactionsStore.fetchTransactionByDate(
-      selectedCollectionDate.value,
-      TransactionType.COLLECTIONS,
-    );
-    if (transactions.length === 0) {
-      $q.notify({
-        type: 'info',
-        message: 'No transactions found for this date.',
-        position: 'bottom-right',
-      });
-      return;
-    }
-
-    formData.value = transformTransactionsToFormData(transactions);
-    void nextTick(() => {
-      formRef.value?.resetValidation();
-    });
-
-    $q.notify({
-      type: 'positive',
-      message: `Collection from ${selectedCollectionDate.value} loaded successfully.`,
-      position: 'bottom-right',
-    });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    $q.notify({
-      type: 'negative',
-      message: 'Failed to load collection. Please try again.',
-      caption: message,
-      position: 'bottom-right',
-    });
-    selectedCollectionDate.value = null;
-  }
-}
-
-async function checkForDuplicateCollection(): Promise<boolean> {
-  const existingCollections = await transactionsStore.fetchTransactionByDate(
-    formData.value.collectionDate,
-    TransactionType.COLLECTIONS,
-  );
-
-  if (existingCollections.length === 0) {
-    return false; // No duplicate
-  }
-
-  return new Promise((resolve) => {
-    $q.dialog({
-      title: 'Collection Already Exists',
-      message: `A collection already exists for ${formData.value.collectionDate}. Do you want to replace it with the new data?`,
-      ok: {
-        label: 'Replace',
+        label: 'Switch Tab',
         color: 'negative',
         unelevated: true,
         rounded: true,
         noCaps: true,
       },
-      cancel: { label: 'Cancel', flat: true, class: 'bg-blue-1', rounded: true, noCaps: true },
+      cancel: {
+        label: 'Stay Here',
+        flat: true,
+        class: 'bg-blue-1',
+        rounded: true,
+        noCaps: true,
+      },
     })
-      .onOk(() => {
-        resolve(true);
-      })
-      .onCancel(() => {
-        resolve(false);
-      });
+      .onOk(() => resolve(true))
+      .onCancel(() => resolve(false));
   });
 }
 
-onMounted(async () => {
-  await transactionsStore.init();
-  await loadOfferingCategories();
-  await loadCollectionDates();
-  await applyRouteDatePrefill();
-});
+async function switchTab(nextTab: ActiveTab): Promise<void> {
+  if (activeTab.value === nextTab) {
+    return;
+  }
 
-watch(
-  () => route.query.date,
-  () => {
-    void applyRouteDatePrefill();
-  },
-);
+  const currentRef = getCurrentRef(activeTab.value);
+  const hasUnsavedChanges = currentRef?.isFormDirty?.value === true;
+
+  if (hasUnsavedChanges) {
+    const shouldSwitch = await confirmDiscardChanges();
+    if (!shouldSwitch) {
+      return;
+    }
+  }
+
+  activeTab.value = nextTab;
+}
 </script>
 
 <style scoped lang="scss">
-.form-section {
-  h3 {
-    margin: 0;
+.entry-type-card {
+  border-color: #bfd6ff;
+  background: #eef5ff;
+}
+
+.entry-type-icon {
+  margin-top: 4px;
+}
+
+.entry-type-subtitle {
+  color: var(--color-text-secondary);
+}
+
+.entry-type-option {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 102px;
+  width: 100%;
+  padding: 20px 18px;
+  border: 2px solid var(--color-input-border);
+  border-radius: 12px;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.entry-type-option:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 32%, white);
+}
+
+.entry-type-option:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.entry-type-option:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(30, 91, 234, 0.18);
+}
+
+.entry-type-option--active {
+  border-color: var(--color-primary);
+  background: var(--color-secondary-action);
+  box-shadow: 0 0 0 2px rgba(30, 91, 234, 0.08);
+}
+
+.entry-type-option__title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.entry-type-option__description {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 599px) {
+  .entry-type-option {
+    min-height: auto;
   }
-}
-
-.border-bottom {
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.op-70 {
-  opacity: 0.7;
-}
-
-.total-box {
-  background: linear-gradient(135deg, #1e88e5 0%, #1565c0 100%);
 }
 </style>
