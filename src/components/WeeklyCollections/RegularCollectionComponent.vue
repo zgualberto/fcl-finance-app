@@ -1,9 +1,4 @@
 <template>
-  <div class="q-mb-md">
-    <h1 class="q-my-none text-h5 text-weight-bold">FCL Weekly Collection</h1>
-    <p class="q-my-xs text-body1 text-grey-7">Finance Team - Church Collections</p>
-  </div>
-
   <q-form ref="formRef" @submit="saveCollection">
     <!-- Load Existing Collection -->
     <section

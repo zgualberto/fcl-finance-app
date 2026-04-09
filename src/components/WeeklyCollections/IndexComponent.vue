@@ -61,7 +61,7 @@
               >
                 <span class="entry-type-option__title">Previous Year NET Entry</span>
                 <span class="entry-type-option__description">
-                  Quick entry for turned-over NET from 2023 or 2024
+                  Quick entry for turned-over NET
                 </span>
               </button>
             </div>
