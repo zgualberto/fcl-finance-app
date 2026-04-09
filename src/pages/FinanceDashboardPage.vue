@@ -1,15 +1,26 @@
 <template>
-  <div class="q-pa-lg">
+  <div
+    :class="{
+      'q-pa-lg': $q.screen.width > $q.screen.height,
+      'q-pa-md': $q.platform.is.mobile,
+    }"
+  >
     <q-card
-      class="relative-position rounded-borders q-mb-lg"
-      :class="{ 'q-ma-sm q-pa-lg': $q.screen.width > $q.screen.height, 'q-pa-md': $q.screen.lt.sm }"
+      class="relative-position rounded-borders"
+      :class="{
+        'q-pa-lg': $q.screen.width > $q.screen.height,
+        'q-pa-md': $q.platform.is.mobile,
+      }"
     >
       <DashboardComponent />
     </q-card>
 
     <q-card
       class="relative-position rounded-borders"
-      :class="{ 'q-ma-sm q-pa-lg': $q.screen.width > $q.screen.height, 'q-pa-md': $q.screen.lt.sm }"
+      :class="{
+        'q-pa-lg': $q.screen.width > $q.screen.height,
+        'q-pa-md': $q.platform.is.mobile,
+      }"
     >
       <YearOverYearComparisonComponent />
     </q-card>

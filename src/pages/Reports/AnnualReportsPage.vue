@@ -1,6 +1,17 @@
 <template>
-  <div class="q-pa-lg">
-    <q-card class="q-pa-lg relative-position">
+  <div
+    :class="{
+      'q-pa-lg': $q.screen.width > $q.screen.height,
+      'q-pa-md': $q.platform.is.mobile,
+    }"
+  >
+    <q-card
+      class="relative-position rounded-borders"
+      :class="{
+        'q-pa-lg': $q.screen.width > $q.screen.height,
+        'q-pa-md': $q.platform.is.mobile,
+      }"
+    >
       <AnnualComponent />
     </q-card>
   </div>

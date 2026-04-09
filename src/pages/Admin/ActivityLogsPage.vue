@@ -1,5 +1,10 @@
 <template>
-  <div class="q-pa-md">
+  <div
+    :class="{
+      'q-pa-lg': $q.screen.width > $q.screen.height,
+      'q-pa-md': $q.platform.is.mobile,
+    }"
+  >
     <ActivityLogsComponent />
   </div>
 </template>

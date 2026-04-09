@@ -1,164 +1,180 @@
 <template>
-  <q-card
-    class="rounded-borders"
-    :class="{ 'q-ma-sm q-pa-lg': $q.screen.width > $q.screen.height, 'q-pa-md': $q.screen.lt.sm }"
+  <div
+    :class="{
+      'q-pa-lg': $q.screen.width > $q.screen.height,
+      'q-pa-md': $q.platform.is.mobile,
+    }"
   >
-    <div class="row full-width q-mb-md items-start">
-      <div class="col">
-        <div class="text-h5 text-weight-bold">YTD Collections</div>
-        <div class="text-body1 text-grey-7">Overview of all collection and expense records</div>
-      </div>
-      <div class="col-auto">
-        <div class="row q-col-gutter-sm">
-          <div class="col-auto">
-            <q-btn color="primary" rounded unelevated no-caps :to="{ name: 'weekly_collections' }">
-              <q-icon name="add" size="xs" class="q-mr-sm" />
-              Add Collection
-            </q-btn>
-          </div>
-          <div class="col-auto">
-            <q-btn color="negative" rounded unelevated no-caps :to="{ name: 'expenses' }">
-              <q-icon name="add" size="xs" class="q-mr-sm" />
-              Add Expenses
-            </q-btn>
+    <q-card
+      class="relative-position rounded-borders"
+      :class="{
+        'q-pa-lg': $q.screen.width > $q.screen.height,
+        'q-pa-md': $q.platform.is.mobile,
+      }"
+    >
+      <div class="row full-width q-mb-md items-start">
+        <div class="col">
+          <div class="text-h5 text-weight-bold">YTD Collections</div>
+          <div class="text-body1 text-grey-7">Overview of all collection and expense records</div>
+        </div>
+        <div class="col-auto">
+          <div class="row q-col-gutter-sm">
+            <div class="col-auto">
+              <q-btn
+                color="primary"
+                rounded
+                unelevated
+                no-caps
+                :to="{ name: 'weekly_collections' }"
+              >
+                <q-icon name="add" size="xs" class="q-mr-sm" />
+                Add Collection
+              </q-btn>
+            </div>
+            <div class="col-auto">
+              <q-btn color="negative" rounded unelevated no-caps :to="{ name: 'expenses' }">
+                <q-icon name="add" size="xs" class="q-mr-sm" />
+                Add Expenses
+              </q-btn>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="row q-col-gutter-md q-mb-md">
-      <div class="col-12 col-md-4">
-        <q-card class="summary-card summary-card-collection text-white full-height" flat>
-          <q-card-section>
-            <div class="text-subtitle2">Total Collections</div>
-            <div class="text-h4 text-weight-bold">
-              ₱{{ formatCurrency(summaryTotals.collections) }}
-            </div>
-          </q-card-section>
-        </q-card>
+      <div class="row q-col-gutter-md q-mb-md">
+        <div class="col-12 col-md-4">
+          <q-card class="summary-card summary-card-collection text-white full-height" flat>
+            <q-card-section>
+              <div class="text-subtitle2">Total Collections</div>
+              <div class="text-h4 text-weight-bold">
+                ₱{{ formatCurrency(summaryTotals.collections) }}
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+        <div class="col-12 col-md-4">
+          <q-card class="summary-card summary-card-expenses text-white full-height" flat>
+            <q-card-section>
+              <div class="text-subtitle2">Total Expenses</div>
+              <div class="text-h4 text-weight-bold">
+                ₱{{ formatCurrency(summaryTotals.expenses) }}
+              </div>
+              <div class="text-caption">
+                Non-remittable: ₱{{ formatCurrency(summaryTotals.nonRemittableExpenses) }}
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+        <div class="col-12 col-md-4">
+          <q-card class="summary-card summary-card-net text-white full-height" flat>
+            <q-card-section>
+              <div class="text-subtitle2">Net Collection</div>
+              <div class="text-h4 text-weight-bold">₱{{ formatCurrency(summaryTotals.net) }}</div>
+              <div class="text-caption">
+                After National {{ nationalRateLabel }}, District {{ districtRateLabel }}, and
+                Non-remittable
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
       </div>
-      <div class="col-12 col-md-4">
-        <q-card class="summary-card summary-card-expenses text-white full-height" flat>
-          <q-card-section>
-            <div class="text-subtitle2">Total Expenses</div>
-            <div class="text-h4 text-weight-bold">
-              ₱{{ formatCurrency(summaryTotals.expenses) }}
-            </div>
-            <div class="text-caption">
-              Non-remittable: ₱{{ formatCurrency(summaryTotals.nonRemittableExpenses) }}
-            </div>
-          </q-card-section>
-        </q-card>
-      </div>
-      <div class="col-12 col-md-4">
-        <q-card class="summary-card summary-card-net text-white full-height" flat>
-          <q-card-section>
-            <div class="text-subtitle2">Net Collection</div>
-            <div class="text-h4 text-weight-bold">₱{{ formatCurrency(summaryTotals.net) }}</div>
-            <div class="text-caption">
-              After National {{ nationalRateLabel }}, District {{ districtRateLabel }}, and
-              Non-remittable
-            </div>
-          </q-card-section>
-        </q-card>
-      </div>
-    </div>
 
-    <q-table
-      :rows="tableRows"
-      :columns="columns"
-      row-key="date"
-      flat
-      v-model:pagination="pagination"
-      :rows-per-page-options="[20, 50, 100]"
-      :loading="isLoading"
-      @request="onTableRequest"
-    >
-      <template v-slot:body-cell-date="props">
-        <q-td :props="props" class="text-weight-medium">
-          {{ formatDisplayDate(props.row.date) }}
-        </q-td>
-      </template>
-      <template v-slot:body-cell-collection="props">
-        <q-td :props="props" class="text-blue text-weight-bold text-right">
-          {{ toPeso(props.row.collection) }}
-        </q-td>
-      </template>
-      <template v-slot:body-cell-expenses="props">
-        <q-td :props="props" class="text-negative text-weight-bold text-right">
-          {{ toPeso(props.row.expenses) }}
-        </q-td>
-      </template>
-      <template v-slot:body-cell-nonRemittableExpenses="props">
-        <q-td :props="props" class="text-deep-orange text-weight-medium text-right">
-          {{ toPeso(props.row.nonRemittableExpenses) }}
-        </q-td>
-      </template>
-      <template v-slot:body-cell-gross="props">
-        <q-td :props="props" class="text-weight-bold text-right">
-          {{ toPeso(props.row.gross) }}
-        </q-td>
-      </template>
-      <template v-slot:body-cell-national="props">
-        <q-td :props="props" class="text-grey-8 text-weight-medium text-right">
-          {{ toPeso(props.row.national) }}
-        </q-td>
-      </template>
-      <template v-slot:body-cell-district="props">
-        <q-td :props="props" class="text-grey-8 text-weight-medium text-right">
-          {{ toPeso(props.row.district) }}
-        </q-td>
-      </template>
-      <template v-slot:body-cell-net="props">
-        <q-td
-          :props="props"
-          :class="
-            props.row.net >= 0
-              ? 'text-positive text-weight-bold text-right'
-              : 'text-negative text-weight-bold text-right'
-          "
-        >
-          {{ toPeso(props.row.net) }}
-        </q-td>
-      </template>
-      <template v-slot:body-cell-actions="props">
-        <q-td :props="props" align="center">
-          <q-btn
-            flat
-            dense
-            round
-            icon="description"
-            size="sm"
-            color="primary"
-            aria-label="Load collection by date"
-            :disable="props.row.collection <= 0"
-            @click="goToCollectionForm(props.row.date)"
-          />
-          <q-btn
-            flat
-            dense
-            round
-            icon="request_quote"
-            size="sm"
-            color="deep-orange"
-            aria-label="Load expenses by date"
-            :disable="props.row.expenses <= 0"
-            @click="goToExpensesForm(props.row.date)"
-          />
-          <q-btn
-            flat
-            dense
-            round
-            icon="delete"
-            size="sm"
-            color="negative"
-            aria-label="Delete all records by date"
-            @click="confirmDeleteByDate(props.row.date)"
-          />
-        </q-td>
-      </template>
-    </q-table>
-  </q-card>
+      <q-table
+        :rows="tableRows"
+        :columns="columns"
+        row-key="date"
+        flat
+        v-model:pagination="pagination"
+        :rows-per-page-options="[20, 50, 100]"
+        :loading="isLoading"
+        @request="onTableRequest"
+      >
+        <template v-slot:body-cell-date="props">
+          <q-td :props="props" class="text-weight-medium">
+            {{ formatDisplayDate(props.row.date) }}
+          </q-td>
+        </template>
+        <template v-slot:body-cell-collection="props">
+          <q-td :props="props" class="text-blue text-weight-bold text-right">
+            {{ toPeso(props.row.collection) }}
+          </q-td>
+        </template>
+        <template v-slot:body-cell-expenses="props">
+          <q-td :props="props" class="text-negative text-weight-bold text-right">
+            {{ toPeso(props.row.expenses) }}
+          </q-td>
+        </template>
+        <template v-slot:body-cell-nonRemittableExpenses="props">
+          <q-td :props="props" class="text-deep-orange text-weight-medium text-right">
+            {{ toPeso(props.row.nonRemittableExpenses) }}
+          </q-td>
+        </template>
+        <template v-slot:body-cell-gross="props">
+          <q-td :props="props" class="text-weight-bold text-right">
+            {{ toPeso(props.row.gross) }}
+          </q-td>
+        </template>
+        <template v-slot:body-cell-national="props">
+          <q-td :props="props" class="text-grey-8 text-weight-medium text-right">
+            {{ toPeso(props.row.national) }}
+          </q-td>
+        </template>
+        <template v-slot:body-cell-district="props">
+          <q-td :props="props" class="text-grey-8 text-weight-medium text-right">
+            {{ toPeso(props.row.district) }}
+          </q-td>
+        </template>
+        <template v-slot:body-cell-net="props">
+          <q-td
+            :props="props"
+            :class="
+              props.row.net >= 0
+                ? 'text-positive text-weight-bold text-right'
+                : 'text-negative text-weight-bold text-right'
+            "
+          >
+            {{ toPeso(props.row.net) }}
+          </q-td>
+        </template>
+        <template v-slot:body-cell-actions="props">
+          <q-td :props="props" align="center">
+            <q-btn
+              flat
+              dense
+              round
+              icon="description"
+              size="sm"
+              color="primary"
+              aria-label="Load collection by date"
+              :disable="props.row.collection <= 0"
+              @click="goToCollectionForm(props.row.date)"
+            />
+            <q-btn
+              flat
+              dense
+              round
+              icon="request_quote"
+              size="sm"
+              color="deep-orange"
+              aria-label="Load expenses by date"
+              :disable="props.row.expenses <= 0"
+              @click="goToExpensesForm(props.row.date)"
+            />
+            <q-btn
+              flat
+              dense
+              round
+              icon="delete"
+              size="sm"
+              color="negative"
+              aria-label="Delete all records by date"
+              @click="confirmDeleteByDate(props.row.date)"
+            />
+          </q-td>
+        </template>
+      </q-table>
+    </q-card>
+  </div>
 </template>
 
 <script setup lang="ts">

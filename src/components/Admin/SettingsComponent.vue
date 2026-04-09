@@ -1,7 +1,10 @@
 <template>
   <q-card
-    class="rounded-borders"
-    :class="{ 'q-ma-sm q-pa-lg': $q.screen.width > $q.screen.height, 'q-pa-md': $q.screen.lt.sm }"
+    class="relative-position rounded-borders"
+    :class="{
+      'q-pa-lg': $q.screen.width > $q.screen.height,
+      'q-pa-md': $q.platform.is.mobile,
+    }"
   >
     <q-table
       :rows="settings"
