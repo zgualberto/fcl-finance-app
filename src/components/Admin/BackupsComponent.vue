@@ -1,5 +1,8 @@
 <template>
-  <q-card class="rounded-borders" :class="{ 'q-ma-sm q-pa-lg': $q.screen.width > $q.screen.height, 'q-pa-md': $q.screen.lt.sm }">
+  <q-card
+    class="rounded-borders"
+    :class="{ 'q-ma-sm q-pa-lg': $q.screen.width > $q.screen.height, 'q-pa-md': $q.screen.lt.sm }"
+  >
     <div class="row items-center q-col-gutter-md">
       <div class="col-12 col-sm-6">
         <div class="text-h5 text-weight-bold">Backups</div>
