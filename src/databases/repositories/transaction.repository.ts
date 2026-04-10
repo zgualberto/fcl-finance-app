@@ -51,7 +51,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
        LEFT JOIN categories c ON c.id = t.category_id
        LEFT JOIN categories pc ON pc.id = c.parent_id
        LEFT JOIN members m ON m.id = t.member_id
-       ORDER BY t.date DESC, t.created_at DESC`,
+      ORDER BY t.updated_at DESC, t.id DESC`,
     );
     return res.values as Transaction[];
   }
@@ -140,7 +140,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
        LEFT JOIN categories pc ON pc.id = c.parent_id
        LEFT JOIN members m ON m.id = t.member_id
        WHERE t.date >= ? AND t.date <= ?
-       ORDER BY t.date ASC, t.created_at ASC`,
+      ORDER BY t.updated_at DESC, t.id DESC`,
       [startDate, endDate],
     );
     return res.values as Transaction[];
@@ -300,7 +300,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
        LEFT JOIN categories c ON c.id = t.category_id
        LEFT JOIN categories pc ON pc.id = c.parent_id
        LEFT JOIN members m ON m.id = t.member_id
-       ORDER BY t.date DESC, t.created_at DESC
+      ORDER BY t.updated_at DESC, t.id DESC
        LIMIT ? OFFSET ?`,
       [limit, offset],
     );
@@ -467,7 +467,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          OR LOWER(COALESCE(c.name, '')) LIKE ?
          OR LOWER(COALESCE(m.name, '')) LIKE ?
          OR LOWER(COALESCE(pc.name, '')) LIKE ?
-       ORDER BY t.date DESC, t.created_at DESC
+       ORDER BY t.updated_at DESC, t.id DESC
        LIMIT ? OFFSET ?`,
       [pattern, pattern, pattern, pattern, limit, offset],
     );
@@ -521,7 +521,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
        LEFT JOIN categories pc ON pc.id = c.parent_id
        LEFT JOIN members m ON m.id = t.member_id
        WHERE t.date >= ? AND t.date <= ?
-       ORDER BY t.date DESC, t.created_at DESC
+      ORDER BY t.updated_at DESC, t.id DESC
        LIMIT ? OFFSET ?`,
       [startDate, endDate, limit, offset],
     );
