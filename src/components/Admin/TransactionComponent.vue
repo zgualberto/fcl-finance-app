@@ -18,77 +18,46 @@
     >
       <template v-slot:top>
         <div class="row full-width items-center q-col-gutter-sm">
-          <div class="col">
+          <div class="col-12 col-md">
             <div class="text-h5 text-weight-bold">Transaction Dashboard</div>
             <div class="text-body1 text-grey-7">View and search transactions</div>
           </div>
-          <div class="col-12 col-sm-auto">
+          <div class="col-12 col-sm-6 col-md-3">
             <q-input
               v-model="searchTerm"
               filled
               dense
-              debounce="1000"
+              debounce="300"
               placeholder="Search transactions"
-              style="min-width: 240px"
             >
               <template v-slot:prepend>
                 <q-icon name="search" />
               </template>
             </q-input>
           </div>
-        </div>
-
-        <div v-if="showDateFilter" class="q-mt-md full-width">
-          <div class="row items-center q-col-gutter-md">
-            <div class="col-12 col-sm-auto">
-              <q-input
-                v-model="dateFilterFrom"
-                filled
-                dense
-                type="date"
-                label="From Date"
-                :max="dateFilterTo"
-              />
-            </div>
-            <div class="col-12 col-sm-auto">
-              <q-input
-                v-model="dateFilterTo"
-                filled
-                dense
-                type="date"
-                label="To Date"
-                :min="dateFilterFrom"
-              />
-            </div>
-            <div class="col-12 col-sm-auto">
-              <q-btn color="primary" @click="applyDateFilter" rounded unelevated no-caps>
-                Apply Filters
-              </q-btn>
-            </div>
-            <div class="col-12 col-sm-auto">
-              <q-btn color="grey-7" @click="clearDateFilter" rounded unelevated no-caps>
-                Clear
-              </q-btn>
-            </div>
+          <div class="col-6 col-sm-3 col-md-2">
+            <q-input
+              v-model="dateFilterFrom"
+              type="date"
+              filled
+              dense
+              label="From"
+              :max="dateFilterTo"
+            />
           </div>
-        </div>
-
-        <div class="q-mt-md">
-          <q-btn
-            :color="showDateFilter ? 'primary' : 'grey-7'"
-            @click="showDateFilter = !showDateFilter"
-            rounded
-            unelevated
-            no-caps
-            size="sm"
-          >
-            <q-icon
-              :name="showDateFilter ? 'expand_less' : 'expand_more'"
-              size="xs"
-              class="q-mr-xs"
-            ></q-icon>
-            {{ showDateFilter ? 'Hide' : 'Show' }} Date Filters
-          </q-btn>
+          <div class="col-6 col-sm-3 col-md-2">
+            <q-input
+              v-model="dateFilterTo"
+              type="date"
+              filled
+              dense
+              label="To"
+              :min="dateFilterFrom"
+            />
+          </div>
+          <div class="col-12 col-sm-auto">
+            <q-btn flat dense color="primary" no-caps @click="resetFilters">Reset Filters</q-btn>
+          </div>
         </div>
       </template>
 
@@ -159,7 +128,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useTransactionsStore } from 'src/stores/transactions-store';
-import { date as dateUtils, useQuasar, type QTableColumn } from 'quasar';
+import { date as dateUtils, type QTableColumn } from 'quasar';
 import { TransactionType } from 'src/enums/transaction_type';
 
 const transactionStore = useTransactionsStore();
@@ -241,114 +210,70 @@ const pagination = ref({
 });
 const loading = ref(false);
 const transactions = computed(() => transactionStore.transactionList || []);
-const $q = useQuasar();
 const searchTerm = ref('');
-const showDateFilter = ref(false);
 const dateFilterFrom = ref('');
 const dateFilterTo = ref('');
-const filterActive = ref(false);
+let requestId = 0;
 
-async function onRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
+async function fetchTransactions(
+  page = pagination.value.page,
+  rowsPerPage = pagination.value.rowsPerPage,
+) {
+  const currentRequestId = ++requestId;
   loading.value = true;
-  const { page, rowsPerPage } = props.pagination;
   const keyword = searchTerm.value.trim();
   let result;
 
-  if (keyword) {
-    result = await transactionStore.searchTransactions(keyword, page, rowsPerPage);
-  } else if (filterActive.value && dateFilterFrom.value && dateFilterTo.value) {
-    result = await transactionStore.fetchPageByDateRange(
-      dateFilterFrom.value,
-      dateFilterTo.value,
-      page,
-      rowsPerPage,
-    );
-  } else {
-    result = await transactionStore.fetchPage(page, rowsPerPage);
-  }
+  try {
+    if (keyword) {
+      result = await transactionStore.searchTransactions(keyword, page, rowsPerPage);
+    } else if (dateFilterFrom.value && dateFilterTo.value) {
+      result = await transactionStore.fetchPageByDateRange(
+        dateFilterFrom.value,
+        dateFilterTo.value,
+        page,
+        rowsPerPage,
+      );
+    } else {
+      result = await transactionStore.fetchPage(page, rowsPerPage);
+    }
 
-  pagination.value.page = page;
-  pagination.value.rowsPerPage = rowsPerPage;
-  pagination.value.rowsNumber = result.total;
-  loading.value = false;
+    // Ignore stale responses from previous requests to avoid table flicker.
+    if (currentRequestId !== requestId) {
+      return;
+    }
+
+    pagination.value.page = page;
+    pagination.value.rowsPerPage = rowsPerPage;
+    pagination.value.rowsNumber = result.total;
+  } finally {
+    if (currentRequestId === requestId) {
+      loading.value = false;
+    }
+  }
 }
 
-watch(searchTerm, async (value) => {
-  loading.value = true;
-  pagination.value.page = 1;
-  filterActive.value = false; // Clear date filter when searching
-  const keyword = value.trim();
-  let result;
+async function onRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
+  const { page, rowsPerPage } = props.pagination;
+  await fetchTransactions(page, rowsPerPage);
+}
 
-  if (keyword) {
-    result = await transactionStore.searchTransactions(keyword, 1, pagination.value.rowsPerPage);
-  } else {
-    result = await transactionStore.fetchPage(1, pagination.value.rowsPerPage);
-  }
-
-  pagination.value.rowsNumber = result.total;
-  loading.value = false;
-});
-
-const applyDateFilter = async () => {
-  if (!dateFilterFrom.value || !dateFilterTo.value) {
-    $q.notify({
-      position: 'bottom-right',
-      type: 'warning',
-      message: 'Please select both start and end dates',
-      timeout: 2000,
-    });
-    return;
-  }
-
-  loading.value = true;
-  pagination.value.page = 1;
-  searchTerm.value = ''; // Clear search when applying date filter
-  filterActive.value = true;
-
-  const result = await transactionStore.fetchPageByDateRange(
-    dateFilterFrom.value,
-    dateFilterTo.value,
-    1,
-    pagination.value.rowsPerPage,
-  );
-
-  pagination.value.rowsNumber = result.total;
-  loading.value = false;
-
-  $q.notify({
-    position: 'bottom-right',
-    type: 'positive',
-    message: `Found ${result.total} transactions in the date range`,
-    timeout: 2000,
-  });
-};
-
-const clearDateFilter = async () => {
-  loading.value = true;
-  pagination.value.page = 1;
+function resetFilters() {
+  searchTerm.value = '';
   dateFilterFrom.value = '';
   dateFilterTo.value = '';
-  filterActive.value = false;
+}
 
-  const result = await transactionStore.fetchPage(1, pagination.value.rowsPerPage);
-
-  pagination.value.rowsNumber = result.total;
-  loading.value = false;
-
-  $q.notify({
-    position: 'bottom-right',
-    type: 'info',
-    message: 'Date filter cleared',
-    timeout: 2000,
-  });
-};
+watch([searchTerm, dateFilterFrom, dateFilterTo], async () => {
+  if (dateFilterFrom.value && dateFilterTo.value && dateFilterFrom.value > dateFilterTo.value) {
+    return;
+  }
+  pagination.value.page = 1;
+  await fetchTransactions(1, pagination.value.rowsPerPage);
+});
 
 onMounted(async () => {
   await transactionStore.init(false);
-  loading.value = true;
-  const result = await transactionStore.fetchPage(1, pagination.value.rowsPerPage);
-  pagination.value.rowsNumber = result.total;
-  loading.value = false;
+  await fetchTransactions(1, pagination.value.rowsPerPage);
 });
 </script>
