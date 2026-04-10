@@ -53,7 +53,10 @@
             :min="minimumAllowedDate"
             :rules="[
               (val) => !!val || 'This field is required',
-              (val) => !val || val >= minimumAllowedDate || `Date must be on or after ${minimumAllowedDate}`,
+              (val) =>
+                !val ||
+                val >= minimumAllowedDate ||
+                `Date must be on or after ${minimumAllowedDate}`,
             ]"
             icon="event"
           />
