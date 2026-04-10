@@ -50,7 +50,11 @@
             outlined
             dense
             class="full-width"
-            :rules="[(val) => !!val || 'This field is required']"
+            :min="minimumAllowedDate"
+            :rules="[
+              (val) => !!val || 'This field is required',
+              (val) => !val || val >= minimumAllowedDate || `Date must be on or after ${minimumAllowedDate}`,
+            ]"
             icon="event"
           />
         </div>
@@ -241,6 +245,10 @@ const formData = ref<FormData>(createDefaultFormData());
 const formRef = ref<QForm | null>(null);
 const availableCollectionDates = ref<string[]>([]);
 const selectedCollectionDate = ref<string | null>(null);
+const minimumAllowedDate = computed(() => {
+  const minimumYear = new Date().getFullYear() - 1;
+  return `${minimumYear}-01-01`;
+});
 const collectionDatesPage = ref(1);
 const collectionDatesPageSize = 30;
 const collectionDatesTotal = ref(0);
@@ -488,6 +496,15 @@ async function saveCollection() {
       message:
         'Please select a member for each tithe entry before saving. All fields are required.',
       caption: `Missing member on tithe entry #${missingMemberIndex + 1}`,
+      position: 'bottom-right',
+    });
+    return;
+  }
+
+  if (formData.value.collectionDate < minimumAllowedDate.value) {
+    $q.notify({
+      type: 'negative',
+      message: `Collection date must be on or after ${minimumAllowedDate.value}.`,
       position: 'bottom-right',
     });
     return;

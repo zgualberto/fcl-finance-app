@@ -70,7 +70,11 @@
                 outlined
                 dense
                 class="full-width"
-                :rules="[(val) => !!val || 'This field is required']"
+                :min="minimumAllowedDate"
+                :rules="[
+                  (val) => !!val || 'This field is required',
+                  (val) => !val || val >= minimumAllowedDate || `Date must be on or after ${minimumAllowedDate}`,
+                ]"
               />
             </div>
           </div>
@@ -207,6 +211,10 @@ const formRef = ref<QForm | null>(null);
 const isSaving = ref(false);
 const availableExpenseDates = ref<string[]>([]);
 const selectedExpenseDate = ref<string | null>(null);
+const minimumAllowedDate = computed(() => {
+  const minimumYear = new Date().getFullYear() - 1;
+  return `${minimumYear}-01-01`;
+});
 
 const categoriesStore = useCategoriesStore();
 const transactionsStore = useTransactionsStore();
@@ -479,6 +487,15 @@ async function saveExpenses() {
       type: 'negative',
       message: 'Please enter a valid amount for each expense entry before saving.',
       caption: `Invalid amount on expense entry #${invalidAmountIndex + 1}`,
+      position: 'bottom-right',
+    });
+    return;
+  }
+
+  if (formData.value.expenseDate < minimumAllowedDate.value) {
+    $q.notify({
+      type: 'negative',
+      message: `Expense date must be on or after ${minimumAllowedDate.value}.`,
       position: 'bottom-right',
     });
     return;
