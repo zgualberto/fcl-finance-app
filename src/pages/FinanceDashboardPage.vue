@@ -6,7 +6,7 @@
     }"
   >
     <q-card
-      class="relative-position rounded-borders"
+      class="relative-position rounded-borders q-mb-lg"
       :class="{
         'q-pa-lg': $q.screen.width > $q.screen.height,
         'q-pa-md': $q.platform.is.mobile,
