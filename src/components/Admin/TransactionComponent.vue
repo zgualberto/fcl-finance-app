@@ -56,7 +56,14 @@
             />
           </div>
           <div class="col-12 col-sm-auto">
-            <q-btn flat dense color="primary" no-caps @click="resetFilters">Reset Filters</q-btn>
+            <q-btn
+              flat
+              dense
+              no-caps
+              @click="resetFilters"
+              icon="fa-solid fa-filter-circle-xmark"
+              size="xs"
+            ></q-btn>
           </div>
         </div>
       </template>

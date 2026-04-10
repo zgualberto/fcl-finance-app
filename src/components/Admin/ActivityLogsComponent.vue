@@ -1,11 +1,11 @@
 <template>
-    <q-card
-      class="relative-position rounded-borders"
-      :class="{
-        'q-pa-lg': $q.screen.width > $q.screen.height,
-        'q-pa-md': $q.platform.is.mobile,
-      }"
-    >
+  <q-card
+    class="relative-position rounded-borders"
+    :class="{
+      'q-pa-lg': $q.screen.width > $q.screen.height,
+      'q-pa-md': $q.platform.is.mobile,
+    }"
+  >
     <q-table
       :rows="activityLogs"
       :columns="columns"
@@ -36,7 +36,14 @@
             <q-input v-model="toDate" type="date" filled dense label="To" />
           </div>
           <div class="col-12 col-sm-auto">
-            <q-btn flat dense color="primary" no-caps @click="resetFilters">Reset Filters</q-btn>
+            <q-btn
+              flat
+              dense
+              no-caps
+              @click="resetFilters"
+              icon="fa-solid fa-filter-circle-xmark"
+              size="xs"
+            ></q-btn>
           </div>
         </div>
       </template>
