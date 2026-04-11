@@ -315,9 +315,37 @@ export class TransactionRepository implements BaseRepository<Transaction> {
   async getYtdSummaryTotals(
     startDate: string,
     endDate: string,
-  ): Promise<{ collections: number; expenses: number; nonRemittableExpenses: number }> {
+  ): Promise<{
+    collections: number;
+    legacyCollections: number;
+    normalCollections: number;
+    expenses: number;
+    nonRemittableExpenses: number;
+  }> {
     const res = await database.query(
       `SELECT
+         COALESCE(
+           SUM(
+             CASE
+               WHEN c.transaction_type = ?
+                 AND t.is_legacy = 1
+               THEN t.amount
+               ELSE 0
+             END
+           ),
+           0
+         ) AS legacyCollections,
+         COALESCE(
+           SUM(
+             CASE
+               WHEN c.transaction_type = ?
+                 AND (t.is_legacy IS NULL OR t.is_legacy != 1)
+               THEN t.amount
+               ELSE 0
+             END
+           ),
+           0
+         ) AS normalCollections,
          COALESCE(SUM(CASE WHEN c.transaction_type = ? THEN t.amount ELSE 0 END), 0) AS collections,
          COALESCE(SUM(CASE WHEN c.transaction_type = ? THEN t.amount ELSE 0 END), 0) AS expenses,
          COALESCE(
@@ -337,6 +365,8 @@ export class TransactionRepository implements BaseRepository<Transaction> {
        WHERE t.date >= ? AND t.date <= ?`,
       [
         TransactionType.COLLECTIONS,
+        TransactionType.COLLECTIONS,
+        TransactionType.COLLECTIONS,
         TransactionType.EXPENSES,
         TransactionType.EXPENSES,
         startDate,
@@ -346,6 +376,8 @@ export class TransactionRepository implements BaseRepository<Transaction> {
 
     return {
       collections: (res.values?.[0]?.collections as number) ?? 0,
+      legacyCollections: (res.values?.[0]?.legacyCollections as number) ?? 0,
+      normalCollections: (res.values?.[0]?.normalCollections as number) ?? 0,
       expenses: (res.values?.[0]?.expenses as number) ?? 0,
       nonRemittableExpenses: (res.values?.[0]?.nonRemittableExpenses as number) ?? 0,
     };
@@ -360,6 +392,8 @@ export class TransactionRepository implements BaseRepository<Transaction> {
     Array<{
       date: string;
       collection: number;
+      legacyCollection: number;
+      normalCollection: number;
       expenses: number;
       nonRemittableExpenses: number;
     }>
@@ -369,6 +403,28 @@ export class TransactionRepository implements BaseRepository<Transaction> {
     const res = await database.query(
       `SELECT
          t.date AS date,
+         COALESCE(
+           SUM(
+             CASE
+               WHEN c.transaction_type = ?
+                 AND t.is_legacy = 1
+               THEN t.amount
+               ELSE 0
+             END
+           ),
+           0
+         ) AS legacyCollection,
+         COALESCE(
+           SUM(
+             CASE
+               WHEN c.transaction_type = ?
+                 AND (t.is_legacy IS NULL OR t.is_legacy != 1)
+               THEN t.amount
+               ELSE 0
+             END
+           ),
+           0
+         ) AS normalCollection,
          COALESCE(SUM(CASE WHEN c.transaction_type = ? THEN t.amount ELSE 0 END), 0) AS collection,
          COALESCE(SUM(CASE WHEN c.transaction_type = ? THEN t.amount ELSE 0 END), 0) AS expenses,
          COALESCE(
@@ -394,6 +450,8 @@ export class TransactionRepository implements BaseRepository<Transaction> {
        LIMIT ? OFFSET ?`,
       [
         TransactionType.COLLECTIONS,
+        TransactionType.COLLECTIONS,
+        TransactionType.COLLECTIONS,
         TransactionType.EXPENSES,
         TransactionType.EXPENSES,
         startDate,
@@ -409,6 +467,8 @@ export class TransactionRepository implements BaseRepository<Transaction> {
       (res.values as Array<{
         date: string;
         collection: number;
+        legacyCollection: number;
+        normalCollection: number;
         expenses: number;
         nonRemittableExpenses: number;
       }>) ?? []

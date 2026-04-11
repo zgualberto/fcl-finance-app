@@ -265,6 +265,14 @@ function formatCurrency(amount: number): string {
 }
 
 const summaryTotals = computed(() => {
+  const legacyCollections = rawTransactions.value
+    .filter((t) => t.transaction_type === TransactionType.COLLECTIONS && t.is_legacy === 1)
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const normalCollections = rawTransactions.value
+    .filter((t) => t.transaction_type === TransactionType.COLLECTIONS && t.is_legacy !== 1)
+    .reduce((sum, t) => sum + t.amount, 0);
+
   const collections = rawTransactions.value
     .filter((t) => t.transaction_type === TransactionType.COLLECTIONS)
     .reduce((sum, t) => sum + t.amount, 0);
@@ -284,7 +292,7 @@ const summaryTotals = computed(() => {
 
   const remittableExpenses = expenses - nonRemittableExpenses;
 
-  const gross = collections - remittableExpenses;
+  const gross = normalCollections - remittableExpenses;
 
   const nationalPercentDec = settingsStore.nationalPercent;
   const districtPercentDec = settingsStore.districtPercent;
@@ -295,7 +303,7 @@ const summaryTotals = computed(() => {
     districtPercentDec,
   );
   const net = computeNetCollection({
-    grossCollection: gross,
+    grossCollection: legacyCollections + gross,
     national: national15,
     district: district3,
     nonRemittableExpenses,

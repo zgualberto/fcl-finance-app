@@ -209,6 +209,8 @@ const isLoading = ref(false);
 const tableRows = ref<YtdTableRow[]>([]);
 const summaryTotalsData = ref({
   collections: 0,
+  legacyCollections: 0,
+  normalCollections: 0,
   expenses: 0,
   nonRemittableExpenses: 0,
 });
@@ -256,18 +258,20 @@ const columns = computed<QTableColumn<YtdTableRow>[]>(() => [
 
 const summaryTotals = computed(() => {
   const collections = summaryTotalsData.value.collections;
+  const legacyCollections = summaryTotalsData.value.legacyCollections;
+  const normalCollections = summaryTotalsData.value.normalCollections;
   const expenses = summaryTotalsData.value.expenses;
   const nonRemittableExpenses = summaryTotalsData.value.nonRemittableExpenses;
   const remittableExpenses = expenses - nonRemittableExpenses;
 
-  const gross = collections - remittableExpenses;
+  const gross = normalCollections - remittableExpenses;
   const { national, district } = computeRemittanceDeductions(
     gross,
     settingsStore.nationalPercent,
     settingsStore.districtPercent,
   );
   const net = computeNetCollection({
-    grossCollection: gross,
+    grossCollection: legacyCollections + gross,
     national,
     district,
     nonRemittableExpenses,
@@ -302,6 +306,8 @@ function toPeso(amount: number): string {
 async function loadYtdSummary(): Promise<void> {
   const totals = await transactionsStore.fetchYtdSummaryTotals(startDate, endDate);
   summaryTotalsData.value.collections = totals.collections;
+  summaryTotalsData.value.legacyCollections = totals.legacyCollections;
+  summaryTotalsData.value.normalCollections = totals.normalCollections;
   summaryTotalsData.value.expenses = totals.expenses;
   summaryTotalsData.value.nonRemittableExpenses = totals.nonRemittableExpenses;
 }
@@ -310,6 +316,8 @@ function mapPaginatedRows(
   rows: Array<{
     date: string;
     collection: number;
+    legacyCollection: number;
+    normalCollection: number;
     expenses: number;
     nonRemittableExpenses: number;
   }>,
@@ -319,14 +327,14 @@ function mapPaginatedRows(
 ): YtdTableRow[] {
   return rows.map((row, index) => {
     const remittableExpenses = row.expenses - row.nonRemittableExpenses;
-    const gross = row.collection - remittableExpenses;
+    const gross = row.normalCollection - remittableExpenses;
     const { national, district } = computeRemittanceDeductions(
       gross,
       settingsStore.nationalPercent,
       settingsStore.districtPercent,
     );
     const net = computeNetCollection({
-      grossCollection: gross,
+      grossCollection: row.legacyCollection + gross,
       national,
       district,
       nonRemittableExpenses: row.nonRemittableExpenses,

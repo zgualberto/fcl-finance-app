@@ -307,6 +307,18 @@ function buildMonthlyBuckets(transactions: Transaction[]): MonthlyBucket[] {
 }
 
 function buildYearTotals(transactions: Transaction[]) {
+  const legacyCollections = transactions
+    .filter(
+      (transaction) => transaction.transaction_type === TransactionType.COLLECTIONS && transaction.is_legacy === 1,
+    )
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+
+  const normalCollections = transactions
+    .filter(
+      (transaction) => transaction.transaction_type === TransactionType.COLLECTIONS && transaction.is_legacy !== 1,
+    )
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+
   const collections = transactions
     .filter((transaction) => transaction.transaction_type === TransactionType.COLLECTIONS)
     .reduce((sum, transaction) => sum + transaction.amount, 0);
@@ -326,14 +338,14 @@ function buildYearTotals(transactions: Transaction[]) {
 
   const remittableExpenses = expenses - nonRemittableExpenses;
 
-  const gross = collections - remittableExpenses;
+  const gross = normalCollections - remittableExpenses;
   const { national, district } = computeRemittanceDeductions(
     gross,
     settingsStore.nationalPercent,
     settingsStore.districtPercent,
   );
   const net = computeNetCollection({
-    grossCollection: gross,
+    grossCollection: legacyCollections + gross,
     national,
     district,
     nonRemittableExpenses,
