@@ -8,6 +8,135 @@ let db: SQLiteDBConnection | null = null;
 let sqlite: SQLiteConnection | null = null;
 let initPromise: Promise<void> | null = null;
 
+export interface RestoreVerification {
+  rowCounts: {
+    members: number;
+    categories: number;
+    transactions: number;
+    activityLogs: number;
+    applicationSettings: number;
+  };
+  integrityOk: boolean;
+  migrationVersion: number;
+}
+
+type BackupIndex = {
+  name?: string;
+  value?: string;
+};
+
+type BackupTable = {
+  name?: string;
+  indexes?: BackupIndex[];
+};
+
+type BackupPayload = {
+  database?: unknown;
+  tables?: BackupTable[];
+};
+
+function extractResultFlag(result: unknown): boolean {
+  if (typeof result === 'boolean') {
+    return result;
+  }
+  if (
+    result &&
+    typeof result === 'object' &&
+    'result' in result &&
+    typeof (result as { result?: unknown }).result === 'boolean'
+  ) {
+    return (result as { result: boolean }).result;
+  }
+  return false;
+}
+
+function sanitizeBackupIndexValue(tableName: string, indexName: string, rawValue: string): string {
+  let value = rawValue.trim();
+
+  // Expression indexes are not exported/imported consistently by the Capacitor SQLite JSON format.
+  if (tableName === 'categories' && indexName === 'idx_categories_name_lower') {
+    return 'name';
+  }
+
+  if (value.includes('LOWER(name)')) {
+    value = value.replace(/LOWER\(\s*name\s*\)/gi, 'name');
+  }
+
+  // Guard malformed payloads where an extra trailing ')' is emitted (e.g., 'name)').
+  if (!value.includes('(')) {
+    while (value.endsWith(')')) {
+      value = value.slice(0, -1).trim();
+    }
+  }
+
+  return value;
+}
+
+function sanitizeBackupPayload(payload: BackupPayload): BackupPayload {
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Backup payload is not a valid JSON object');
+  }
+
+  payload.database = DATABASE_NAME;
+
+  for (const table of payload.tables ?? []) {
+    const tableName = table.name || '';
+    for (const index of table.indexes ?? []) {
+      if (!index.value || typeof index.value !== 'string') {
+        continue;
+      }
+      const indexName = index.name || '';
+      index.value = sanitizeBackupIndexValue(tableName, indexName, index.value);
+    }
+  }
+
+  return payload;
+}
+
+function ensureSQLiteConnectionInstance(): SQLiteConnection {
+  if (!sqlite) {
+    sqlite = new SQLiteConnection(CapacitorSQLite);
+  }
+  return sqlite;
+}
+
+async function ensureNamedConnection(): Promise<SQLiteDBConnection> {
+  const sqliteConn = ensureSQLiteConnectionInstance();
+
+  const hasConn = extractResultFlag(await sqliteConn.isConnection(DATABASE_NAME, false));
+  if (!hasConn) {
+    await sqliteConn.createConnection(DATABASE_NAME, false, 'no-encryption', 1, false);
+  }
+
+  const conn = await sqliteConn.retrieveConnection(DATABASE_NAME, false);
+  const isOpen = extractResultFlag(await conn.isDBOpen());
+  if (!isOpen) {
+    await conn.open();
+  }
+
+  return conn;
+}
+
+function normalizeBackupJson(jsonData: string): string {
+  const parsed = JSON.parse(jsonData) as BackupPayload;
+  const sanitized = sanitizeBackupPayload(parsed);
+  return JSON.stringify(sanitized);
+}
+
+async function closeAndDeleteDatabase(sqliteConn: SQLiteConnection): Promise<void> {
+  const hasConn = extractResultFlag(await sqliteConn.isConnection(DATABASE_NAME, false));
+
+  if (hasConn) {
+    const existingConn = await sqliteConn.retrieveConnection(DATABASE_NAME, false);
+    const isOpen = extractResultFlag(await existingConn.isDBOpen());
+    if (isOpen) {
+      await existingConn.close();
+    }
+    await existingConn.delete();
+    await sqliteConn.closeConnection(DATABASE_NAME, false);
+  }
+}
+
 /**
  * Get the SQLite database connection instance
  */
@@ -29,23 +158,21 @@ export async function initializeDatabase(): Promise<void> {
 
   initPromise = (async () => {
     try {
-      if (!sqlite) {
-        sqlite = new SQLiteConnection(CapacitorSQLite);
-      }
+      const sqliteConn = ensureSQLiteConnectionInstance();
 
       try {
-        await sqlite.checkConnectionsConsistency();
+        await sqliteConn.checkConnectionsConsistency();
       } catch (error) {
         console.warn('[Database] Connection consistency check failed:', error);
       }
 
       // Reuse existing connection if available (e.g., HMR or app resume)
-      const isConn = await sqlite.isConnection(DATABASE_NAME, false);
+      const isConn = await sqliteConn.isConnection(DATABASE_NAME, false);
       let hasConn = typeof isConn === 'boolean' ? isConn : isConn.result;
       if (!hasConn) {
         console.log('[Database] Creating/opening connection to:', DATABASE_NAME);
         try {
-          await sqlite.createConnection(DATABASE_NAME, false, 'no-encryption', 1, false);
+          await sqliteConn.createConnection(DATABASE_NAME, false, 'no-encryption', 1, false);
         } catch (error) {
           if (String(error).includes('already exists')) {
             console.warn('[Database] Connection already exists, reusing:', DATABASE_NAME);
@@ -59,7 +186,7 @@ export async function initializeDatabase(): Promise<void> {
       }
 
       // Retrieve the connection
-      db = await sqlite.retrieveConnection(DATABASE_NAME, false);
+      db = await sqliteConn.retrieveConnection(DATABASE_NAME, false);
 
       if (!db) {
         throw new Error('Failed to retrieve database connection');
@@ -161,7 +288,9 @@ export async function exportForBackup(): Promise<string> {
       throw new Error('Failed to export database');
     }
 
-    return typeof result.export === 'string' ? result.export : JSON.stringify(result.export);
+    const payloadString =
+      typeof result.export === 'string' ? result.export : JSON.stringify(result.export);
+    return normalizeBackupJson(payloadString);
   } catch (error) {
     console.error('[Database] Export failed:', error);
     throw error;
@@ -172,29 +301,93 @@ export async function exportForBackup(): Promise<string> {
  * Import database from JSON backup
  */
 export async function importFromBackup(jsonData: string): Promise<void> {
+  const normalizedJsonData = normalizeBackupJson(jsonData);
+
   try {
-    if (!sqlite) throw new Error('SQLite not initialized');
+    const sqliteConn = ensureSQLiteConnectionInstance();
 
-    // Close existing connection if open
+    console.log('[Database] Preparing restore: closing connection and deleting existing database');
     if (db) {
-      await db.close();
+      try {
+        const isOpen = extractResultFlag(await db.isDBOpen());
+        if (isOpen) {
+          await db.close();
+        }
+      } catch (error) {
+        console.warn('[Database] Failed to close active connection handle before restore:', error);
+      } finally {
+        db = null;
+      }
     }
 
-    // Delete existing database first by importing (which replaces it)
-    // The SQLiteConnection.importFromJson replaces the entire database
-    await sqlite.importFromJson(jsonData);
+    await closeAndDeleteDatabase(sqliteConn);
 
-    // Re-establish connection
-    db = await sqlite.retrieveConnection(DATABASE_NAME, false);
-    if (db) {
-      await db.open();
-    }
+    console.log('[Database] Importing backup JSON payload...');
+    await sqliteConn.importFromJson(normalizedJsonData);
+
+    db = await ensureNamedConnection();
+    await db.execute('PRAGMA foreign_keys = ON');
+
+    console.log('[Database] Running migrations after restore...');
+    await runMigrations(db);
+    const currentVersion = await getCurrentVersion(db);
+    console.log('[Database] Restore completed. Database version:', currentVersion);
+
+    const verification = await verifyRestoreIntegrity();
+    console.log('[Database] Restore verification:', verification);
 
     console.log('[Database] Database restored from backup');
   } catch (error) {
+    try {
+      db = await ensureNamedConnection();
+      await db.execute('PRAGMA foreign_keys = ON');
+      await runMigrations(db);
+      console.warn('[Database] Recovered by reinitializing an empty database after import failure');
+    } catch (recoveryError) {
+      db = null;
+      console.error('[Database] Recovery initialization failed after import error:', recoveryError);
+    }
     console.error('[Database] Import failed:', error);
     throw error;
   }
+}
+
+/**
+ * Build a verification report for the active database.
+ */
+export async function verifyRestoreIntegrity(): Promise<RestoreVerification> {
+  const database = getDatabase();
+
+  const queryCount = async (tableName: string): Promise<number> => {
+    const result = await database.query(`SELECT COUNT(*) as total FROM ${tableName}`);
+    return Number(result.values?.[0]?.total || 0);
+  };
+
+  const integrityResult = await database.query('PRAGMA integrity_check');
+  const integrityOk =
+    String(integrityResult.values?.[0]?.integrity_check || '').toLowerCase() === 'ok';
+
+  const [members, categories, transactions, activityLogs, applicationSettings, migrationVersion] =
+    await Promise.all([
+      queryCount('members'),
+      queryCount('categories'),
+      queryCount('transactions'),
+      queryCount('activity_logs'),
+      queryCount('application_settings'),
+      getCurrentVersion(database),
+    ]);
+
+  return {
+    rowCounts: {
+      members,
+      categories,
+      transactions,
+      activityLogs,
+      applicationSettings,
+    },
+    integrityOk,
+    migrationVersion,
+  };
 }
 
 /**

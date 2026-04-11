@@ -18,6 +18,12 @@ export const useCategoriesStore = defineStore('categories', {
   },
 
   actions: {
+    clear() {
+      this.categories = [];
+      this.totalCategories = 0;
+      this.categoryRepository = null;
+      this.activityLogService = null;
+    },
     async init(loadAll = true) {
       this.categoryRepository = new CategoryRepository();
       if (loadAll) {

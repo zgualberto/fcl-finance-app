@@ -20,6 +20,13 @@ export const useTransactionsStore = defineStore('transactions', {
   },
 
   actions: {
+    clear() {
+      this.transactions = [];
+      this.availableCollectionDates = [];
+      this.totalTransactions = 0;
+      this.transactionRepository = null;
+      this.activityLogService = null;
+    },
     async init(loadAll = true) {
       this.transactionRepository = new TransactionRepository();
       if (loadAll) {

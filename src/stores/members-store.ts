@@ -18,6 +18,12 @@ export const useMembersStore = defineStore('members', {
   },
 
   actions: {
+    clear() {
+      this.members = [];
+      this.totalMembers = 0;
+      this.memberRepository = null;
+      this.activityLogService = null;
+    },
     async ensureRepository() {
       if (!this.memberRepository) {
         await this.init(false);

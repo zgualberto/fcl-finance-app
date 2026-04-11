@@ -2,7 +2,13 @@ import type { IDBPDatabase } from 'idb';
 import { openDB } from 'idb';
 import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
-import { checkIntegrity, exportForBackup, importFromBackup } from './database';
+import {
+  checkIntegrity,
+  exportForBackup,
+  importFromBackup,
+  verifyRestoreIntegrity,
+  type RestoreVerification,
+} from './database';
 import { setRecovered } from 'src/composables/useRecoveryWarning';
 
 const BACKUP_STORE_NAME = 'fcl-backup-store';
@@ -21,6 +27,12 @@ interface BackupSummary {
   key: string;
   timestamp: Date;
   size: number;
+}
+
+export interface RestoreResult {
+  success: boolean;
+  verification?: RestoreVerification;
+  error?: string;
 }
 
 function formatFileSize(bytes: number): string {
@@ -185,24 +197,34 @@ export async function getAvailableBackups(): Promise<BackupSummary[]> {
 /**
  * Restore database from a specific backup
  */
-export async function restoreFromBackup(backupKey: string): Promise<boolean> {
+export async function restoreFromBackup(backupKey: string): Promise<RestoreResult> {
   try {
     console.log('[Backup] Restoring from backup:', backupKey);
 
     const backup = await getBackupEntry(backupKey);
     if (!backup) {
       console.error('[Backup] Backup not found:', backupKey);
-      return false;
+      return {
+        success: false,
+        error: 'Backup not found',
+      };
     }
 
     // Import the backup into SQLite
     await importFromBackup(backup.data);
+    const verification = await verifyRestoreIntegrity();
 
-    console.log('[Backup] Successfully restored from backup');
-    return true;
+    console.log('[Backup] Successfully restored from backup:', verification);
+    return {
+      success: true,
+      verification,
+    };
   } catch (error) {
     console.error('[Backup] Failed to restore from backup:', error);
-    return false;
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
@@ -269,9 +291,16 @@ export async function exportBackupToShare(backupKey: string): Promise<void> {
   });
 }
 
-export async function importBackupJson(jsonData: string): Promise<string> {
+export async function importBackupJson(
+  jsonData: string,
+): Promise<{ backupKey: string; verification: RestoreVerification }> {
   await importFromBackup(jsonData);
-  return await storeBackupData(jsonData);
+  const verification = await verifyRestoreIntegrity();
+  const backupKey = await storeBackupData(jsonData);
+  return {
+    backupKey,
+    verification,
+  };
 }
 
 export async function deleteBackup(backupKey: string): Promise<void> {
@@ -341,12 +370,12 @@ export async function checkAndRecoverIfNeeded(): Promise<boolean> {
 
       const restored = await restoreFromBackup(latestBackupKey);
 
-      if (restored) {
+      if (restored.success) {
         console.log('[Backup] Database recovered from backup');
         setRecovered(true);
         return true;
       } else {
-        console.error('[Backup] Recovery failed');
+        console.error('[Backup] Recovery failed:', restored.error);
         return false;
       }
     }

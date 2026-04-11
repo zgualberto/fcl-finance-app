@@ -1,6 +1,6 @@
 import { defineBoot } from '#q-app/wrappers';
 import { initializeDatabase } from 'src/services/database';
-import { restoreFromBackupIfCorrupted } from 'src/services/backup';
+import { checkAndRecoverIfNeeded } from 'src/services/backup';
 
 let initError: Error | null = null;
 
@@ -8,14 +8,13 @@ export default defineBoot(async (/* { app, router, ... } */) => {
   try {
     console.log('[SQLite Boot] Initializing SQLite database...');
 
-    // Check if database needs recovery from backup
-    const recovered = restoreFromBackupIfCorrupted();
-    if (recovered) {
-      console.log('[SQLite Boot] Database marked for recovery check');
-    }
-
     // Initialize the database with schema and migrations
     await initializeDatabase();
+
+    const recovered = await checkAndRecoverIfNeeded();
+    if (recovered) {
+      console.warn('[SQLite Boot] Database recovered from backup after integrity check');
+    }
 
     console.log('[SQLite Boot] SQLite database initialized successfully');
   } catch (error) {

@@ -149,6 +149,9 @@ import {
   importBackupJson,
   restoreFromBackup,
 } from 'src/services/backup';
+import { useTransactionsStore } from 'src/stores/transactions-store';
+import { useMembersStore } from 'src/stores/members-store';
+import { useCategoriesStore } from 'src/stores/categories-store';
 
 type BackupSummary = { key: string; timestamp: Date; size: number };
 
@@ -161,6 +164,9 @@ function formatFileSize(bytes: number): string {
 }
 
 const $q = useQuasar();
+const transactionsStore = useTransactionsStore();
+const membersStore = useMembersStore();
+const categoriesStore = useCategoriesStore();
 const backups = ref<BackupSummary[]>([]);
 const creating = ref(false);
 const importing = ref(false);
@@ -178,6 +184,25 @@ const pagination = {
 };
 
 const formatTimestamp = (timestamp: Date) => timestamp.toLocaleString();
+
+const resetStoresAfterRestore = () => {
+  transactionsStore.clear();
+  membersStore.clear();
+  categoriesStore.clear();
+};
+
+const buildVerificationMessage = (verification: {
+  integrityOk: boolean;
+  rowCounts: {
+    members: number;
+    categories: number;
+    transactions: number;
+  };
+  migrationVersion: number;
+}) => {
+  const integrity = verification.integrityOk ? 'ok' : 'failed';
+  return `Restore verified: members ${verification.rowCounts.members}, categories ${verification.rowCounts.categories}, transactions ${verification.rowCounts.transactions}, integrity ${integrity}, migration v${verification.migrationVersion}`;
+};
 
 const reloadAppAfterRestore = () => {
   window.setTimeout(() => {
@@ -260,23 +285,26 @@ const confirmDelete = (backupKey: string) => {
 const handleRestoreBackup = async (backupKey: string) => {
   try {
     pendingKey.value = backupKey;
-    const restored = await restoreFromBackup(backupKey);
+    const result = await restoreFromBackup(backupKey);
 
-    if (!restored) {
-      throw new Error('Restore failed');
+    if (!result.success || !result.verification) {
+      throw new Error(result.error || 'Restore failed');
     }
+
+    resetStoresAfterRestore();
 
     $q.notify({
       type: 'positive',
-      message: 'Backup restored successfully',
+      message: buildVerificationMessage(result.verification),
       position: 'bottom-right',
+      timeout: 3500,
     });
 
     reloadAppAfterRestore();
-  } catch {
+  } catch (error) {
     $q.notify({
       type: 'negative',
-      message: 'Failed to restore backup',
+      message: error instanceof Error ? error.message : 'Failed to restore backup',
       position: 'bottom-right',
     });
   } finally {
@@ -358,12 +386,16 @@ const handleImportConfirmed = async () => {
   try {
     importing.value = true;
     const jsonData = await readFileAsText(selectedFile.value as File);
-    await importBackupJson(jsonData);
+    const result = await importBackupJson(jsonData);
+
+    resetStoresAfterRestore();
+
     await loadBackups();
     $q.notify({
       type: 'positive',
-      message: 'Backup imported successfully',
+      message: buildVerificationMessage(result.verification),
       position: 'bottom-right',
+      timeout: 3500,
     });
 
     reloadAppAfterRestore();
