@@ -393,15 +393,27 @@ export async function verifyRestoreIntegrity(): Promise<RestoreVerification> {
 /**
  * Check database integrity
  */
-export async function checkIntegrity(): Promise<boolean> {
+export async function checkIntegrity(): Promise<boolean | null> {
   try {
     const db = getDatabase();
-    await db.execute('PRAGMA integrity_check');
-    console.log('[Database] Integrity check passed');
-    return true;
-  } catch (error) {
-    console.error('[Database] Integrity check failed:', error);
+    const result = await db.query('PRAGMA integrity_check');
+    const integrityValue = String(result.values?.[0]?.integrity_check || '').trim().toLowerCase();
+
+    if (!integrityValue) {
+      console.warn('[Database] Integrity check returned no result');
+      return null;
+    }
+
+    if (integrityValue === 'ok') {
+      console.log('[Database] Integrity check passed');
+      return true;
+    }
+
+    console.error('[Database] Integrity check reported corruption:', integrityValue);
     return false;
+  } catch (error) {
+    console.error('[Database] Integrity check could not be completed:', error);
+    return null;
   }
 }
 

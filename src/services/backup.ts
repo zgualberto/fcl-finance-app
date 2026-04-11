@@ -350,6 +350,11 @@ export async function checkAndRecoverIfNeeded(): Promise<boolean> {
 
     const isValid = await checkIntegrity();
 
+    if (isValid === null) {
+      console.warn('[Backup] Skipping automatic recovery because integrity status is unknown');
+      return false;
+    }
+
     if (!isValid) {
       console.warn('[Backup] Database integrity check failed - attempting recovery');
 
