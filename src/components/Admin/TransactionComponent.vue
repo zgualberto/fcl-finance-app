@@ -7,6 +7,7 @@
     }"
   >
     <q-table
+      v-if="tableReady"
       :rows="transactions"
       :columns="columns"
       row-key="id"
@@ -98,8 +99,8 @@
 
       <template v-slot:body-cell-effectiveDate="props">
         <q-td :props="props">
-          <span v-if="props.row.effective_date">
-            {{ dateUtils.formatDate(props.row.effective_date, 'MMM D, YYYY') }}
+          <span v-if="props.row.formatted_effective_date">
+            {{ props.row.formatted_effective_date }}
           </span>
           <span v-else class="text-italic text-grey-7">-</span>
         </q-td>
@@ -107,14 +108,14 @@
 
       <template v-slot:body-cell-date="props">
         <q-td :props="props">
-          {{ dateUtils.formatDate(props.row.date, 'MMM D, YYYY') }}
+          {{ props.row.formatted_date }}
         </q-td>
       </template>
 
       <template v-slot:body-cell-createdAt="props">
         <q-td :props="props">
-          <span v-if="props.row.created_at">
-            {{ dateUtils.formatDate(props.row.created_at, 'MMM D, YYYY HH:mm') }}
+          <span v-if="props.row.formatted_created_at">
+            {{ props.row.formatted_created_at }}
           </span>
           <span v-else class="text-italic text-grey-7">-</span>
         </q-td>
@@ -122,8 +123,8 @@
 
       <template v-slot:body-cell-updatedAt="props">
         <q-td :props="props">
-          <span v-if="props.row.updated_at">
-            {{ dateUtils.formatDate(props.row.updated_at, 'MMM D, YYYY HH:mm') }}
+          <span v-if="props.row.formatted_updated_at">
+            {{ props.row.formatted_updated_at }}
           </span>
           <span v-else class="text-italic text-grey-7">-</span>
         </q-td>
@@ -141,14 +142,23 @@
         </div>
       </template>
     </q-table>
+    <div v-else class="q-pa-md text-body2 text-grey-7">Preparing table...</div>
   </q-card>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 import { date as dateUtils, type QTableColumn } from 'quasar';
 import { TransactionType } from 'src/enums/transaction_type';
+import type { Transaction } from 'src/databases/entities/transaction';
+
+type TransactionDashboardRow = Transaction & {
+  formatted_date: string;
+  formatted_effective_date: string;
+  formatted_created_at: string;
+  formatted_updated_at: string;
+};
 
 const transactionStore = useTransactionsStore();
 
@@ -228,18 +238,61 @@ const pagination = ref({
   rowsNumber: 0,
 });
 const loading = ref(false);
-const transactions = computed(() => transactionStore.transactionList || []);
+const transactions = computed<TransactionDashboardRow[]>(() => {
+  return (transactionStore.transactionList || []).map((transaction) => ({
+    ...transaction,
+    formatted_date: formatDateValue(transaction.date, 'MMM D, YYYY'),
+    formatted_effective_date: formatDateValue(transaction.effective_date, 'MMM D, YYYY'),
+    formatted_created_at: formatDateValue(transaction.created_at, 'MMM D, YYYY HH:mm'),
+    formatted_updated_at: formatDateValue(transaction.updated_at, 'MMM D, YYYY HH:mm'),
+  }));
+});
 const searchTerm = ref('');
 const dateFilterFrom = ref('');
 const dateFilterTo = ref('');
+const tableReady = ref(false);
 let requestId = 0;
+let filterDebounceHandle: ReturnType<typeof setTimeout> | null = null;
+let lastCompletedRequestKey = '';
 
 const hasSearchFilter = computed(() => searchTerm.value.trim().length > 0);
 const hasDateRangeFilter = computed(() => Boolean(dateFilterFrom.value && dateFilterTo.value));
 
+function formatDateValue(value: string | Date | null | undefined, format: string): string {
+  return value ? dateUtils.formatDate(value, format) : '';
+}
+
+function getRequestKey(page: number, rowsPerPage: number): string {
+  return JSON.stringify({
+    keyword: searchTerm.value.trim(),
+    dateFrom: dateFilterFrom.value,
+    dateTo: dateFilterTo.value,
+    page,
+    rowsPerPage,
+  });
+}
+
+function clearPendingFilterRequest() {
+  if (filterDebounceHandle) {
+    clearTimeout(filterDebounceHandle);
+    filterDebounceHandle = null;
+  }
+}
+
+function scheduleFilterFetch() {
+  clearPendingFilterRequest();
+  filterDebounceHandle = setTimeout(() => {
+    void fetchTransactions(1, pagination.value.rowsPerPage);
+    filterDebounceHandle = null;
+  }, 350);
+}
+
 function clearResults() {
+  clearPendingFilterRequest();
   transactionStore.transactions = [];
   pagination.value.rowsNumber = 0;
+  pagination.value.page = 1;
+  lastCompletedRequestKey = '';
 }
 
 async function fetchTransactions(
@@ -248,6 +301,13 @@ async function fetchTransactions(
 ) {
   if (!hasSearchFilter.value && !hasDateRangeFilter.value) {
     clearResults();
+    return;
+  }
+
+  const requestKey = getRequestKey(page, rowsPerPage);
+  if (requestKey === lastCompletedRequestKey) {
+    pagination.value.page = page;
+    pagination.value.rowsPerPage = rowsPerPage;
     return;
   }
 
@@ -278,6 +338,7 @@ async function fetchTransactions(
       return;
     }
 
+    lastCompletedRequestKey = requestKey;
     pagination.value.page = page;
     pagination.value.rowsPerPage = rowsPerPage;
     pagination.value.rowsNumber = result.total;
@@ -304,7 +365,9 @@ function resetFilters() {
   clearResults();
 }
 
-watch([searchTerm, dateFilterFrom, dateFilterTo], async () => {
+watch(searchTerm, async () => {
+  clearPendingFilterRequest();
+
   if (dateFilterFrom.value && dateFilterTo.value && dateFilterFrom.value > dateFilterTo.value) {
     return;
   }
@@ -318,8 +381,29 @@ watch([searchTerm, dateFilterFrom, dateFilterTo], async () => {
   await fetchTransactions(1, pagination.value.rowsPerPage);
 });
 
-onMounted(async () => {
-  await transactionStore.init(false);
+watch([dateFilterFrom, dateFilterTo], () => {
+  if (dateFilterFrom.value && dateFilterTo.value && dateFilterFrom.value > dateFilterTo.value) {
+    clearPendingFilterRequest();
+    return;
+  }
+
+  if (!hasSearchFilter.value && !hasDateRangeFilter.value) {
+    clearResults();
+    return;
+  }
+
+  pagination.value.page = 1;
+  scheduleFilterFetch();
+});
+
+onMounted(() => {
   clearResults();
+  requestAnimationFrame(() => {
+    tableReady.value = true;
+  });
+});
+
+onBeforeUnmount(() => {
+  clearPendingFilterRequest();
 });
 </script>
