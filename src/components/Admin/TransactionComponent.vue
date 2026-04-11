@@ -128,6 +128,18 @@
           <span v-else class="text-italic text-grey-7">-</span>
         </q-td>
       </template>
+      <!-- No data available -->
+      <template v-slot:no-data>
+        <div class="row full-width items-center justify-center q-pa-md">
+          <div class="col-auto text-center">
+            <q-icon name="info" size="2em" class="text-grey-5" />
+            <div class="text-h6 text-grey-7">No transactions found</div>
+            <div class="text-body2 text-grey-5">
+              Try adjusting your search or date filters to find transactions.
+            </div>
+          </div>
+        </div>
+      </template>
     </q-table>
   </q-card>
 </template>
@@ -222,10 +234,23 @@ const dateFilterFrom = ref('');
 const dateFilterTo = ref('');
 let requestId = 0;
 
+const hasSearchFilter = computed(() => searchTerm.value.trim().length > 0);
+const hasDateRangeFilter = computed(() => Boolean(dateFilterFrom.value && dateFilterTo.value));
+
+function clearResults() {
+  transactionStore.transactions = [];
+  pagination.value.rowsNumber = 0;
+}
+
 async function fetchTransactions(
   page = pagination.value.page,
   rowsPerPage = pagination.value.rowsPerPage,
 ) {
+  if (!hasSearchFilter.value && !hasDateRangeFilter.value) {
+    clearResults();
+    return;
+  }
+
   const currentRequestId = ++requestId;
   loading.value = true;
   const keyword = searchTerm.value.trim();
@@ -241,12 +266,15 @@ async function fetchTransactions(
         page,
         rowsPerPage,
       );
-    } else {
-      result = await transactionStore.fetchPage(page, rowsPerPage);
     }
 
     // Ignore stale responses from previous requests to avoid table flicker.
     if (currentRequestId !== requestId) {
+      return;
+    }
+
+    if (!result) {
+      clearResults();
       return;
     }
 
@@ -261,6 +289,10 @@ async function fetchTransactions(
 }
 
 async function onRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
+  if (!hasSearchFilter.value && !hasDateRangeFilter.value) {
+    return;
+  }
+
   const { page, rowsPerPage } = props.pagination;
   await fetchTransactions(page, rowsPerPage);
 }
@@ -269,18 +301,25 @@ function resetFilters() {
   searchTerm.value = '';
   dateFilterFrom.value = '';
   dateFilterTo.value = '';
+  clearResults();
 }
 
 watch([searchTerm, dateFilterFrom, dateFilterTo], async () => {
   if (dateFilterFrom.value && dateFilterTo.value && dateFilterFrom.value > dateFilterTo.value) {
     return;
   }
+
+  if (!hasSearchFilter.value && !hasDateRangeFilter.value) {
+    clearResults();
+    return;
+  }
+
   pagination.value.page = 1;
   await fetchTransactions(1, pagination.value.rowsPerPage);
 });
 
 onMounted(async () => {
   await transactionStore.init(false);
-  await fetchTransactions(1, pagination.value.rowsPerPage);
+  clearResults();
 });
 </script>
