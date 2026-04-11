@@ -397,7 +397,9 @@ export async function checkIntegrity(): Promise<boolean | null> {
   try {
     const db = getDatabase();
     const result = await db.query('PRAGMA integrity_check');
-    const integrityValue = String(result.values?.[0]?.integrity_check || '').trim().toLowerCase();
+    const integrityValue = String(result.values?.[0]?.integrity_check || '')
+      .trim()
+      .toLowerCase();
 
     if (!integrityValue) {
       console.warn('[Database] Integrity check returned no result');
