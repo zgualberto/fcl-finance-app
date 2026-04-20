@@ -5,6 +5,19 @@ import { defineConfig } from '#q-app/wrappers';
 import os from 'os';
 import path from 'path';
 
+function getLinuxTargets(): string[] {
+  const configuredTargets = process.env.ELECTRON_LINUX_TARGETS;
+
+  if (!configuredTargets) {
+    return ['AppImage'];
+  }
+
+  return configuredTargets
+    .split(',')
+    .map((target) => target.trim())
+    .filter((target) => target.length > 0);
+}
+
 export default defineConfig((/* ctx */) => {
   return {
     bin: {
@@ -111,17 +124,17 @@ export default defineConfig((/* ctx */) => {
     animations: [],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#sourcefiles
-    // sourceFiles: {
-    //   rootComponent: 'src/App.vue',
-    //   router: 'src/router/index',
-    //   store: 'src/store/index',
-    //   pwaRegisterServiceWorker: 'src-pwa/register-service-worker',
-    //   pwaServiceWorker: 'src-pwa/custom-service-worker',
-    //   pwaManifestFile: 'src-pwa/manifest.json',
-    //   electronMain: 'src-electron/electron-main',
-    //   electronPreload: 'src-electron/electron-preload'
-    //   bexManifestFile: 'src-bex/manifest.json
-    // },
+    sourceFiles: {
+      // rootComponent: 'src/App.vue',
+      // router: 'src/router/index',
+      // store: 'src/store/index',
+      // pwaRegisterServiceWorker: 'src-pwa/register-service-worker',
+      // pwaServiceWorker: 'src-pwa/custom-service-worker',
+      // pwaManifestFile: 'src-pwa/manifest.json',
+      electronMain: 'src-electron/electron-main',
+      electronPreload: 'src-electron/electron-preload',
+      // bexManifestFile: 'src-bex/manifest.json
+    },
 
     // https://v2.quasar.dev/quasar-cli-vite/developing-ssr/configuring-ssr
     ssr: {
@@ -183,7 +196,7 @@ export default defineConfig((/* ctx */) => {
       // specify the debugging port to use for the Electron app when running in development mode
       inspectPort: 5858,
 
-      bundler: 'packager', // 'packager' or 'builder'
+      bundler: 'builder', // 'packager' or 'builder'
 
       packager: {
         // https://github.com/electron-userland/electron-packager/blob/master/docs/api.md#options
@@ -200,6 +213,15 @@ export default defineConfig((/* ctx */) => {
         // https://www.electron.build/configuration/configuration
 
         appId: 'fcl-finance-app',
+        productName: 'FCL Finance App',
+        linux: {
+          category: 'Utility',
+          maintainer: 'ziegfrid.gualberto@gmail.com',
+          target: getLinuxTargets(),
+        },
+        win: {
+          target: ['nsis'],
+        },
       },
     },
 

@@ -1,7 +1,16 @@
 import { defineBoot } from '#q-app/wrappers';
 import { Share } from '@capacitor/share';
 
+function isElectronRuntime(): boolean {
+  return typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron');
+}
+
 export default defineBoot(async () => {
+  if (isElectronRuntime()) {
+    console.log('[Share Boot] Skipping Capacitor Share warmup in Electron runtime');
+    return;
+  }
+
   try {
     console.log('[Share Boot] Initializing Share plugin...');
 

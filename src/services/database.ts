@@ -1,5 +1,7 @@
 import type { SQLiteDBConnection } from '@capacitor-community/sqlite';
 import { CapacitorSQLite, SQLiteConnection } from '@capacitor-community/sqlite';
+import { Capacitor } from '@capacitor/core';
+import { defineCustomElements as defineJeepSqlite } from 'jeep-sqlite/loader';
 import { runMigrations, getMigrationHistory, getCurrentVersion } from './migrations/runner';
 
 const DATABASE_NAME = 'fcl';
@@ -7,6 +9,7 @@ const DATABASE_NAME = 'fcl';
 let db: SQLiteDBConnection | null = null;
 let sqlite: SQLiteConnection | null = null;
 let initPromise: Promise<void> | null = null;
+let webStorePromise: Promise<void> | null = null;
 
 export interface RestoreVerification {
   rowCounts: {
@@ -100,8 +103,47 @@ function ensureSQLiteConnectionInstance(): SQLiteConnection {
   return sqlite;
 }
 
+function usesWebSqliteRuntime(): boolean {
+  return Capacitor.getPlatform() === 'web';
+}
+
+function ensureJeepSqliteElement(): void {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+
+  if (!customElements.get('jeep-sqlite')) {
+    defineJeepSqlite(window);
+  }
+
+  if (!document.querySelector('jeep-sqlite')) {
+    const jeepSqliteElement = document.createElement('jeep-sqlite');
+    jeepSqliteElement.setAttribute('style', 'display: none;');
+    (document.body ?? document.documentElement).appendChild(jeepSqliteElement);
+  }
+}
+
+async function prepareWebStore(sqliteConn: SQLiteConnection): Promise<void> {
+  if (!usesWebSqliteRuntime()) {
+    return;
+  }
+
+  if (!webStorePromise) {
+    webStorePromise = (async () => {
+      console.log('[Database] Preparing web SQLite store for renderer runtime');
+      ensureJeepSqliteElement();
+      await sqliteConn.initWebStore();
+      console.log('[Database] Web SQLite store ready');
+    })();
+  }
+
+  await webStorePromise;
+}
+
 async function ensureNamedConnection(): Promise<SQLiteDBConnection> {
   const sqliteConn = ensureSQLiteConnectionInstance();
+
+  await prepareWebStore(sqliteConn);
 
   const hasConn = extractResultFlag(await sqliteConn.isConnection(DATABASE_NAME, false));
   if (!hasConn) {
@@ -159,6 +201,8 @@ export async function initializeDatabase(): Promise<void> {
   initPromise = (async () => {
     try {
       const sqliteConn = ensureSQLiteConnectionInstance();
+
+      await prepareWebStore(sqliteConn);
 
       try {
         await sqliteConn.checkConnectionsConsistency();
