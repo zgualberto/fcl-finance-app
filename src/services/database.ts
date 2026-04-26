@@ -6,10 +6,16 @@ import { runMigrations, getMigrationHistory, getCurrentVersion } from './migrati
 
 const DATABASE_NAME = 'fcl';
 
-let db: SQLiteDBConnection | null = null;
+type DatabaseConnectionLike = Pick<
+  SQLiteDBConnection,
+  'isDBOpen' | 'open' | 'close' | 'execute' | 'query' | 'run' | 'exportToJson'
+>;
+
+let db: DatabaseConnectionLike | null = null;
 let sqlite: SQLiteConnection | null = null;
 let initPromise: Promise<void> | null = null;
 let webStorePromise: Promise<void> | null = null;
+let electronConnection: ElectronDatabaseConnection | null = null;
 
 export interface RestoreVerification {
   rowCounts: {
@@ -103,6 +109,74 @@ function ensureSQLiteConnectionInstance(): SQLiteConnection {
   return sqlite;
 }
 
+function isElectronRuntime(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return typeof window.electronSQLite !== 'undefined';
+}
+
+function getElectronBridge(): ElectronSQLiteBridge {
+  if (!window.electronSQLite) {
+    throw new Error('Electron SQLite bridge is not available in renderer');
+  }
+
+  return window.electronSQLite;
+}
+
+class ElectronDatabaseConnection implements DatabaseConnectionLike {
+  constructor(private readonly databaseName: string, private readonly bridge: ElectronSQLiteBridge) {}
+
+  async isDBOpen(): Promise<{ result: boolean }> {
+    return { result: true };
+  }
+
+  async open(): Promise<void> {
+    await this.bridge.init(this.databaseName);
+  }
+
+  async close(): Promise<void> {
+    await this.bridge.close(this.databaseName);
+  }
+
+  async execute(statements: string): Promise<{ changes?: { changes?: number } }> {
+    return await this.bridge.execute(this.databaseName, statements);
+  }
+
+  async query(
+    statement: string,
+    values: unknown[] = [],
+  ): Promise<{ values?: Array<Record<string, unknown>> }> {
+    return await this.bridge.query(this.databaseName, statement, values);
+  }
+
+  async run(
+    statement: string,
+    values: unknown[] = [],
+  ): Promise<{ changes?: { changes?: number; lastId?: number } }> {
+    return await this.bridge.run(this.databaseName, statement, values);
+  }
+
+  async exportToJson(
+    _jsonexportmode: string,
+    _encrypted: boolean,
+  ): Promise<{ export?: unknown }> {
+    return await this.bridge.exportJson(this.databaseName);
+  }
+}
+
+async function ensureElectronConnection(): Promise<ElectronDatabaseConnection> {
+  const bridge = getElectronBridge();
+  await bridge.init(DATABASE_NAME);
+
+  if (!electronConnection) {
+    electronConnection = new ElectronDatabaseConnection(DATABASE_NAME, bridge);
+  }
+
+  return electronConnection;
+}
+
 function usesWebSqliteRuntime(): boolean {
   return Capacitor.getPlatform() === 'web';
 }
@@ -124,7 +198,7 @@ function ensureJeepSqliteElement(): void {
 }
 
 async function prepareWebStore(sqliteConn: SQLiteConnection): Promise<void> {
-  if (!usesWebSqliteRuntime()) {
+  if (!usesWebSqliteRuntime() || isElectronRuntime()) {
     return;
   }
 
@@ -141,6 +215,10 @@ async function prepareWebStore(sqliteConn: SQLiteConnection): Promise<void> {
 }
 
 async function ensureNamedConnection(): Promise<SQLiteDBConnection> {
+  if (isElectronRuntime()) {
+    return (await ensureElectronConnection()) as unknown as SQLiteDBConnection;
+  }
+
   const sqliteConn = ensureSQLiteConnectionInstance();
 
   await prepareWebStore(sqliteConn);
@@ -186,7 +264,7 @@ export function getDatabase(): SQLiteDBConnection {
   if (!db) {
     throw new Error('Database not initialized. Make sure sqlite boot file has run.');
   }
-  return db;
+  return db as unknown as SQLiteDBConnection;
 }
 
 /**
@@ -200,6 +278,19 @@ export async function initializeDatabase(): Promise<void> {
 
   initPromise = (async () => {
     try {
+      if (isElectronRuntime()) {
+        db = await ensureElectronConnection();
+        await db.execute('PRAGMA foreign_keys = ON');
+
+        console.log('[Database] Electron database opened successfully');
+        console.log('[Database] Running migrations...');
+        await runMigrations(db as SQLiteDBConnection);
+
+        const currentVersion = await getCurrentVersion(db as SQLiteDBConnection);
+        console.log('[Database] Database version:', currentVersion);
+        return;
+      }
+
       const sqliteConn = ensureSQLiteConnectionInstance();
 
       await prepareWebStore(sqliteConn);
@@ -250,9 +341,9 @@ export async function initializeDatabase(): Promise<void> {
 
       // Run any pending migrations
       console.log('[Database] Running migrations...');
-      await runMigrations(db);
+      await runMigrations(db as SQLiteDBConnection);
 
-      const currentVersion = await getCurrentVersion(db);
+      const currentVersion = await getCurrentVersion(db as SQLiteDBConnection);
       console.log('[Database] Database version:', currentVersion);
     } catch (error) {
       console.error('[Database] Initialization error:', error);
@@ -348,6 +439,29 @@ export async function importFromBackup(jsonData: string): Promise<void> {
   const normalizedJsonData = normalizeBackupJson(jsonData);
 
   try {
+    if (isElectronRuntime()) {
+      const bridge = getElectronBridge();
+
+      console.log('[Database] Preparing Electron restore: resetting existing database');
+      await bridge.reset(DATABASE_NAME);
+
+      console.log('[Database] Importing backup JSON payload to Electron database...');
+      await bridge.importJson(DATABASE_NAME, normalizedJsonData);
+
+      db = await ensureElectronConnection();
+      await db.execute('PRAGMA foreign_keys = ON');
+
+      console.log('[Database] Running migrations after restore...');
+      await runMigrations(db as SQLiteDBConnection);
+      const currentVersion = await getCurrentVersion(db as SQLiteDBConnection);
+      console.log('[Database] Restore completed. Database version:', currentVersion);
+
+      const verification = await verifyRestoreIntegrity();
+      console.log('[Database] Restore verification:', verification);
+      console.log('[Database] Database restored from backup');
+      return;
+    }
+
     const sqliteConn = ensureSQLiteConnectionInstance();
 
     console.log('[Database] Preparing restore: closing connection and deleting existing database');
@@ -373,7 +487,7 @@ export async function importFromBackup(jsonData: string): Promise<void> {
     await db.execute('PRAGMA foreign_keys = ON');
 
     console.log('[Database] Running migrations after restore...');
-    await runMigrations(db);
+    await runMigrations(db as SQLiteDBConnection);
     const currentVersion = await getCurrentVersion(db);
     console.log('[Database] Restore completed. Database version:', currentVersion);
 
@@ -385,7 +499,7 @@ export async function importFromBackup(jsonData: string): Promise<void> {
     try {
       db = await ensureNamedConnection();
       await db.execute('PRAGMA foreign_keys = ON');
-      await runMigrations(db);
+      await runMigrations(db as SQLiteDBConnection);
       console.warn('[Database] Recovered by reinitializing an empty database after import failure');
     } catch (recoveryError) {
       db = null;
@@ -493,6 +607,7 @@ export async function closeDatabase(): Promise<void> {
       await db.close();
       db = null;
       sqlite = null;
+      electronConnection = null;
       console.log('[Database] Database closed');
     } catch (error) {
       console.error('[Database] Error closing database:', error);
