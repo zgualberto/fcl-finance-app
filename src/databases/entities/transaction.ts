@@ -3,6 +3,7 @@ export interface Transaction {
   member_id?: number | null;
   category_id?: number | null;
   is_legacy?: number;
+  budget_source?: string;
   amount: number;
   description?: string;
   date: string;

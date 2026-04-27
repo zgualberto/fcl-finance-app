@@ -14,13 +14,14 @@ export class TransactionRepository implements BaseRepository<Transaction> {
       transaction.description ?? '',
       transaction.date ?? '',
       transaction.is_legacy ?? 0,
+      transaction.budget_source ?? null,
     ];
   }
 
   async insert(transaction: Partial<Transaction>): Promise<number> {
     const result = await database.run(
-      `INSERT INTO transactions (member_id, category_id, amount, description, date, is_legacy)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO transactions (member_id, category_id, amount, description, date, is_legacy, budget_source)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
         .replace(/\s+/g, ' ')
         .trim(),
       this.buildInsertParams(transaction),
@@ -35,6 +36,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          t.member_id,
          t.category_id,
          t.is_legacy,
+         t.budget_source,
          t.amount,
          t.description,
          t.date,
@@ -65,6 +67,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          description = ?,
          date = ?,
          is_legacy = ?,
+         budget_source = ?,
          updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
       [
@@ -74,6 +77,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
         transaction.description ?? '',
         transaction.date,
         transaction.is_legacy ?? 0,
+        transaction.budget_source ?? null,
         transaction.id,
       ],
     );
@@ -105,8 +109,8 @@ export class TransactionRepository implements BaseRepository<Transaction> {
       },
       ...transactions.map((transaction) => ({
         statement:
-          `INSERT INTO transactions (member_id, category_id, amount, description, date, is_legacy)
-         VALUES (?, ?, ?, ?, ?, ?)`
+          `INSERT INTO transactions (member_id, category_id, amount, description, date, is_legacy, budget_source)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
             .replace(/\s+/g, ' ')
             .trim(),
         values: this.buildInsertParams(transaction),
@@ -123,6 +127,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          t.member_id,
          t.category_id,
          t.is_legacy,
+         t.budget_source,
          t.amount,
          t.description,
          t.date,
@@ -245,6 +250,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          t.member_id,
          t.category_id,
          t.is_legacy,
+         t.budget_source,
          t.amount,
          t.description,
          t.date,
@@ -284,6 +290,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          t.member_id,
          t.category_id,
          t.is_legacy,
+         t.budget_source,
          t.amount,
          t.description,
          t.date,
@@ -507,6 +514,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          t.member_id,
          t.category_id,
          t.is_legacy,
+         t.budget_source,
          t.amount,
          t.description,
          t.date,
@@ -564,6 +572,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          t.member_id,
          t.category_id,
          t.is_legacy,
+         t.budget_source,
          t.amount,
          t.description,
          t.date,

@@ -17,6 +17,82 @@
         <p class="q-my-xs text-body1 text-grey-7">Finance Team - Church Expenses</p>
       </div>
 
+      <div class="q-mb-lg">
+        <q-card
+          flat
+          bordered
+          class="budget-source-card rounded-borders"
+          :class="{
+            'q-pa-lg': $q.screen.width > $q.screen.height,
+            'q-pa-md': $q.platform.is.mobile,
+            'budget-source-card--disabled': isEditingLoadedExpenses,
+          }"
+        >
+          <div class="row items-start no-wrap q-col-gutter-sm q-mb-md">
+            <div class="col-auto">
+              <q-icon name="account_balance_wallet" size="20px" color="warning" />
+            </div>
+            <div class="col">
+              <div class="text-h6 text-weight-bold">Budget Source</div>
+              <p class="q-my-xs text-body2 text-grey-8">
+                Select where this expense will be deducted from
+              </p>
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-md">
+            <div class="col-12 col-sm-6">
+              <button
+                type="button"
+                class="budget-source-option full-width text-left"
+                :class="{
+                  'budget-source-option--active':
+                    formData.budgetSource === ExpenseBudgetSource.CURRENT_MONTH_COLLECTION,
+                }"
+                :disabled="isEditingLoadedExpenses"
+                @click="setBudgetSource(ExpenseBudgetSource.CURRENT_MONTH_COLLECTION)"
+              >
+                <span class="budget-source-option__title">Current Month's Collection</span>
+                <span class="budget-source-option__description">
+                  Regular expense deducted before calculating NET
+                </span>
+              </button>
+            </div>
+            <div class="col-12 col-sm-6">
+              <button
+                type="button"
+                class="budget-source-option full-width text-left"
+                :class="{
+                  'budget-source-option--active':
+                    formData.budgetSource === ExpenseBudgetSource.CENTRAL_FUND,
+                }"
+                :disabled="isEditingLoadedExpenses"
+                @click="setBudgetSource(ExpenseBudgetSource.CENTRAL_FUND)"
+              >
+                <span class="budget-source-option__title">Central Fund (Previous Years NET)</span>
+                <span class="budget-source-option__description">
+                  Capital/special expense from accumulated NET
+                </span>
+              </button>
+            </div>
+            <div class="col-12 rounded-borders">
+              <q-banner
+                v-if="formData.budgetSource === ExpenseBudgetSource.CURRENT_MONTH_COLLECTION"
+                class="budget-source-banner"
+              >
+                <strong>Regular expense:</strong> This will be deducted from the current month's
+                collection before calculating the net.
+              </q-banner>
+              <q-banner v-else class="budget-source-banner">
+                <strong>Capital/Special expense:</strong> This will be deducted from the central
+                fund (accumulated NET collection from previous years). Use this for major expenses
+                like building renovation, equipment purchase, etc.
+              </q-banner>
+            </div>
+          </div>
+        </q-card>
+      </div>
+
       <q-form ref="formRef" @submit="saveExpenses">
         <!-- Load Existing Expenses -->
         <section
@@ -52,6 +128,17 @@
         </section>
 
         <!-- Create/Edit Expenses -->
+        <section
+          class="form-section"
+          :class="{
+            'q-mb-lg': $q.screen.width > $q.screen.height,
+            'q-mb-sm': $q.screen.lt.sm,
+          }"
+        >
+          <div class="text-h6">Budget Source</div>
+          <q-separator class="q-mb-md"></q-separator>
+        </section>
+
         <section
           class="form-section"
           :class="{
@@ -172,6 +259,7 @@ import { date as dateUtils, type QForm, useQuasar } from 'quasar';
 import { useRoute } from 'vue-router';
 import { useCategoriesStore } from 'src/stores/categories-store';
 import { useTransactionsStore } from 'src/stores/transactions-store';
+import { ExpenseBudgetSource } from 'src/enums/expense_budget_source';
 import { TransactionType } from 'src/enums/transaction_type';
 import type { Transaction } from 'src/databases/entities/transaction';
 import { useUnsavedWarning } from 'src/composables/useUnsavedWarning';
@@ -188,6 +276,7 @@ interface ExpenseItem {
 
 interface ExpensesFormData {
   expenseDate: string;
+  budgetSource: ExpenseBudgetSource;
   items: ExpenseItem[];
 }
 
@@ -206,6 +295,7 @@ const createDefaultItem = (): ExpenseItem => ({
 
 const createDefaultFormData = (): ExpensesFormData => ({
   expenseDate: dateUtils.formatDate(new Date(), 'YYYY-MM-DD'),
+  budgetSource: ExpenseBudgetSource.CURRENT_MONTH_COLLECTION,
   items: [createDefaultItem()],
 });
 
@@ -218,6 +308,7 @@ const minimumAllowedDate = computed(() => {
   const minimumYear = new Date().getFullYear() - 1;
   return `${minimumYear}-01-01`;
 });
+const isEditingLoadedExpenses = computed(() => selectedExpenseDate.value !== null);
 
 const categoriesStore = useCategoriesStore();
 const transactionsStore = useTransactionsStore();
@@ -250,6 +341,13 @@ function addItems(count: number) {
 
 function removeItem(index: number) {
   formData.value.items.splice(index, 1);
+}
+
+function setBudgetSource(source: ExpenseBudgetSource) {
+  if (isEditingLoadedExpenses.value) {
+    return;
+  }
+  formData.value.budgetSource = source;
 }
 
 function formatCurrency(amount: number): string {
@@ -324,6 +422,10 @@ function transformTransactionsToExpenseFormData(transactions: Transaction[]): Ex
   if (firstDate) {
     data.expenseDate = firstDate;
   }
+
+  const resolvedBudgetSource = resolveBudgetSourceFromTransactions(transactions);
+  data.budgetSource = resolvedBudgetSource;
+
   data.items = []; // Reset items
 
   // Transform each transaction to an expense item
@@ -351,6 +453,33 @@ function transformTransactionsToExpenseFormData(transactions: Transaction[]): Ex
   });
 
   return data;
+}
+
+function resolveBudgetSourceFromTransactions(transactions: Transaction[]): ExpenseBudgetSource {
+  if (transactions.length === 0) {
+    return ExpenseBudgetSource.CURRENT_MONTH_COLLECTION;
+  }
+
+  const normalizeBudgetSource = (value?: string): ExpenseBudgetSource => {
+    return value === ExpenseBudgetSource.CENTRAL_FUND
+      ? ExpenseBudgetSource.CENTRAL_FUND
+      : ExpenseBudgetSource.CURRENT_MONTH_COLLECTION;
+  };
+
+  const firstSource = normalizeBudgetSource(transactions[0]?.budget_source);
+  const hasMixedSources = transactions.some(
+    (transaction) => normalizeBudgetSource(transaction.budget_source) !== firstSource,
+  );
+
+  if (hasMixedSources) {
+    $q.notify({
+      type: 'warning',
+      message: 'Mixed budget source entries detected. Using the first saved source.',
+      position: 'bottom-right',
+    });
+  }
+
+  return firstSource;
 }
 
 async function loadExpenseByDate() {
@@ -455,6 +584,7 @@ function buildTransactions(): Partial<Transaction>[] {
       amount: item.amount,
       description,
       date: expenseDate,
+      budget_source: formData.value.budgetSource,
     };
   });
 }
@@ -575,5 +705,80 @@ watch(
 
 .opacity-40 {
   opacity: 0.4;
+}
+
+.budget-source-card {
+  border-color: #f4d38b;
+  background: #fff8e6;
+}
+
+.budget-source-card--disabled {
+  opacity: 0.85;
+}
+
+.budget-source-option {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 102px;
+  width: 100%;
+  padding: 20px 18px;
+  border: 2px solid var(--color-input-border);
+  border-radius: 12px;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.budget-source-option:hover:not(:disabled) {
+  border-color: color-mix(in srgb, #f57c00 35%, white);
+}
+
+.budget-source-option:focus-visible {
+  border-color: #f57c00;
+  box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.2);
+}
+
+.budget-source-option--active {
+  border-color: #f57c00;
+  background: #fff1d4;
+  box-shadow: 0 0 0 2px rgba(245, 124, 0, 0.12);
+}
+
+.budget-source-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.budget-source-option__title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.budget-source-option__description {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.budget-source-banner {
+  border: 2px solid var(--color-input-border);
+  border-radius: 12px;
+  background: var(--color-bg-card);
+}
+
+@media (max-width: 599px) {
+  .budget-source-option {
+    min-height: auto;
+  }
 }
 </style>
