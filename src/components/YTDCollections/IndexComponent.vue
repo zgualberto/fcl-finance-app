@@ -228,6 +228,7 @@ const summaryTotalsData = ref({
   normalCollections: 0,
   expenses: 0,
   nonRemittableExpenses: 0,
+  centralFundExpenses: 0,
 });
 
 const currentYear = new Date().getFullYear();
@@ -288,6 +289,7 @@ const summaryTotals = computed(() => {
   const normalCollections = summaryTotalsData.value.normalCollections;
   const expenses = summaryTotalsData.value.expenses;
   const nonRemittableExpenses = summaryTotalsData.value.nonRemittableExpenses;
+  const centralFundExpenses = summaryTotalsData.value.centralFundExpenses;
   const remittableExpenses = expenses - nonRemittableExpenses;
 
   const gross = normalCollections - remittableExpenses;
@@ -301,12 +303,13 @@ const summaryTotals = computed(() => {
     national,
     district,
     nonRemittableExpenses,
-  });
+  }) - centralFundExpenses;
 
   return {
     collections,
     expenses,
     nonRemittableExpenses,
+    centralFundExpenses,
     gross,
     national,
     district,
@@ -336,6 +339,7 @@ async function loadYtdSummary(): Promise<void> {
   summaryTotalsData.value.normalCollections = totals.normalCollections;
   summaryTotalsData.value.expenses = totals.expenses;
   summaryTotalsData.value.nonRemittableExpenses = totals.nonRemittableExpenses;
+  summaryTotalsData.value.centralFundExpenses = totals.centralFundExpenses;
 }
 
 function mapPaginatedRows(
@@ -346,6 +350,7 @@ function mapPaginatedRows(
     normalCollection: number;
     expenses: number;
     nonRemittableExpenses: number;
+    centralFundExpenses: number;
   }>,
   page: number,
   rowsPerPage: number,
@@ -364,7 +369,7 @@ function mapPaginatedRows(
       national,
       district,
       nonRemittableExpenses: row.nonRemittableExpenses,
-    });
+    }) - row.centralFundExpenses;
     const rowPosition = (page - 1) * rowsPerPage + index;
 
     return {

@@ -1,6 +1,7 @@
 import type { Transaction } from '../entities/transaction';
 import type { BaseRepository } from './base.repository';
 import { getDatabase } from 'src/services/database';
+import { ExpenseBudgetSource } from 'src/enums/expense_budget_source';
 import { TransactionType } from 'src/enums/transaction_type';
 
 const database = getDatabase();
@@ -328,6 +329,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
     normalCollections: number;
     expenses: number;
     nonRemittableExpenses: number;
+    centralFundExpenses: number;
   }> {
     const res = await database.query(
       `SELECT
@@ -359,6 +361,17 @@ export class TransactionRepository implements BaseRepository<Transaction> {
            SUM(
              CASE
                WHEN c.transaction_type = ?
+                 AND t.budget_source = ?
+               THEN t.amount
+               ELSE 0
+             END
+           ),
+           0
+         ) AS centralFundExpenses,
+         COALESCE(
+           SUM(
+             CASE
+               WHEN c.transaction_type = ?
                  AND c.non_remittable = 1
                  AND (c.effective_date IS NULL OR c.effective_date <= t.date)
                THEN t.amount
@@ -376,6 +389,8 @@ export class TransactionRepository implements BaseRepository<Transaction> {
         TransactionType.COLLECTIONS,
         TransactionType.EXPENSES,
         TransactionType.EXPENSES,
+        ExpenseBudgetSource.CENTRAL_FUND,
+        TransactionType.EXPENSES,
         startDate,
         endDate,
       ],
@@ -387,6 +402,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
       normalCollections: (res.values?.[0]?.normalCollections as number) ?? 0,
       expenses: (res.values?.[0]?.expenses as number) ?? 0,
       nonRemittableExpenses: (res.values?.[0]?.nonRemittableExpenses as number) ?? 0,
+      centralFundExpenses: (res.values?.[0]?.centralFundExpenses as number) ?? 0,
     };
   }
 
@@ -403,6 +419,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
       normalCollection: number;
       expenses: number;
       nonRemittableExpenses: number;
+      centralFundExpenses: number;
     }>
   > {
     const offset = (page - 1) * limit;
@@ -438,6 +455,17 @@ export class TransactionRepository implements BaseRepository<Transaction> {
            SUM(
              CASE
                WHEN c.transaction_type = ?
+                 AND t.budget_source = ?
+               THEN t.amount
+               ELSE 0
+             END
+           ),
+           0
+         ) AS centralFundExpenses,
+         COALESCE(
+           SUM(
+             CASE
+               WHEN c.transaction_type = ?
                  AND c.non_remittable = 1
                  AND (c.effective_date IS NULL OR c.effective_date <= t.date)
                THEN t.amount
@@ -461,6 +489,8 @@ export class TransactionRepository implements BaseRepository<Transaction> {
         TransactionType.COLLECTIONS,
         TransactionType.EXPENSES,
         TransactionType.EXPENSES,
+        ExpenseBudgetSource.CENTRAL_FUND,
+        TransactionType.EXPENSES,
         startDate,
         endDate,
         TransactionType.COLLECTIONS,
@@ -478,6 +508,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
         normalCollection: number;
         expenses: number;
         nonRemittableExpenses: number;
+        centralFundExpenses: number;
       }>) ?? []
     );
   }

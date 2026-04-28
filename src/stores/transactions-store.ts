@@ -213,6 +213,7 @@ export const useTransactionsStore = defineStore('transactions', {
       normalCollections: number;
       expenses: number;
       nonRemittableExpenses: number;
+      centralFundExpenses: number;
     }> {
       if (!this.transactionRepository) {
         await this.init(false);
@@ -229,6 +230,7 @@ export const useTransactionsStore = defineStore('transactions', {
           normalCollections: 0,
           expenses: 0,
           nonRemittableExpenses: 0,
+          centralFundExpenses: 0,
         };
       }
     },
@@ -245,6 +247,7 @@ export const useTransactionsStore = defineStore('transactions', {
         normalCollection: number;
         expenses: number;
         nonRemittableExpenses: number;
+        centralFundExpenses: number;
       }>;
       total: number;
     }> {
