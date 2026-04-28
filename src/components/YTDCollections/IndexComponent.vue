@@ -14,30 +14,49 @@
     >
       <div class="row full-width q-mb-md items-start">
         <div class="col">
-          <div class="text-h5 text-weight-bold">YTD Collections</div>
-          <div class="text-body1 text-grey-7">Overview of all collection and expense records</div>
-        </div>
-        <div class="col-auto">
-          <div class="row q-col-gutter-sm">
-            <div class="col-auto">
-              <q-btn
-                color="primary"
-                rounded
-                unelevated
-                no-caps
-                :to="{ name: 'weekly_collections' }"
-              >
-                <q-icon name="add" size="xs" class="q-mr-sm" />
-                Add Collection
-              </q-btn>
-            </div>
-            <div class="col-auto">
-              <q-btn color="negative" rounded unelevated no-caps :to="{ name: 'expenses' }">
-                <q-icon name="add" size="xs" class="q-mr-sm" />
-                Add Expenses
-              </q-btn>
+          <div class="col-12">
+            <div class="text-h5 text-weight-bold">Annual Collections Dashboard</div>
+            <div class="text-body1 text-grey-7">
+              Overall totals across all years • Filter table by year using selector
             </div>
           </div>
+
+          <div class="col-12">
+            <div class="row q-col-gutter-sm q-my-md">
+              <div class="col-auto">
+                <q-btn
+                  color="primary"
+                  rounded
+                  unelevated
+                  no-caps
+                  :to="{ name: 'weekly_collections' }"
+                >
+                  <q-icon name="add" size="xs" class="q-mr-sm" />
+                  Add Collection
+                </q-btn>
+              </div>
+              <div class="col-auto">
+                <q-btn color="negative" rounded unelevated no-caps :to="{ name: 'expenses' }">
+                  <q-icon name="add" size="xs" class="q-mr-sm" />
+                  Add Expenses
+                </q-btn>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-auto row items-center q-col-gutter-sm">
+          <q-icon name="fa-regular fa-calendar" size="24px" class="text-grey-6" />
+          <div>Filter:</div>
+          <q-select
+            v-model="selectedYear"
+            :options="yearOptions"
+            outlined
+            dense
+            emit-value
+            map-options
+            options-dense
+            style="min-width: 100px"
+          />
         </div>
       </div>
 
@@ -45,35 +64,31 @@
         <div class="col-12 col-md-4">
           <q-card class="summary-card summary-card-collection text-white full-height" flat>
             <q-card-section>
-              <div class="text-subtitle2">Total Collections</div>
+              <div class="text-subtitle2">Overall Total Collections</div>
               <div class="text-h4 text-weight-bold">
                 ₱{{ formatCurrency(summaryTotals.collections) }}
               </div>
+              <div class="text-caption">All years combined</div>
             </q-card-section>
           </q-card>
         </div>
         <div class="col-12 col-md-4">
           <q-card class="summary-card summary-card-expenses text-white full-height" flat>
             <q-card-section>
-              <div class="text-subtitle2">Total Expenses</div>
+              <div class="text-subtitle2">Overall Total Expenses</div>
               <div class="text-h4 text-weight-bold">
                 ₱{{ formatCurrency(summaryTotals.expenses) }}
               </div>
-              <div class="text-caption">
-                Non-remittable: ₱{{ formatCurrency(summaryTotals.nonRemittableExpenses) }}
-              </div>
+              <div class="text-caption">All years combined</div>
             </q-card-section>
           </q-card>
         </div>
         <div class="col-12 col-md-4">
           <q-card class="summary-card summary-card-net text-white full-height" flat>
             <q-card-section>
-              <div class="text-subtitle2">Net Collection</div>
+              <div class="text-subtitle2">Overall Net Collection</div>
               <div class="text-h4 text-weight-bold">₱{{ formatCurrency(summaryTotals.net) }}</div>
-              <div class="text-caption">
-                After National {{ nationalRateLabel }}, District {{ districtRateLabel }}, and
-                Non-remittable
-              </div>
+              <div class="text-caption">After 15% & 3% • Cash on hand</div>
             </q-card-section>
           </q-card>
         </div>
@@ -178,7 +193,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { date as dateUtils, useQuasar, type QTableColumn } from 'quasar';
 import {
   computeNetCollection,
@@ -215,9 +230,20 @@ const summaryTotalsData = ref({
   nonRemittableExpenses: 0,
 });
 
-const currentYear = String(new Date().getFullYear());
-const startDate = `${currentYear}-01-01`;
-const endDate = `${currentYear}-12-31`;
+const currentYear = new Date().getFullYear();
+const selectedYear = ref(currentYear);
+const yearOptions = Array.from({ length: 50 }, (_, index) => {
+  const year = currentYear - index;
+  return {
+    label: String(year),
+    value: year,
+  };
+});
+
+const allYearsStartDate = '1900-01-01';
+const allYearsEndDate = '2999-12-31';
+const tableStartDate = computed(() => `${selectedYear.value}-01-01`);
+const tableEndDate = computed(() => `${selectedYear.value}-12-31`);
 
 const pagination = ref({
   page: 1,
@@ -304,7 +330,7 @@ function toPeso(amount: number): string {
 }
 
 async function loadYtdSummary(): Promise<void> {
-  const totals = await transactionsStore.fetchYtdSummaryTotals(startDate, endDate);
+  const totals = await transactionsStore.fetchYtdSummaryTotals(allYearsStartDate, allYearsEndDate);
   summaryTotalsData.value.collections = totals.collections;
   summaryTotalsData.value.legacyCollections = totals.legacyCollections;
   summaryTotalsData.value.normalCollections = totals.normalCollections;
@@ -360,8 +386,8 @@ async function loadYtdPage(
   rowsPerPage = pagination.value.rowsPerPage,
 ) {
   const { rows, total } = await transactionsStore.fetchYtdPage(
-    startDate,
-    endDate,
+    tableStartDate.value,
+    tableEndDate.value,
     page,
     rowsPerPage,
   );
@@ -395,6 +421,17 @@ async function onTableRequest(props: { pagination: { page: number; rowsPerPage: 
     isLoading.value = false;
   }
 }
+
+watch(selectedYear, () => {
+  void (async () => {
+    isLoading.value = true;
+    try {
+      await loadYtdPage(1, pagination.value.rowsPerPage);
+    } finally {
+      isLoading.value = false;
+    }
+  })();
+});
 
 function goToCollectionForm(date: string): void {
   void router.push({
