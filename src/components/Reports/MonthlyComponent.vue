@@ -376,8 +376,7 @@ function buildCategoryGroups(transactionType: TransactionType): CategoryGroup[] 
     .filter(
       (t) =>
         t.transaction_type === transactionType &&
-        (transactionType !== TransactionType.EXPENSES ||
-          isNonCentralFundExpense(t)),
+        (transactionType !== TransactionType.EXPENSES || isNonCentralFundExpense(t)),
     )
     .forEach((transaction) => {
       const parentName = transaction.parent_name || transaction.category_name || 'Uncategorized';

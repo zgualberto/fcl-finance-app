@@ -13,7 +13,6 @@ export function isCentralFundExpense(transaction: TransactionBudgetFields): bool
 
 export function isNonCentralFundExpense(transaction: TransactionBudgetFields): boolean {
   return (
-    transaction.transaction_type === TransactionType.EXPENSES &&
-    !isCentralFundExpense(transaction)
+    transaction.transaction_type === TransactionType.EXPENSES && !isCentralFundExpense(transaction)
   );
 }

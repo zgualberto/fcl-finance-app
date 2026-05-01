@@ -391,13 +391,15 @@ function getMonthEndDateString(year: number, monthIndex: number): string {
 function buildYearTotals(transactions: Transaction[]) {
   const legacyCollections = transactions
     .filter(
-      (transaction) => transaction.transaction_type === TransactionType.COLLECTIONS && transaction.is_legacy === 1,
+      (transaction) =>
+        transaction.transaction_type === TransactionType.COLLECTIONS && transaction.is_legacy === 1,
     )
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
   const normalCollections = transactions
     .filter(
-      (transaction) => transaction.transaction_type === TransactionType.COLLECTIONS && transaction.is_legacy !== 1,
+      (transaction) =>
+        transaction.transaction_type === TransactionType.COLLECTIONS && transaction.is_legacy !== 1,
     )
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
@@ -697,8 +699,8 @@ const monthlyBarChartOptions = computed(
 );
 
 const expenseRatioByCategory = computed((): ExpenseParentItem[] => {
-  const expenseTransactions = rawTransactions.value.filter(
-    (transaction) => isNonCentralFundExpense(transaction),
+  const expenseTransactions = rawTransactions.value.filter((transaction) =>
+    isNonCentralFundExpense(transaction),
   );
 
   const totalExpense = expenseTransactions.reduce(

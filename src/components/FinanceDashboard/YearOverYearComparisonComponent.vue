@@ -310,13 +310,15 @@ function buildMonthlyBuckets(transactions: Transaction[]): MonthlyBucket[] {
 function buildYearTotals(transactions: Transaction[]) {
   const legacyCollections = transactions
     .filter(
-      (transaction) => transaction.transaction_type === TransactionType.COLLECTIONS && transaction.is_legacy === 1,
+      (transaction) =>
+        transaction.transaction_type === TransactionType.COLLECTIONS && transaction.is_legacy === 1,
     )
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
   const normalCollections = transactions
     .filter(
-      (transaction) => transaction.transaction_type === TransactionType.COLLECTIONS && transaction.is_legacy !== 1,
+      (transaction) =>
+        transaction.transaction_type === TransactionType.COLLECTIONS && transaction.is_legacy !== 1,
     )
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
