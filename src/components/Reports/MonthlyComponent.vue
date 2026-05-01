@@ -250,7 +250,7 @@
               <div class="text-subtitle2 q-mb-sm">NET Collection</div>
               <div class="text-caption q-mb-sm">
                 (GROSS - National {{ Math.round(settingsStore.nationalPercent * 100) }}% - District
-                {{ Math.round(settingsStore.districtPercent * 100) }}% - Non-remittable Expenses)
+                {{ Math.round(settingsStore.districtPercent * 100) }}% - Non-remittable Expenses - Central Fund Expenses)
               </div>
               <div class="text-h4" style="font-weight: 700">
                 ₱{{ formatCurrency(summaryTotals.net) }}
@@ -276,6 +276,7 @@ import {
 } from 'src/services/financial-calculations.service';
 import { isNonRemittableActive } from 'src/utils/non-remittable';
 import { TransactionType } from 'src/enums/transaction_type';
+import { ExpenseBudgetSource } from 'src/enums/expense_budget_source';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 import { useSettingsStore } from 'src/stores/settings-store';
 import type { Transaction } from 'src/databases/entities/transaction';
@@ -440,6 +441,14 @@ const summaryTotals = computed(() => {
     )
     .reduce((sum, t) => sum + t.amount, 0);
 
+  const centralFundExpenses = rawTransactions.value
+    .filter(
+      (t) =>
+        t.transaction_type === TransactionType.EXPENSES &&
+        t.budget_source === ExpenseBudgetSource.CENTRAL_FUND,
+    )
+    .reduce((sum, t) => sum + t.amount, 0);
+
   const remittableExpenses = expenses - nonRemittableExpenses;
 
   const gross = normalCollections - remittableExpenses;
@@ -457,13 +466,14 @@ const summaryTotals = computed(() => {
     national,
     district,
     nonRemittableExpenses,
-  });
+  }) - centralFundExpenses;
 
   return {
     collections,
     expenses,
     remittableExpenses,
     nonRemittableExpenses,
+    centralFundExpenses,
     gross,
     national,
     district,
@@ -495,6 +505,12 @@ const deductions = computed((): Deduction[] => {
       description: 'Excluded from GROSS Collection and deducted after remittances',
       percentage: 0,
       amount: summaryTotals.value.nonRemittableExpenses,
+    },
+    {
+      name: 'Central Fund Expenses',
+      description: 'Expenses charged to central fund',
+      percentage: 0,
+      amount: summaryTotals.value.centralFundExpenses,
     },
   ];
 });
