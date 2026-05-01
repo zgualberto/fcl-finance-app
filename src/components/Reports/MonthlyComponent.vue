@@ -250,7 +250,8 @@
               <div class="text-subtitle2 q-mb-sm">NET Collection</div>
               <div class="text-caption q-mb-sm">
                 (GROSS - National {{ Math.round(settingsStore.nationalPercent * 100) }}% - District
-                {{ Math.round(settingsStore.districtPercent * 100) }}% - Non-remittable Expenses - Central Fund Expenses)
+                {{ Math.round(settingsStore.districtPercent * 100) }}% - Non-remittable Expenses -
+                Central Fund Expenses)
               </div>
               <div class="text-h4" style="font-weight: 700">
                 ₱{{ formatCurrency(summaryTotals.net) }}
@@ -461,12 +462,13 @@ const summaryTotals = computed(() => {
     nationalPercentDec,
     districtPercentDec,
   );
-  const net = computeNetCollection({
-    grossCollection: legacyCollections + gross,
-    national,
-    district,
-    nonRemittableExpenses,
-  }) - centralFundExpenses;
+  const net =
+    computeNetCollection({
+      grossCollection: legacyCollections + gross,
+      national,
+      district,
+      nonRemittableExpenses,
+    }) - centralFundExpenses;
 
   return {
     collections,
