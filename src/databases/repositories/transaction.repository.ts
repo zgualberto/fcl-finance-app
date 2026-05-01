@@ -7,6 +7,23 @@ import { TransactionType } from 'src/enums/transaction_type';
 const database = getDatabase();
 
 export class TransactionRepository implements BaseRepository<Transaction> {
+  private normalizePositiveInteger(value: unknown, fallback: number): number {
+    const normalized = typeof value === 'number' ? value : Number(value);
+    return Number.isInteger(normalized) && normalized > 0 ? normalized : fallback;
+  }
+
+  private resolveDateFilterColumn(dateField: 'date' | 'created_at' | 'updated_at'): string {
+    switch (dateField) {
+      case 'created_at':
+        return 'date(t.created_at)';
+      case 'updated_at':
+        return 'date(t.updated_at)';
+      case 'date':
+      default:
+        return 'date(t.date)';
+    }
+  }
+
   private buildInsertParams(transaction: Partial<Transaction>): Array<number | string | null> {
     return [
       transaction.member_id ?? null,
@@ -593,10 +610,14 @@ export class TransactionRepository implements BaseRepository<Transaction> {
   async findByDateRangePaginated(
     startDate: string,
     endDate: string,
+    dateField: 'date' | 'created_at' | 'updated_at' = 'date',
     page: number = 1,
     limit: number = 20,
   ): Promise<Transaction[]> {
-    const offset = (page - 1) * limit;
+    const normalizedPage = this.normalizePositiveInteger(page, 1);
+    const normalizedLimit = this.normalizePositiveInteger(limit, 20);
+    const offset = (normalizedPage - 1) * normalizedLimit;
+    const dateFilterColumn = this.resolveDateFilterColumn(dateField);
     const res = await database.query(
       `SELECT
          t.id,
@@ -620,19 +641,24 @@ export class TransactionRepository implements BaseRepository<Transaction> {
        LEFT JOIN categories c ON c.id = t.category_id
        LEFT JOIN categories pc ON pc.id = c.parent_id
        LEFT JOIN members m ON m.id = t.member_id
-       WHERE t.date >= ? AND t.date <= ?
+       WHERE ${dateFilterColumn} >= date(?) AND ${dateFilterColumn} <= date(?)
       ORDER BY t.updated_at DESC, t.id DESC
        LIMIT ? OFFSET ?`,
-      [startDate, endDate, limit, offset],
+      [startDate, endDate, normalizedLimit, offset],
     );
     return res.values as Transaction[];
   }
 
-  async countByDateRange(startDate: string, endDate: string): Promise<number> {
+  async countByDateRange(
+    startDate: string,
+    endDate: string,
+    dateField: 'date' | 'created_at' | 'updated_at' = 'date',
+  ): Promise<number> {
+    const dateFilterColumn = this.resolveDateFilterColumn(dateField);
     const res = await database.query(
       `SELECT COUNT(*) AS count
        FROM transactions t
-       WHERE t.date >= ? AND t.date <= ?`,
+       WHERE ${dateFilterColumn} >= date(?) AND ${dateFilterColumn} <= date(?)`,
       [startDate, endDate],
     );
     return (res.values?.[0]?.count as number) ?? 0;

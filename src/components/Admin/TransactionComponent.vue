@@ -36,6 +36,17 @@
               </template>
             </q-input>
           </div>
+          <div class="col-12 col-sm-6 col-md-2">
+            <q-select
+              v-model="selectedDateField"
+              :options="dateFieldOptions"
+              filled
+              dense
+              emit-value
+              map-options
+              label="Date Field"
+            />
+          </div>
           <div class="col-6 col-sm-3 col-md-2">
             <q-input
               v-model="dateFilterFrom"
@@ -250,6 +261,12 @@ const transactions = computed<TransactionDashboardRow[]>(() => {
 const searchTerm = ref('');
 const dateFilterFrom = ref('');
 const dateFilterTo = ref('');
+const selectedDateField = ref<'date' | 'created_at' | 'updated_at'>('date');
+const dateFieldOptions = [
+  { label: 'Transaction Date', value: 'date' },
+  { label: 'Created At', value: 'created_at' },
+  { label: 'Updated At', value: 'updated_at' },
+];
 const tableReady = ref(false);
 let requestId = 0;
 let filterDebounceHandle: ReturnType<typeof setTimeout> | null = null;
@@ -265,6 +282,7 @@ function formatDateValue(value: string | Date | null | undefined, format: string
 function getRequestKey(page: number, rowsPerPage: number): string {
   return JSON.stringify({
     keyword: searchTerm.value.trim(),
+    dateField: selectedDateField.value,
     dateFrom: dateFilterFrom.value,
     dateTo: dateFilterTo.value,
     page,
@@ -314,17 +332,25 @@ async function fetchTransactions(
   const currentRequestId = ++requestId;
   loading.value = true;
   const keyword = searchTerm.value.trim();
+  const normalizedPage = Number.isInteger(page) && page > 0 ? page : 1;
+  const normalizedRowsPerPage =
+    Number.isInteger(rowsPerPage) && rowsPerPage > 0 ? rowsPerPage : 20;
   let result;
 
   try {
     if (keyword) {
-      result = await transactionStore.searchTransactions(keyword, page, rowsPerPage);
+      result = await transactionStore.searchTransactions(
+        keyword,
+        normalizedPage,
+        normalizedRowsPerPage,
+      );
     } else if (dateFilterFrom.value && dateFilterTo.value) {
       result = await transactionStore.fetchPageByDateRange(
         dateFilterFrom.value,
         dateFilterTo.value,
-        page,
-        rowsPerPage,
+        normalizedPage,
+        normalizedRowsPerPage,
+        selectedDateField.value,
       );
     }
 
@@ -339,8 +365,8 @@ async function fetchTransactions(
     }
 
     lastCompletedRequestKey = requestKey;
-    pagination.value.page = page;
-    pagination.value.rowsPerPage = rowsPerPage;
+    pagination.value.page = normalizedPage;
+    pagination.value.rowsPerPage = normalizedRowsPerPage;
     pagination.value.rowsNumber = result.total;
   } finally {
     if (currentRequestId === requestId) {
@@ -362,6 +388,7 @@ function resetFilters() {
   searchTerm.value = '';
   dateFilterFrom.value = '';
   dateFilterTo.value = '';
+  selectedDateField.value = 'date';
   clearResults();
 }
 
@@ -382,6 +409,21 @@ watch(searchTerm, async () => {
 });
 
 watch([dateFilterFrom, dateFilterTo], () => {
+  if (dateFilterFrom.value && dateFilterTo.value && dateFilterFrom.value > dateFilterTo.value) {
+    clearPendingFilterRequest();
+    return;
+  }
+
+  if (!hasSearchFilter.value && !hasDateRangeFilter.value) {
+    clearResults();
+    return;
+  }
+
+  pagination.value.page = 1;
+  scheduleFilterFetch();
+});
+
+watch(selectedDateField, () => {
   if (dateFilterFrom.value && dateFilterTo.value && dateFilterFrom.value > dateFilterTo.value) {
     clearPendingFilterRequest();
     return;

@@ -4,6 +4,17 @@ import { TransactionRepository } from 'src/databases/repositories/transaction.re
 import { ActivityLogService } from 'src/services/activity-log.service';
 import type { TransactionType } from 'src/enums/transaction_type';
 
+type TransactionDateField = 'date' | 'created_at' | 'updated_at';
+
+function isTransactionDateField(value: unknown): value is TransactionDateField {
+  return value === 'date' || value === 'created_at' || value === 'updated_at';
+}
+
+function normalizePositiveInteger(value: unknown, fallback: number): number {
+  const normalized = typeof value === 'number' ? value : Number(value);
+  return Number.isInteger(normalized) && normalized > 0 ? normalized : fallback;
+}
+
 export const useTransactionsStore = defineStore('transactions', {
   state: () => ({
     transactions: [] as Transaction[],
@@ -294,17 +305,45 @@ export const useTransactionsStore = defineStore('transactions', {
     async fetchPageByDateRange(
       startDate: string,
       endDate: string,
-      page: number,
-      limit: number = 20,
+      pageOrDateField: number | TransactionDateField,
+      limitOrPage: number = 20,
+      dateFieldOrLimit: TransactionDateField | number = 'date',
     ): Promise<{ rows: Transaction[]; total: number }> {
       if (!this.transactionRepository) {
         await this.init(false);
       }
       if (!this.transactionRepository) throw new Error('Repository not initialized');
+
+      let page = 1;
+      let limit = 20;
+      let dateField: TransactionDateField = 'date';
+
+      // Backward compatibility for previous call order:
+      // (startDate, endDate, dateField, page, limit)
+      if (isTransactionDateField(pageOrDateField)) {
+        dateField = pageOrDateField;
+        page = normalizePositiveInteger(limitOrPage, 1);
+        limit = normalizePositiveInteger(dateFieldOrLimit, 20);
+      } else {
+        // Current call order:
+        // (startDate, endDate, page, limit, dateField)
+        page = normalizePositiveInteger(pageOrDateField, 1);
+        limit = normalizePositiveInteger(limitOrPage, 20);
+        if (isTransactionDateField(dateFieldOrLimit)) {
+          dateField = dateFieldOrLimit;
+        }
+      }
+
       try {
         const [rows, total] = await Promise.all([
-          this.transactionRepository.findByDateRangePaginated(startDate, endDate, page, limit),
-          this.transactionRepository.countByDateRange(startDate, endDate),
+          this.transactionRepository.findByDateRangePaginated(
+            startDate,
+            endDate,
+            dateField,
+            page,
+            limit,
+          ),
+          this.transactionRepository.countByDateRange(startDate, endDate, dateField),
         ]);
         this.transactions = rows;
         this.totalTransactions = total;
