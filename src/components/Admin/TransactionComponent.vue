@@ -333,8 +333,7 @@ async function fetchTransactions(
   loading.value = true;
   const keyword = searchTerm.value.trim();
   const normalizedPage = Number.isInteger(page) && page > 0 ? page : 1;
-  const normalizedRowsPerPage =
-    Number.isInteger(rowsPerPage) && rowsPerPage > 0 ? rowsPerPage : 20;
+  const normalizedRowsPerPage = Number.isInteger(rowsPerPage) && rowsPerPage > 0 ? rowsPerPage : 20;
   let result;
 
   try {
