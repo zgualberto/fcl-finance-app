@@ -345,6 +345,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
     legacyCollections: number;
     normalCollections: number;
     expenses: number;
+    remittableExpenses: number;
     nonRemittableExpenses: number;
     centralFundExpenses: number;
   }> {
@@ -374,6 +375,22 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          ) AS normalCollections,
          COALESCE(SUM(CASE WHEN c.transaction_type = ? THEN t.amount ELSE 0 END), 0) AS collections,
          COALESCE(SUM(CASE WHEN c.transaction_type = ? THEN t.amount ELSE 0 END), 0) AS expenses,
+         COALESCE(
+           SUM(
+             CASE
+               WHEN c.transaction_type = ?
+                 AND (t.budget_source IS NULL OR t.budget_source != ?)
+                 AND (
+                   c.non_remittable IS NULL
+                   OR c.non_remittable != 1
+                   OR (c.effective_date IS NOT NULL AND c.effective_date > t.date)
+                 )
+               THEN t.amount
+               ELSE 0
+             END
+           ),
+           0
+         ) AS remittableExpenses,
          COALESCE(
            SUM(
              CASE
@@ -408,6 +425,8 @@ export class TransactionRepository implements BaseRepository<Transaction> {
         TransactionType.EXPENSES,
         ExpenseBudgetSource.CENTRAL_FUND,
         TransactionType.EXPENSES,
+        ExpenseBudgetSource.CENTRAL_FUND,
+        TransactionType.EXPENSES,
         startDate,
         endDate,
       ],
@@ -418,6 +437,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
       legacyCollections: (res.values?.[0]?.legacyCollections as number) ?? 0,
       normalCollections: (res.values?.[0]?.normalCollections as number) ?? 0,
       expenses: (res.values?.[0]?.expenses as number) ?? 0,
+      remittableExpenses: (res.values?.[0]?.remittableExpenses as number) ?? 0,
       nonRemittableExpenses: (res.values?.[0]?.nonRemittableExpenses as number) ?? 0,
       centralFundExpenses: (res.values?.[0]?.centralFundExpenses as number) ?? 0,
     };
@@ -435,6 +455,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
       legacyCollection: number;
       normalCollection: number;
       expenses: number;
+      remittableExpenses: number;
       nonRemittableExpenses: number;
       centralFundExpenses: number;
     }>
@@ -468,6 +489,22 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          ) AS normalCollection,
          COALESCE(SUM(CASE WHEN c.transaction_type = ? THEN t.amount ELSE 0 END), 0) AS collection,
          COALESCE(SUM(CASE WHEN c.transaction_type = ? THEN t.amount ELSE 0 END), 0) AS expenses,
+         COALESCE(
+           SUM(
+             CASE
+               WHEN c.transaction_type = ?
+                 AND (t.budget_source IS NULL OR t.budget_source != ?)
+                 AND (
+                   c.non_remittable IS NULL
+                   OR c.non_remittable != 1
+                   OR (c.effective_date IS NOT NULL AND c.effective_date > t.date)
+                 )
+               THEN t.amount
+               ELSE 0
+             END
+           ),
+           0
+         ) AS remittableExpenses,
          COALESCE(
            SUM(
              CASE
@@ -508,6 +545,8 @@ export class TransactionRepository implements BaseRepository<Transaction> {
         TransactionType.EXPENSES,
         ExpenseBudgetSource.CENTRAL_FUND,
         TransactionType.EXPENSES,
+        ExpenseBudgetSource.CENTRAL_FUND,
+        TransactionType.EXPENSES,
         startDate,
         endDate,
         TransactionType.COLLECTIONS,
@@ -524,6 +563,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
         legacyCollection: number;
         normalCollection: number;
         expenses: number;
+        remittableExpenses: number;
         nonRemittableExpenses: number;
         centralFundExpenses: number;
       }>) ?? []

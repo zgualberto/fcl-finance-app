@@ -127,18 +127,6 @@
           </div>
         </section>
 
-        <!-- Create/Edit Expenses -->
-        <section
-          class="form-section"
-          :class="{
-            'q-mb-lg': $q.screen.width > $q.screen.height,
-            'q-mb-sm': $q.screen.lt.sm,
-          }"
-        >
-          <div class="text-h6">Budget Source</div>
-          <q-separator class="q-mb-md"></q-separator>
-        </section>
-
         <section
           class="form-section"
           :class="{

@@ -369,11 +369,16 @@ const expensesGroups = computed((): CategoryGroup[] => {
   return buildCategoryGroups(TransactionType.EXPENSES);
 });
 
-function buildCategoryGroups(transactionType: string): CategoryGroup[] {
+function buildCategoryGroups(transactionType: TransactionType): CategoryGroup[] {
   const groupMap = new Map<string, CategoryGroup>();
 
   rawTransactions.value
-    .filter((t) => t.transaction_type === transactionType)
+    .filter(
+      (t) =>
+        t.transaction_type === transactionType &&
+        (transactionType !== TransactionType.EXPENSES ||
+          t.budget_source !== ExpenseBudgetSource.CENTRAL_FUND),
+    )
     .forEach((transaction) => {
       const parentName = transaction.parent_name || transaction.category_name || 'Uncategorized';
       const parentKey = String(
@@ -430,23 +435,20 @@ const summaryTotals = computed(() => {
     .reduce((sum, t) => sum + t.amount, 0);
 
   const expenses = rawTransactions.value
-    .filter((t) => t.transaction_type === TransactionType.EXPENSES)
+    .filter(
+      (t) =>
+        t.transaction_type === TransactionType.EXPENSES &&
+        t.budget_source !== ExpenseBudgetSource.CENTRAL_FUND,
+    )
     .reduce((sum, t) => sum + t.amount, 0);
 
   const nonRemittableExpenses = rawTransactions.value
     .filter(
       (t) =>
         t.transaction_type === TransactionType.EXPENSES &&
+        t.budget_source !== ExpenseBudgetSource.CENTRAL_FUND &&
         t.non_remittable === 1 &&
         isNonRemittableActive(t.effective_date, t.date),
-    )
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const centralFundExpenses = rawTransactions.value
-    .filter(
-      (t) =>
-        t.transaction_type === TransactionType.EXPENSES &&
-        t.budget_source === ExpenseBudgetSource.CENTRAL_FUND,
     )
     .reduce((sum, t) => sum + t.amount, 0);
 
@@ -462,20 +464,18 @@ const summaryTotals = computed(() => {
     nationalPercentDec,
     districtPercentDec,
   );
-  const net =
-    computeNetCollection({
-      grossCollection: legacyCollections + gross,
-      national,
-      district,
-      nonRemittableExpenses,
-    }) - centralFundExpenses;
+  const net = computeNetCollection({
+    grossCollection: legacyCollections + gross,
+    national,
+    district,
+    nonRemittableExpenses,
+  });
 
   return {
     collections,
     expenses,
     remittableExpenses,
     nonRemittableExpenses,
-    centralFundExpenses,
     gross,
     national,
     district,
@@ -507,12 +507,6 @@ const deductions = computed((): Deduction[] => {
       description: 'Excluded from GROSS Collection and deducted after remittances',
       percentage: 0,
       amount: summaryTotals.value.nonRemittableExpenses,
-    },
-    {
-      name: 'Central Fund Expenses',
-      description: 'Expenses charged to central fund',
-      percentage: 0,
-      amount: summaryTotals.value.centralFundExpenses,
     },
   ];
 });

@@ -227,6 +227,7 @@ const summaryTotalsData = ref({
   legacyCollections: 0,
   normalCollections: 0,
   expenses: 0,
+  remittableExpenses: 0,
   nonRemittableExpenses: 0,
   centralFundExpenses: 0,
 });
@@ -288,9 +289,9 @@ const summaryTotals = computed(() => {
   const legacyCollections = summaryTotalsData.value.legacyCollections;
   const normalCollections = summaryTotalsData.value.normalCollections;
   const expenses = summaryTotalsData.value.expenses;
+  const remittableExpenses = summaryTotalsData.value.remittableExpenses;
   const nonRemittableExpenses = summaryTotalsData.value.nonRemittableExpenses;
   const centralFundExpenses = summaryTotalsData.value.centralFundExpenses;
-  const remittableExpenses = expenses - nonRemittableExpenses;
 
   const gross = normalCollections - remittableExpenses;
   const { national, district } = computeRemittanceDeductions(
@@ -298,12 +299,13 @@ const summaryTotals = computed(() => {
     settingsStore.nationalPercent,
     settingsStore.districtPercent,
   );
-  const net = computeNetCollection({
-    grossCollection: legacyCollections + gross,
-    national,
-    district,
-    nonRemittableExpenses,
-  }) - centralFundExpenses;
+  const net =
+    computeNetCollection({
+      grossCollection: legacyCollections + gross,
+      national,
+      district,
+      nonRemittableExpenses,
+    }) - centralFundExpenses;
 
   return {
     collections,
@@ -338,6 +340,7 @@ async function loadYtdSummary(): Promise<void> {
   summaryTotalsData.value.legacyCollections = totals.legacyCollections;
   summaryTotalsData.value.normalCollections = totals.normalCollections;
   summaryTotalsData.value.expenses = totals.expenses;
+  summaryTotalsData.value.remittableExpenses = totals.remittableExpenses;
   summaryTotalsData.value.nonRemittableExpenses = totals.nonRemittableExpenses;
   summaryTotalsData.value.centralFundExpenses = totals.centralFundExpenses;
 }
@@ -349,6 +352,7 @@ function mapPaginatedRows(
     legacyCollection: number;
     normalCollection: number;
     expenses: number;
+    remittableExpenses: number;
     nonRemittableExpenses: number;
     centralFundExpenses: number;
   }>,
@@ -357,19 +361,19 @@ function mapPaginatedRows(
   total: number,
 ): YtdTableRow[] {
   return rows.map((row, index) => {
-    const remittableExpenses = row.expenses - row.nonRemittableExpenses;
-    const gross = row.normalCollection - remittableExpenses;
+    const gross = row.normalCollection - row.remittableExpenses;
     const { national, district } = computeRemittanceDeductions(
       gross,
       settingsStore.nationalPercent,
       settingsStore.districtPercent,
     );
-    const net = computeNetCollection({
-      grossCollection: row.legacyCollection + gross,
-      national,
-      district,
-      nonRemittableExpenses: row.nonRemittableExpenses,
-    }) - row.centralFundExpenses;
+    const net =
+      computeNetCollection({
+        grossCollection: row.legacyCollection + gross,
+        national,
+        district,
+        nonRemittableExpenses: row.nonRemittableExpenses,
+      }) - row.centralFundExpenses;
     const rowPosition = (page - 1) * rowsPerPage + index;
 
     return {

@@ -223,6 +223,7 @@ export const useTransactionsStore = defineStore('transactions', {
       legacyCollections: number;
       normalCollections: number;
       expenses: number;
+      remittableExpenses: number;
       nonRemittableExpenses: number;
       centralFundExpenses: number;
     }> {
@@ -240,6 +241,7 @@ export const useTransactionsStore = defineStore('transactions', {
           legacyCollections: 0,
           normalCollections: 0,
           expenses: 0,
+          remittableExpenses: 0,
           nonRemittableExpenses: 0,
           centralFundExpenses: 0,
         };
@@ -257,6 +259,7 @@ export const useTransactionsStore = defineStore('transactions', {
         legacyCollection: number;
         normalCollection: number;
         expenses: number;
+        remittableExpenses: number;
         nonRemittableExpenses: number;
         centralFundExpenses: number;
       }>;
