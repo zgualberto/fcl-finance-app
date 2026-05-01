@@ -82,7 +82,7 @@ interface LegacyFormData {
 }
 
 const thisYear = new Date().getFullYear();
-const defaultYear = String(thisYear - 2);
+const defaultYear = String(thisYear - 1);
 
 const previousYearOptions = Array.from({ length: 50 }, (_, i) => {
   const year = thisYear - (i + 2);
