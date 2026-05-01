@@ -272,6 +272,7 @@ import {
   computeRemittanceDeductions,
 } from 'src/services/financial-calculations.service';
 import { isNonRemittableActive } from 'src/utils/non-remittable';
+import { isNonCentralFundExpense } from 'src/utils/expense-filters';
 import { TransactionType } from 'src/enums/transaction_type';
 import type { Transaction } from 'src/databases/entities/transaction';
 import { useAnalyticsStore } from 'src/stores/analytics-store';
@@ -405,13 +406,13 @@ function buildYearTotals(transactions: Transaction[]) {
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
   const expenses = transactions
-    .filter((transaction) => transaction.transaction_type === TransactionType.EXPENSES)
+    .filter((transaction) => isNonCentralFundExpense(transaction))
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
   const nonRemittableExpenses = transactions
     .filter(
       (transaction) =>
-        transaction.transaction_type === TransactionType.EXPENSES &&
+        isNonCentralFundExpense(transaction) &&
         transaction.non_remittable === 1 &&
         isNonRemittableActive(transaction.effective_date, transaction.date),
     )
@@ -598,7 +599,7 @@ const monthlyTotals = computed((): MonthlyTotals[] => {
 
     if (transaction.transaction_type === TransactionType.COLLECTIONS) {
       buckets[monthFromDate]!.collections += transaction.amount;
-    } else if (transaction.transaction_type === TransactionType.EXPENSES) {
+    } else if (isNonCentralFundExpense(transaction)) {
       buckets[monthFromDate]!.expenses += transaction.amount;
     }
   }
@@ -697,7 +698,7 @@ const monthlyBarChartOptions = computed(
 
 const expenseRatioByCategory = computed((): ExpenseParentItem[] => {
   const expenseTransactions = rawTransactions.value.filter(
-    (transaction) => transaction.transaction_type === TransactionType.EXPENSES,
+    (transaction) => isNonCentralFundExpense(transaction),
   );
 
   const totalExpense = expenseTransactions.reduce(

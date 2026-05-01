@@ -222,9 +222,9 @@ import {
   computeNetCollection,
   computeRemittanceDeductions,
 } from 'src/services/financial-calculations.service';
+import { isNonCentralFundExpense } from 'src/utils/expense-filters';
 import { isNonRemittableActive } from 'src/utils/non-remittable';
 import { TransactionType } from 'src/enums/transaction_type';
-import { ExpenseBudgetSource } from 'src/enums/expense_budget_source';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 import { useSettingsStore } from 'src/stores/settings-store';
 import type { Transaction } from 'src/databases/entities/transaction';
@@ -279,18 +279,13 @@ const summaryTotals = computed(() => {
     .reduce((sum, t) => sum + t.amount, 0);
 
   const expenses = rawTransactions.value
-    .filter(
-      (t) =>
-        t.transaction_type === TransactionType.EXPENSES &&
-        t.budget_source !== ExpenseBudgetSource.CENTRAL_FUND,
-    )
+    .filter((t) => isNonCentralFundExpense(t))
     .reduce((sum, t) => sum + t.amount, 0);
 
   const nonRemittableExpenses = rawTransactions.value
     .filter(
       (t) =>
-        t.transaction_type === TransactionType.EXPENSES &&
-        t.budget_source !== ExpenseBudgetSource.CENTRAL_FUND &&
+        isNonCentralFundExpense(t) &&
         t.non_remittable === 1 &&
         isNonRemittableActive(t.effective_date, t.date),
     )
