@@ -140,6 +140,23 @@
           <span v-else class="text-italic text-grey-7">-</span>
         </q-td>
       </template>
+
+      <template v-slot:body-cell-actions="props">
+        <q-td :props="props" align="center">
+          <q-btn
+            flat
+            dense
+            round
+            icon="delete"
+            size="sm"
+            color="negative"
+            aria-label="Delete transaction"
+            :disable="!props.row.id"
+            @click="confirmDeleteTransaction(props.row)"
+          />
+        </q-td>
+      </template>
+
       <!-- No data available -->
       <template v-slot:no-data>
         <div class="row full-width items-center justify-center q-pa-md">
@@ -160,7 +177,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTransactionsStore } from 'src/stores/transactions-store';
-import { date as dateUtils, type QTableColumn } from 'quasar';
+import { date as dateUtils, useQuasar, type QTableColumn } from 'quasar';
 import { TransactionType } from 'src/enums/transaction_type';
 import type { Transaction } from 'src/databases/entities/transaction';
 
@@ -172,6 +189,7 @@ type TransactionDashboardRow = Transaction & {
 };
 
 const transactionStore = useTransactionsStore();
+const $q = useQuasar();
 
 const columns: QTableColumn[] = [
   { name: 'id', label: 'ID', field: 'id', align: 'left', classes: 'text-weight-bold' },
@@ -240,6 +258,14 @@ const columns: QTableColumn[] = [
     label: 'Updated At',
     field: 'updated_at',
     align: 'left',
+  },
+  {
+    name: 'actions',
+    label: 'Actions',
+    field: 'actions',
+    align: 'center',
+    style: 'width: 92px; min-width: 92px;',
+    headerStyle: 'width: 92px; min-width: 92px;',
   },
 ];
 
@@ -383,6 +409,62 @@ async function onRequest(props: { pagination: { page: number; rowsPerPage: numbe
   await fetchTransactions(page, rowsPerPage);
 }
 
+function getTransactionLabel(row: TransactionDashboardRow): string {
+  const description = row.description?.trim();
+  if (description) {
+    return description;
+  }
+
+  if (row.category_name) {
+    return row.category_name;
+  }
+
+  return `transaction #${row.id ?? '-'}`;
+}
+
+async function deleteTransactionRow(row: TransactionDashboardRow): Promise<void> {
+  if (!row.id) {
+    $q.notify({
+      type: 'negative',
+      message: 'Unable to delete transaction. Missing transaction ID.',
+      position: 'bottom-right',
+    });
+    return;
+  }
+
+  loading.value = true;
+  try {
+    transactionStore.deleteTransaction(row.id);
+    pagination.value.rowsNumber = Math.max(pagination.value.rowsNumber - 1, 0);
+
+    if (pagination.value.page > 1 && transactions.value.length === 0) {
+      const fallbackPage = pagination.value.page - 1;
+      lastCompletedRequestKey = '';
+      await fetchTransactions(fallbackPage, pagination.value.rowsPerPage);
+    }
+
+    $q.notify({
+      type: 'positive',
+      message: 'Transaction deleted successfully.',
+      position: 'bottom-right',
+    });
+  } finally {
+    loading.value = false;
+  }
+}
+
+function confirmDeleteTransaction(row: TransactionDashboardRow): void {
+  const dateLabel = row.formatted_date || formatDateValue(row.date, 'MMM D, YYYY') || row.date;
+  $q.dialog({
+    title: 'Confirm Deletion',
+    message: `Delete ${getTransactionLabel(row)} dated ${dateLabel}?`,
+    cancel: true,
+    persistent: true,
+  }).onOk(() => {
+    void deleteTransactionRow(row);
+  });
+}
+
 function resetFilters() {
   searchTerm.value = '';
   dateFilterFrom.value = '';
@@ -448,3 +530,21 @@ onBeforeUnmount(() => {
   clearPendingFilterRequest();
 });
 </script>
+
+<style scoped lang="scss">
+:deep(.q-table__middle) {
+  overflow-x: auto;
+}
+
+:deep(th:last-child),
+:deep(td:last-child) {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background: #ffffff;
+}
+
+:deep(th:last-child) {
+  z-index: 3;
+}
+</style>
