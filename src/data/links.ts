@@ -1,4 +1,4 @@
-import type { EssentialLinkProps } from 'components/EssentialLink.vue';
+import type { EssentialLinkProps } from 'components/essential-link.types';
 
 export const linksList: EssentialLinkProps[] = [
   {
@@ -45,6 +45,11 @@ export const linksList: EssentialLinkProps[] = [
         title: 'Transactions',
         icon: 'fa-solid fa-wallet',
         routeName: 'admin.transactions',
+      },
+      {
+        title: 'Remittance Configurations',
+        icon: 'fa-solid fa-calendar-check',
+        routeName: 'admin.remittance-configurations',
       },
       {
         title: 'Backups',

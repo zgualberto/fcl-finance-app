@@ -36,17 +36,7 @@
 </template>
 
 <script setup lang="ts">
-export interface EssentialLinkProps {
-  title: string;
-  caption?: string;
-  routeName?: string;
-  icon?: string;
-  children?: {
-    title: string;
-    routeName: string;
-    icon?: string;
-  }[];
-}
+import type { EssentialLinkProps } from './essential-link.types';
 
 withDefaults(defineProps<EssentialLinkProps>(), {
   caption: '',

@@ -52,6 +52,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/Admin/TransactionsPage.vue'),
       },
       {
+        path: 'remittance-configurations',
+        name: 'admin.remittance-configurations',
+        component: () => import('pages/Admin/RemittanceConfigurationsPage.vue'),
+      },
+      {
         path: 'activity-logs',
         name: 'admin.activity-logs',
         component: () => import('pages/Admin/ActivityLogsPage.vue'),
