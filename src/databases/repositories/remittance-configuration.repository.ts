@@ -50,7 +50,7 @@ export class RemittanceConfigurationRepository implements BaseRepository<Remitta
 
   async findAll(): Promise<RemittanceConfiguration[]> {
     const res = await database.query(
-      `SELECT id, start_date, end_date, status, created_at FROM remittance_configurations ORDER BY start_date DESC`,
+      `SELECT id, start_date, end_date, status, created_at FROM remittance_configurations ORDER BY status DESC, start_date DESC`,
     );
     return res.values as RemittanceConfiguration[];
   }
@@ -70,7 +70,7 @@ export class RemittanceConfigurationRepository implements BaseRepository<Remitta
   ): Promise<RemittanceConfiguration[]> {
     const offset = (page - 1) * limit;
     const res = await database.query(
-      `SELECT id, start_date, end_date, status, created_at FROM remittance_configurations ORDER BY start_date DESC LIMIT ? OFFSET ?`,
+      `SELECT id, start_date, end_date, status, created_at FROM remittance_configurations ORDER BY status DESC, start_date DESC LIMIT ? OFFSET ?`,
       [limit, offset],
     );
     return res.values as RemittanceConfiguration[];
@@ -133,7 +133,7 @@ export class RemittanceConfigurationRepository implements BaseRepository<Remitta
     const offset = (page - 1) * limit;
     const likeTerm = `%${keyword}%`;
     const res = await database.query(
-      `SELECT id, start_date, end_date, status, created_at FROM remittance_configurations WHERE start_date LIKE ? OR end_date LIKE ? ORDER BY start_date DESC LIMIT ? OFFSET ?`,
+      `SELECT id, start_date, end_date, status, created_at FROM remittance_configurations WHERE start_date LIKE ? OR end_date LIKE ? ORDER BY status DESC, start_date DESC LIMIT ? OFFSET ?`,
       [likeTerm, likeTerm, limit, offset],
     );
     return res.values as RemittanceConfiguration[];

@@ -117,7 +117,11 @@
                     <span style="color: #b71c1c">
                       {{ item.category_name }}
                       <q-badge
-                        v-if="item.non_remittable === 1 && item.is_non_remittable_active"
+                        v-if="
+                          item.non_remittable === 1 &&
+                          item.is_non_remittable_active &&
+                          !isRemittanceConfigActive
+                        "
                         color="deep-orange"
                         class="q-ml-xs"
                         rounded
@@ -194,8 +198,9 @@
         </div>
       </div>
 
-      <!-- GROSS Collection Card -->
+      <!-- GROSS Collection Card (hidden when active config) -->
       <q-card
+        v-if="!isRemittanceConfigActive"
         class="text-white rounded-borders q-mb-lg"
         style="background-color: #7b1fa2; min-height: 100px"
         bordered
@@ -208,6 +213,30 @@
               <div class="text-caption q-mb-sm">(Total Collection - Remittable Expenses)</div>
               <div class="text-h4" style="font-weight: 700">
                 ₱{{ formatCurrency(summaryTotals.gross) }}
+              </div>
+            </div>
+            <q-icon name="payments" size="36px" class="opacity-40" />
+          </div>
+        </q-card-section>
+      </q-card>
+
+      <!-- Collections after Remittances Card (shown when active config) -->
+      <q-card
+        v-if="isRemittanceConfigActive"
+        class="text-white rounded-borders q-mb-lg"
+        style="background-color: #7b1fa2; min-height: 100px"
+        bordered
+        flat
+      >
+        <q-card-section class="column justify-between full-height">
+          <div class="row justify-between items-center full-width">
+            <div>
+              <div class="text-subtitle2 q-mb-sm">Collections after Remittances</div>
+              <div class="text-caption q-mb-sm">
+                (Total Collection - National 15% - District 3%)
+              </div>
+              <div class="text-h4" style="font-weight: 700">
+                ₱{{ formatCurrency(collectionsAfterRemittances) }}
               </div>
             </div>
             <q-icon name="payments" size="36px" class="opacity-40" />
@@ -249,9 +278,14 @@
             <div>
               <div class="text-subtitle2 q-mb-sm">NET Collection</div>
               <div class="text-caption q-mb-sm">
-                (GROSS - National {{ Math.round(settingsStore.nationalPercent * 100) }}% - District
-                {{ Math.round(settingsStore.districtPercent * 100) }}% - Non-remittable Expenses -
-                Central Fund Expenses)
+                <span v-if="isRemittanceConfigActive">
+                  (Collections after Remittances - Total Expenses)
+                </span>
+                <span v-else>
+                  (GROSS - National {{ Math.round(settingsStore.nationalPercent * 100) }}% -
+                  District {{ Math.round(settingsStore.districtPercent * 100) }}% - Non-remittable
+                  Expenses - Central Fund Expenses)
+                </span>
               </div>
               <div class="text-h4" style="font-weight: 700">
                 ₱{{ formatCurrency(summaryTotals.net) }}
@@ -280,6 +314,7 @@ import { isNonRemittableActive } from 'src/utils/non-remittable';
 import { TransactionType } from 'src/enums/transaction_type';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 import { useSettingsStore } from 'src/stores/settings-store';
+import { useRemittanceConfigurationsStore } from 'src/stores/remittance-configurations-store';
 import type { Transaction } from 'src/databases/entities/transaction';
 
 interface CategoryGroup {
@@ -304,6 +339,7 @@ interface Deduction {
 
 const transactionsStore = useTransactionsStore();
 const settingsStore = useSettingsStore();
+const remittanceStore = useRemittanceConfigurationsStore();
 const $q = useQuasar();
 
 const monthsOptions = [
@@ -420,6 +456,26 @@ function buildCategoryGroups(transactionType: TransactionType): CategoryGroup[] 
   return Array.from(groupMap.values());
 }
 
+const isRemittanceConfigActive = computed(() => remittanceStore.activeConfiguration !== null);
+
+const collectionsAfterRemittances = computed(() => {
+  const nationalPercentDec = settingsStore.nationalPercent;
+  const districtPercentDec = settingsStore.districtPercent;
+  return (
+    summaryTotals.value.collections -
+    summaryTotals.value.collections * nationalPercentDec -
+    summaryTotals.value.collections * districtPercentDec
+  );
+});
+
+const remittanceDeductionsActive = computed(() => {
+  const nationalPercentDec = settingsStore.nationalPercent;
+  const districtPercentDec = settingsStore.districtPercent;
+  const nationalAmount = summaryTotals.value.collections * nationalPercentDec;
+  const districtAmount = summaryTotals.value.collections * districtPercentDec;
+  return { national: nationalAmount, district: districtAmount };
+});
+
 const summaryTotals = computed(() => {
   const legacyCollections = rawTransactions.value
     .filter((t) => t.transaction_type === TransactionType.COLLECTIONS && t.is_legacy === 1)
@@ -437,7 +493,7 @@ const summaryTotals = computed(() => {
     .filter((t) => isNonCentralFundExpense(t))
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const nonRemittableExpenses = rawTransactions.value
+  const actualNonRemittableExpenses = rawTransactions.value
     .filter(
       (t) =>
         isNonCentralFundExpense(t) &&
@@ -446,6 +502,7 @@ const summaryTotals = computed(() => {
     )
     .reduce((sum, t) => sum + t.amount, 0);
 
+  const nonRemittableExpenses = isRemittanceConfigActive.value ? 0 : actualNonRemittableExpenses;
   const remittableExpenses = expenses - nonRemittableExpenses;
 
   const gross = normalCollections - remittableExpenses;
@@ -453,17 +510,21 @@ const summaryTotals = computed(() => {
   const nationalPercentDec = settingsStore.nationalPercent;
   const districtPercentDec = settingsStore.districtPercent;
 
+  const remittanceBase = isRemittanceConfigActive.value ? collections : gross;
   const { national, district } = computeRemittanceDeductions(
-    gross,
+    remittanceBase,
     nationalPercentDec,
     districtPercentDec,
   );
-  const net = computeNetCollection({
-    grossCollection: legacyCollections + gross,
-    national,
-    district,
-    nonRemittableExpenses,
-  });
+
+  const net = isRemittanceConfigActive.value
+    ? collections - national - district - expenses
+    : computeNetCollection({
+        grossCollection: legacyCollections + gross,
+        national,
+        district,
+        nonRemittableExpenses,
+      });
 
   return {
     collections,
@@ -483,26 +544,36 @@ const deductions = computed((): Deduction[] => {
   const nationalPercent = Math.round(nationalPercentDec * 100);
   const districtPercent = Math.round(districtPercentDec * 100);
 
-  return [
+  const isActive = isRemittanceConfigActive.value;
+  const baseDeductions = [
     {
       name: `National ${nationalPercent}%`,
-      description: `${nationalPercent}% of GROSS Collection`,
+      description: isActive
+        ? `${nationalPercent}% of Total Collection`
+        : `${nationalPercent}% of GROSS Collection`,
       percentage: nationalPercent,
-      amount: summaryTotals.value.national,
+      amount: isActive ? remittanceDeductionsActive.value.national : summaryTotals.value.national,
     },
     {
       name: `District ${districtPercent}%`,
-      description: `${districtPercent}% of GROSS Collection`,
+      description: isActive
+        ? `${districtPercent}% of Total Collection`
+        : `${districtPercent}% of GROSS Collection`,
       percentage: districtPercent,
-      amount: summaryTotals.value.district,
+      amount: isActive ? remittanceDeductionsActive.value.district : summaryTotals.value.district,
     },
-    {
+  ];
+
+  if (!isActive) {
+    baseDeductions.push({
       name: 'Non-remittable Expenses',
       description: 'Excluded from GROSS Collection and deducted after remittances',
       percentage: 0,
       amount: summaryTotals.value.nonRemittableExpenses,
-    },
-  ];
+    });
+  }
+
+  return baseDeductions;
 });
 
 async function loadReport() {
@@ -697,6 +768,7 @@ async function initializeReport() {
 
 onMounted(async () => {
   await settingsStore.init();
+  await remittanceStore.init(false);
   void initializeReport();
 });
 
