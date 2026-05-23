@@ -456,7 +456,20 @@ function buildCategoryGroups(transactionType: TransactionType): CategoryGroup[] 
   return Array.from(groupMap.values());
 }
 
-const isRemittanceConfigActive = computed(() => remittanceStore.activeConfiguration !== null);
+const activeRemittanceConfiguration = computed(() => {
+  const config = remittanceStore.activeConfiguration;
+  if (!config || !selectedDate.value) {
+    return null;
+  }
+
+  const selectedDateValue = new Date(`${selectedDate.value}-01`);
+  const configStart = new Date(config.start_date);
+  const configEnd = new Date(config.end_date);
+
+  return selectedDateValue >= configStart && selectedDateValue <= configEnd ? config : null;
+});
+
+const isRemittanceConfigActive = computed(() => activeRemittanceConfiguration.value !== null);
 
 const collectionsAfterRemittances = computed(() => {
   const nationalPercentDec = settingsStore.nationalPercent;
