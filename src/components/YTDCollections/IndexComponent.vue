@@ -122,6 +122,11 @@
             {{ toPeso(props.row.expenses) }}
           </q-td>
         </template>
+        <template v-slot:body-cell-car="props">
+          <q-td :props="props" class="text-blue text-weight-bold text-right">
+            {{ toPeso(props.row.car) }}
+          </q-td>
+        </template>
         <template v-slot:body-cell-nonRemittableExpenses="props">
           <q-td :props="props" class="text-deep-orange text-weight-medium text-right">
             {{ toPeso(props.row.nonRemittableExpenses) }}
@@ -199,7 +204,6 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { date as dateUtils, useQuasar, type QTableColumn } from 'quasar';
 import {
-  computeNetCollection,
   computeRemittanceDeductions,
 } from 'src/services/financial-calculations.service';
 import { useRouter } from 'vue-router';
@@ -212,6 +216,7 @@ interface YtdTableRow {
   date: string;
   collection: number;
   expenses: number;
+  car: number;
   nonRemittableExpenses: number;
   gross: number;
   national: number;
@@ -232,6 +237,7 @@ const summaryTotalsData = ref({
   legacyCollections: 0,
   normalCollections: 0,
   expenses: 0,
+  car: 0,
   remittableExpenses: 0,
   nonRemittableExpenses: 0,
   centralFundExpenses: 0,
@@ -267,6 +273,7 @@ const columns = computed<QTableColumn<YtdTableRow>[]>(() => [
   { name: 'date', label: 'Date', field: 'date', align: 'left' },
   { name: 'collection', label: 'Collection', field: 'collection', align: 'right' },
   { name: 'expenses', label: 'Expenses', field: 'expenses', align: 'right' },
+  { name: 'car', label: 'CAR', field: 'car', align: 'right' },
   {
     name: 'nonRemittableExpenses',
     label: 'Non-remittable',
@@ -305,17 +312,20 @@ const summaryTotals = computed(() => {
     settingsStore.nationalPercent,
     settingsStore.districtPercent,
   );
-  const net =
-    computeNetCollection({
-      grossCollection: legacyCollections + gross,
-      national,
-      district,
-      nonRemittableExpenses,
-    }) - centralFundExpenses;
+  const car = (legacyCollections + gross) - national - district;
+  // const net =
+  //   computeNetCollection({
+  //     grossCollection: legacyCollections + gross,
+  //     national,
+  //     district,
+  //     nonRemittableExpenses,
+  //   }) - centralFundExpenses;
+  const net = car - expenses;
 
   return {
     collections,
     expenses,
+    car,
     nonRemittableExpenses,
     centralFundExpenses,
     gross,
@@ -373,13 +383,17 @@ function mapPaginatedRows(
       settingsStore.nationalPercent,
       settingsStore.districtPercent,
     );
-    const net =
-      computeNetCollection({
-        grossCollection: row.legacyCollection + gross,
-        national,
-        district,
-        nonRemittableExpenses: row.nonRemittableExpenses,
-      }) - row.centralFundExpenses;
+    // const net =
+    //   computeNetCollection({
+    //     grossCollection: row.legacyCollection + gross,
+    //     national,
+    //     district,
+    //     nonRemittableExpenses: row.nonRemittableExpenses,
+    //   }) - row.centralFundExpenses;
+
+    const car = row.collection - national - district;
+    const net = car - row.expenses;
+
     const rowPosition = (page - 1) * rowsPerPage + index;
 
     return {
@@ -387,6 +401,7 @@ function mapPaginatedRows(
       date: row.date,
       collection: row.collection,
       expenses: row.expenses,
+      car,
       nonRemittableExpenses: row.nonRemittableExpenses,
       gross,
       national,
