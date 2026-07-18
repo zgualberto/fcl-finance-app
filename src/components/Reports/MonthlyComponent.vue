@@ -150,7 +150,7 @@
 
       <!-- Summary Cards -->
       <div class="row q-col-gutter-lg q-mb-lg">
-        <!-- Total Collection Card -->
+        <!-- Gross Collection Card -->
         <div class="col-12 col-md-6">
           <q-card
             class="bg-primary text-white rounded-borders full-height"
@@ -161,7 +161,7 @@
             <q-card-section class="column justify-between full-height">
               <div class="row justify-between items-center full-width">
                 <div>
-                  <div class="text-subtitle2 q-mb-sm">Total Collection</div>
+                  <div class="text-subtitle2 q-mb-sm">Gross Collection</div>
                   <div class="text-h4" style="font-weight: 700">
                     ₱{{ formatCurrency(summaryTotals.collections) }}
                   </div>
@@ -198,7 +198,7 @@
         </div>
       </div>
 
-      <!-- GROSS Collection Card (hidden when active config) -->
+      <!-- Collections after Expenses Card (hidden when active config) -->
       <q-card
         v-if="!isRemittanceConfigActive"
         class="text-white rounded-borders q-mb-lg"
@@ -209,7 +209,7 @@
         <q-card-section class="column justify-between full-height">
           <div class="row justify-between items-center full-width">
             <div>
-              <div class="text-subtitle2 q-mb-sm">GROSS Collection</div>
+              <div class="text-subtitle2 q-mb-sm">Collections after Expenses</div>
               <div class="text-caption q-mb-sm">(Total Collection - Remittable Expenses)</div>
               <div class="text-h4" style="font-weight: 700">
                 ₱{{ formatCurrency(summaryTotals.gross) }}
@@ -282,9 +282,9 @@
                   (Collections after Remittances - Total Expenses)
                 </span>
                 <span v-else>
-                  (GROSS - National {{ Math.round(settingsStore.nationalPercent * 100) }}% -
-                  District {{ Math.round(settingsStore.districtPercent * 100) }}% - Non-remittable
-                  Expenses - Central Fund Expenses)
+                  (CAE - National {{ Math.round(settingsStore.nationalPercent * 100) }}% - District
+                  {{ Math.round(settingsStore.districtPercent * 100) }}% - Non-remittable Expenses -
+                  Central Fund Expenses)
                 </span>
               </div>
               <div class="text-h4" style="font-weight: 700">
@@ -557,27 +557,31 @@ const deductions = computed((): Deduction[] => {
   const nationalPercent = Math.round(nationalPercentDec * 100);
   const districtPercent = Math.round(districtPercentDec * 100);
 
-  const isActive = isRemittanceConfigActive.value;
+  const hasActiveRemittance = isRemittanceConfigActive.value;
   const baseDeductions = [
     {
       name: `National ${nationalPercent}%`,
-      description: isActive
-        ? `${nationalPercent}% of Total Collection`
-        : `${nationalPercent}% of GROSS Collection`,
+      description: hasActiveRemittance
+        ? `${nationalPercent}% of Gross Collection`
+        : `${nationalPercent}% of CAE`,
       percentage: nationalPercent,
-      amount: isActive ? remittanceDeductionsActive.value.national : summaryTotals.value.national,
+      amount: hasActiveRemittance
+        ? remittanceDeductionsActive.value.national
+        : summaryTotals.value.national,
     },
     {
       name: `District ${districtPercent}%`,
-      description: isActive
-        ? `${districtPercent}% of Total Collection`
-        : `${districtPercent}% of GROSS Collection`,
+      description: hasActiveRemittance
+        ? `${districtPercent}% of Gross Collection`
+        : `${districtPercent}% of CAE`,
       percentage: districtPercent,
-      amount: isActive ? remittanceDeductionsActive.value.district : summaryTotals.value.district,
+      amount: hasActiveRemittance
+        ? remittanceDeductionsActive.value.district
+        : summaryTotals.value.district,
     },
   ];
 
-  if (!isActive) {
+  if (!hasActiveRemittance) {
     baseDeductions.push({
       name: 'Non-remittable Expenses',
       description: 'Excluded from GROSS Collection and deducted after remittances',
