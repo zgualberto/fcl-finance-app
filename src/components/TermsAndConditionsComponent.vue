@@ -158,7 +158,7 @@
           </p>
           <p class="q-my-sm"><strong>License:</strong> MIT License</p>
           <p class="q-my-sm"><strong>Version:</strong> {{ appVersion }}</p>
-          <p class="q-my-sm"><strong>Last Updated:</strong> April 2026</p>
+          <p class="q-my-sm"><strong>Last Updated:</strong> Jul 2026</p>
         </section>
 
         <!-- User Responsibilities -->
