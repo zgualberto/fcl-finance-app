@@ -64,7 +64,7 @@
         <div class="col-12 col-md-4">
           <q-card class="summary-card summary-card-collection text-white full-height" flat>
             <q-card-section>
-              <div class="text-subtitle2">Overall Total Collections</div>
+              <div class="text-subtitle2">Overall Gross Collections</div>
               <div class="text-h4 text-weight-bold">
                 ₱{{ formatCurrency(summaryTotals.collections) }}
               </div>
@@ -271,7 +271,7 @@ const districtRateLabel = computed(() => `${Math.round(settingsStore.districtPer
 const columns = computed<QTableColumn<YtdTableRow>[]>(() => [
   { name: 'id', label: 'ID', field: 'id', align: 'left', classes: 'text-weight-bold' },
   { name: 'date', label: 'Date', field: 'date', align: 'left' },
-  { name: 'collection', label: 'Collection', field: 'collection', align: 'right' },
+  { name: 'collection', label: 'Gross', field: 'collection', align: 'right' },
   { name: 'expenses', label: 'Expenses', field: 'expenses', align: 'right' },
   { name: 'car', label: 'CAR', field: 'car', align: 'right' },
   {
@@ -280,7 +280,7 @@ const columns = computed<QTableColumn<YtdTableRow>[]>(() => [
     field: 'nonRemittableExpenses',
     align: 'right',
   },
-  { name: 'gross', label: 'Gross', field: 'gross', align: 'right' },
+  { name: 'gross', label: 'CAE', field: 'gross', align: 'right' },
   {
     name: 'national',
     label: `National ${nationalRateLabel.value}`,
