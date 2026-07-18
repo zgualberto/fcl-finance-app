@@ -88,7 +88,10 @@
             <q-card-section>
               <div class="text-subtitle2">Overall Net Collection</div>
               <div class="text-h4 text-weight-bold">₱{{ formatCurrency(summaryTotals.net) }}</div>
-              <div class="text-caption">After 15% & 3% • Cash on hand</div>
+              <div class="text-caption">
+                <span v-if="!hasActiveRemittanceConfiguration">After 15% & 3% • </span>
+                Cash on hand
+              </div>
             </q-card-section>
           </q-card>
         </div>
@@ -202,6 +205,7 @@ import {
 import { useRouter } from 'vue-router';
 import { useSettingsStore } from 'src/stores/settings-store';
 import { useTransactionsStore } from 'src/stores/transactions-store';
+import { useRemittanceConfigurationsStore } from 'src/stores/remittance-configurations-store';
 
 interface YtdTableRow {
   id: number;
@@ -216,6 +220,7 @@ interface YtdTableRow {
 }
 
 const transactionsStore = useTransactionsStore();
+const remittanceConfigurationsStore = useRemittanceConfigurationsStore();
 const settingsStore = useSettingsStore();
 const router = useRouter();
 const $q = useQuasar();
@@ -246,6 +251,7 @@ const allYearsStartDate = '1900-01-01';
 const allYearsEndDate = '2999-12-31';
 const tableStartDate = computed(() => `${selectedYear.value}-01-01`);
 const tableEndDate = computed(() => `${selectedYear.value}-12-31`);
+const hasActiveRemittanceConfiguration = computed(() => remittanceConfigurationsStore.activeConfiguration !== null ? true : false);
 
 const pagination = ref({
   page: 1,
@@ -436,6 +442,7 @@ watch(selectedYear, () => {
     isLoading.value = true;
     try {
       await loadYtdPage(1, pagination.value.rowsPerPage);
+      await remittanceConfigurationsStore.fetchActiveConfigurationByDateRange(tableStartDate.value, tableEndDate.value);
     } finally {
       isLoading.value = false;
     }
@@ -478,7 +485,9 @@ function confirmDeleteByDate(date: string): void {
 onMounted(async () => {
   await settingsStore.init();
   await transactionsStore.init(false);
+  await remittanceConfigurationsStore.init();
   await loadYtdData();
+  await remittanceConfigurationsStore.fetchActiveConfigurationByDateRange(tableStartDate.value, tableEndDate.value);
 });
 </script>
 

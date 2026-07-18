@@ -80,6 +80,17 @@ export const useRemittanceConfigurationsStore = defineStore('remittance-configur
       }
     },
 
+    async fetchActiveConfigurationByDateRange(startDate: string, endDate: string): Promise<void> {
+      if (!this.configurationRepository) throw new Error('Repository not initialized');
+      try {
+        const results = await this.configurationRepository.findActiveByDateRange(startDate, endDate);
+        this.activeConfiguration = results[0] ?? null;
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+      }
+    },
+
     async addConfiguration(data: Partial<RemittanceConfiguration>): Promise<void> {
       if (!this.configurationRepository) throw new Error('Repository not initialized');
       try {

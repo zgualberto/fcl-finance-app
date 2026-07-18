@@ -88,6 +88,14 @@ export class RemittanceConfigurationRepository implements BaseRepository<Remitta
     return res.values as RemittanceConfiguration[];
   }
 
+  async findActiveByDateRange(startDate: string, endDate: string): Promise<RemittanceConfiguration[]> {
+    const res = await database.query(
+      `SELECT id, start_date, end_date, status, created_at FROM remittance_configurations WHERE status = 1 AND start_date <= ? AND end_date >= ?`,
+      [endDate, startDate],
+    );
+    return res.values as RemittanceConfiguration[];
+  }
+
   update(config: Partial<RemittanceConfiguration>): void {
     void this.updateAsync(config);
   }
