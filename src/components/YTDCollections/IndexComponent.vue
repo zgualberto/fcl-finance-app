@@ -204,6 +204,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { date as dateUtils, useQuasar, type QTableColumn } from 'quasar';
 import {
+  computeNetCollection,
   computeRemittanceDeductions,
 } from 'src/services/financial-calculations.service';
 import { useRouter } from 'vue-router';
@@ -253,11 +254,12 @@ const yearOptions = Array.from({ length: 50 }, (_, index) => {
   };
 });
 
-const allYearsStartDate = '1900-01-01';
-const allYearsEndDate = '2999-12-31';
 const tableStartDate = computed(() => `${selectedYear.value}-01-01`);
 const tableEndDate = computed(() => `${selectedYear.value}-12-31`);
-const hasActiveRemittanceConfiguration = computed(() => remittanceConfigurationsStore.activeConfiguration !== null ? true : false);
+const hasActiveRemittanceConfiguration = computed(
+  () => remittanceConfigurationsStore.activeConfiguration !== null,
+);
+const isRemittanceConfigActive = computed(() => hasActiveRemittanceConfiguration.value);
 
 const pagination = ref({
   page: 1,
@@ -307,20 +309,21 @@ const summaryTotals = computed(() => {
   const centralFundExpenses = summaryTotalsData.value.centralFundExpenses;
 
   const gross = normalCollections - remittableExpenses;
+  const remittanceBase = isRemittanceConfigActive.value ? collections : gross;
   const { national, district } = computeRemittanceDeductions(
-    gross,
+    remittanceBase,
     settingsStore.nationalPercent,
     settingsStore.districtPercent,
   );
-  const car = (legacyCollections + gross) - national - district;
-  // const net =
-  //   computeNetCollection({
-  //     grossCollection: legacyCollections + gross,
-  //     national,
-  //     district,
-  //     nonRemittableExpenses,
-  //   }) - centralFundExpenses;
-  const net = car - expenses;
+  const car = remittanceBase - national - district;
+  const net = isRemittanceConfigActive.value
+    ? car - expenses
+    : computeNetCollection({
+        grossCollection: legacyCollections + gross,
+        national,
+        district,
+        nonRemittableExpenses,
+      }) - centralFundExpenses;
 
   return {
     collections,
@@ -351,7 +354,10 @@ function toPeso(amount: number): string {
 }
 
 async function loadYtdSummary(): Promise<void> {
-  const totals = await transactionsStore.fetchYtdSummaryTotals(allYearsStartDate, allYearsEndDate);
+  const totals = await transactionsStore.fetchYtdSummaryTotals(
+    tableStartDate.value,
+    tableEndDate.value,
+  );
   summaryTotalsData.value.collections = totals.collections;
   summaryTotalsData.value.legacyCollections = totals.legacyCollections;
   summaryTotalsData.value.normalCollections = totals.normalCollections;
@@ -378,21 +384,21 @@ function mapPaginatedRows(
 ): YtdTableRow[] {
   return rows.map((row, index) => {
     const gross = row.normalCollection - row.remittableExpenses;
+    const remittanceBase = isRemittanceConfigActive.value ? row.collection : gross;
     const { national, district } = computeRemittanceDeductions(
-      gross,
+      remittanceBase,
       settingsStore.nationalPercent,
       settingsStore.districtPercent,
     );
-    // const net =
-    //   computeNetCollection({
-    //     grossCollection: row.legacyCollection + gross,
-    //     national,
-    //     district,
-    //     nonRemittableExpenses: row.nonRemittableExpenses,
-    //   }) - row.centralFundExpenses;
-
-    const car = row.collection - national - district;
-    const net = car - row.expenses;
+    const car = remittanceBase - national - district;
+    const net = isRemittanceConfigActive.value
+      ? car - row.expenses
+      : computeNetCollection({
+          grossCollection: row.legacyCollection + gross,
+          national,
+          district,
+          nonRemittableExpenses: row.nonRemittableExpenses,
+        }) - row.centralFundExpenses;
 
     const rowPosition = (page - 1) * rowsPerPage + index;
 
@@ -456,8 +462,12 @@ watch(selectedYear, () => {
   void (async () => {
     isLoading.value = true;
     try {
+      await remittanceConfigurationsStore.fetchActiveConfigurationByDateRange(
+        tableStartDate.value,
+        tableEndDate.value,
+      );
+      await loadYtdSummary();
       await loadYtdPage(1, pagination.value.rowsPerPage);
-      await remittanceConfigurationsStore.fetchActiveConfigurationByDateRange(tableStartDate.value, tableEndDate.value);
     } finally {
       isLoading.value = false;
     }
@@ -501,8 +511,11 @@ onMounted(async () => {
   await settingsStore.init();
   await transactionsStore.init(false);
   await remittanceConfigurationsStore.init();
+  await remittanceConfigurationsStore.fetchActiveConfigurationByDateRange(
+    tableStartDate.value,
+    tableEndDate.value,
+  );
   await loadYtdData();
-  await remittanceConfigurationsStore.fetchActiveConfigurationByDateRange(tableStartDate.value, tableEndDate.value);
 });
 </script>
 
