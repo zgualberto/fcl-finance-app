@@ -8,6 +8,7 @@ export const useCategoriesStore = defineStore('categories', {
     categories: [] as Category[],
     categoryRepository: null as CategoryRepository | null,
     activityLogService: null as ActivityLogService | null,
+    otherOfferingsCategories: [] as Category[],
     totalCategories: 0,
   }),
 
@@ -147,6 +148,13 @@ export const useCategoriesStore = defineStore('categories', {
         const message = error instanceof Error ? error.message : String(error);
         this.activityLogService?.logErrActivity(message);
       }
+    },
+    async fetchAllOtherOfferingsCategories(): Promise<void> {
+      if (!this.categoryRepository) {
+        throw new Error('Repository not initialized');
+      }
+      this.otherOfferingsCategories =
+        await this.categoryRepository.findAllOtherOfferingsCategories();
     },
   },
 });

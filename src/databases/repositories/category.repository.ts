@@ -389,4 +389,24 @@ export class CategoryRepository implements BaseRepository<Category> {
     const res = await database.query('SELECT COUNT(*) AS count FROM categories');
     return (res.values?.[0]?.count as number) ?? 0;
   }
+
+  async findAllOtherOfferingsCategories(): Promise<Category[]> {
+    const res = await database.query(
+      `
+        SELECT
+          id,
+          name as category_name,
+          is_active,
+          created_at,
+          parent_id,
+          non_remittable,
+          effective_date,
+          transaction_type
+        FROM categories
+        WHERE other_offerings = 1
+        ORDER BY name ASC
+      `,
+    );
+    return res.values as Category[];
+  }
 }

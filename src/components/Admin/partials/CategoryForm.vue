@@ -32,23 +32,28 @@
             :rules="[(val) => !!val || 'This field is required']"
           />
         </div>
-        <div class="row" :class="{ 'no-wrap': $q.screen.width > $q.screen.height }">
-          <div class="col-12 col-sm-6">
-            <div :class="{ 'q-pr-md': $q.screen.width > $q.screen.height }">
-              <div class="text-body1 text-grey-7 q-mb-xs">Status</div>
-              <q-select
-                v-model="form.is_active"
-                option-value="value"
-                option-label="label"
-                emit-value
-                map-options
-                filled
-                :options="statusOptions"
-                dense
-              />
-            </div>
+        <div
+          class="row"
+          :class="{
+            'no-wrap': $q.screen.width > $q.screen.height,
+            'q-col-gutter-md': $q.screen.width > $q.screen.height,
+          }"
+          style="margin-left: 0px"
+        >
+          <div class="col-12 col-sm-4">
+            <div class="text-body1 text-grey-7 q-mb-xs">Status</div>
+            <q-select
+              v-model="form.is_active"
+              option-value="value"
+              option-label="label"
+              emit-value
+              map-options
+              filled
+              :options="statusOptions"
+              dense
+            />
           </div>
-          <div class="col-12 col-sm-6">
+          <div class="col-12 col-sm-4">
             <div class="text-body1 text-grey-7 q-mb-xs">Transaction Type</div>
             <q-select
               v-model="form.transaction_type"
@@ -67,6 +72,19 @@
                   'Transaction type is required for parent categories',
               ]"
               :disable="form.parent_id !== null"
+            />
+          </div>
+          <div class="col-12 col-sm-4">
+            <div class="text-body1 text-grey-7 q-mb-xs">Other Offerings</div>
+            <q-select
+              v-model="form.other_offerings"
+              option-value="value"
+              option-label="label"
+              emit-value
+              map-options
+              filled
+              :options="otherOfferingsOptions"
+              dense
             />
           </div>
         </div>
@@ -183,6 +201,7 @@ function normalizeDateInput(value: Category['effective_date'] | string): string 
 const form = ref({
   category_name: '',
   is_active: true,
+  other_offerings: false,
   transaction_type: '' as string | null,
   parent_id: null as number | null,
   non_remittable: false,
@@ -203,6 +222,11 @@ const transactionTypeOptions = Object.values(TransactionType).map((type) => ({
 const statusOptions = [
   { label: 'Enable', value: true },
   { label: 'Disable', value: false },
+];
+
+const otherOfferingsOptions = [
+  { label: 'Yes', value: true },
+  { label: 'No', value: false },
 ];
 
 const parentLookupRequestId = ref(0);
@@ -235,6 +259,7 @@ watch(
       form.value = {
         category_name: cat.category_name,
         is_active: cat.is_active == 1 ? true : false,
+        other_offerings: cat.other_offerings == 1 ? true : false,
         transaction_type: cat.transaction_type as string | null,
         parent_id: cat.parent_id as number | null,
         non_remittable: cat.non_remittable == 1 ? true : false,
@@ -316,6 +341,7 @@ function onSubmit() {
     is_active: form.value.is_active == true ? 1 : 0,
     transaction_type: form.value.transaction_type,
     parent_id: form.value.parent_id,
+    other_offerings: form.value.other_offerings == true ? 1 : 0,
     non_remittable: form.value.non_remittable == true ? 1 : 0,
     effective_date: form.value.effective_date || null,
   });
@@ -329,6 +355,7 @@ function resetForm() {
   form.value = {
     category_name: '',
     is_active: true,
+    other_offerings: false,
     transaction_type: '',
     parent_id: null,
     non_remittable: false,

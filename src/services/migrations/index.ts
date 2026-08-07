@@ -15,6 +15,7 @@ import { migration as migration9 } from './9_add_is_legacy_to_transactions';
 import { migration as migration10 } from './10_add_transactions_sort_index';
 import { migration as migration11 } from './11_add_budget_source_to_transactions';
 import { migration as migration12 } from './12_create_remittance_configuration_schema';
+import { migration as migration13 } from './13_create_other_offerings_field_in_category_table';
 
 export const migrations: Migration[] = [
   migration1,
@@ -29,4 +30,5 @@ export const migrations: Migration[] = [
   migration10,
   migration11,
   migration12,
+  migration13,
 ];

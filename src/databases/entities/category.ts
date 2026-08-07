@@ -2,6 +2,7 @@ export interface Category {
   id?: number;
   category_name: string;
   is_active: number;
+  other_offerings?: number | null;
   created_at?: Date;
   parent_id?: number | null;
   non_remittable?: number;
