@@ -7,7 +7,7 @@ const database = getDatabase();
 export class CategoryRepository implements BaseRepository<Category> {
   async insert(category: Partial<Category>): Promise<number> {
     const result = await database.run(
-      `INSERT INTO categories (name, is_active, parent_id, transaction_type, non_remittable, effective_date) VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO categories (name, is_active, parent_id, transaction_type, non_remittable, effective_date, other_offerings) VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         category.category_name,
         category.is_active ? 1 : 0,
@@ -15,6 +15,7 @@ export class CategoryRepository implements BaseRepository<Category> {
         category.transaction_type,
         category.non_remittable ? 1 : 0,
         category.effective_date ?? null,
+        category.other_offerings ? 1 : 0,
       ],
     );
     return result.changes?.lastId ?? 0;
@@ -30,7 +31,8 @@ export class CategoryRepository implements BaseRepository<Category> {
         parent_id,
         non_remittable,
         effective_date,
-        transaction_type
+        transaction_type,
+        other_offerings
       FROM categories
       ORDER BY created_at DESC
     `);
@@ -48,7 +50,8 @@ export class CategoryRepository implements BaseRepository<Category> {
           parent_id,
           non_remittable,
           effective_date,
-          transaction_type
+          transaction_type,
+          other_offerings
         FROM categories
         WHERE id = ?
       `,
@@ -75,7 +78,8 @@ export class CategoryRepository implements BaseRepository<Category> {
           parent_id,
           non_remittable,
           effective_date,
-          transaction_type
+          transaction_type,
+          other_offerings
         FROM categories
         WHERE LOWER(name) IN (${placeholders})
         ORDER BY name ASC
@@ -94,7 +98,8 @@ export class CategoryRepository implements BaseRepository<Category> {
           parent_id = ?,
           transaction_type = ?,
           non_remittable = COALESCE(?, non_remittable),
-          effective_date = ?
+          effective_date = ?,
+          other_offerings = COALESCE(?, other_offerings)
         WHERE id = ?
       `,
       [
@@ -104,6 +109,7 @@ export class CategoryRepository implements BaseRepository<Category> {
         member.transaction_type,
         member.non_remittable == null ? null : member.non_remittable ? 1 : 0,
         member.effective_date ?? null,
+        member.other_offerings == null ? null : member.other_offerings ? 1 : 0,
         member.id,
       ],
     );
@@ -127,7 +133,8 @@ export class CategoryRepository implements BaseRepository<Category> {
             c.non_remittable,
             c.effective_date,
             NULL AS parent_name,
-            c.name AS path
+            c.name AS path,
+            c.other_offerings
           FROM categories c
           WHERE c.parent_id IS NULL
 
@@ -143,7 +150,8 @@ export class CategoryRepository implements BaseRepository<Category> {
             child.non_remittable,
             child.effective_date,
             parent.name AS parent_name,
-            ct.path || ' / ' || child.name AS path
+            ct.path || ' / ' || child.name AS path,
+            child.other_offerings
           FROM categories child
           JOIN category_tree ct ON child.parent_id = ct.id
           JOIN categories parent ON parent.id = child.parent_id
@@ -157,7 +165,8 @@ export class CategoryRepository implements BaseRepository<Category> {
           non_remittable,
           effective_date,
           parent_name,
-          path
+          path,
+          other_offerings
         FROM category_tree
         ORDER BY path;
       `,
@@ -182,7 +191,8 @@ export class CategoryRepository implements BaseRepository<Category> {
             c.non_remittable,
             c.effective_date,
             NULL AS parent_name,
-            c.name AS path
+            c.name AS path,
+            c.other_offerings
           FROM categories c
           WHERE c.parent_id IS NULL
 
@@ -197,7 +207,8 @@ export class CategoryRepository implements BaseRepository<Category> {
             child.non_remittable,
             child.effective_date,
             parent.name AS parent_name,
-            ct.path || ' / ' || child.name AS path
+            ct.path || ' / ' || child.name AS path,
+            child.other_offerings
           FROM categories child
           JOIN category_tree ct ON child.parent_id = ct.id
           JOIN categories parent ON parent.id = child.parent_id
@@ -211,7 +222,8 @@ export class CategoryRepository implements BaseRepository<Category> {
           non_remittable,
           effective_date,
           parent_name,
-          path
+          path,
+          other_offerings
         FROM category_tree
         ORDER BY path
         LIMIT ? OFFSET ?
@@ -236,7 +248,8 @@ export class CategoryRepository implements BaseRepository<Category> {
           c.created_at,
           c.parent_id,
           c.non_remittable,
-          COALESCE(c.transaction_type, p.transaction_type) as transaction_type
+          COALESCE(c.transaction_type, p.transaction_type) as transaction_type,
+          c.other_offerings
         FROM categories c
         LEFT JOIN categories p ON c.parent_id = p.id
         WHERE c.parent_id IS NOT NULL
@@ -273,7 +286,8 @@ export class CategoryRepository implements BaseRepository<Category> {
           created_at,
           parent_id,
           non_remittable,
-          transaction_type
+          transaction_type,
+          other_offerings
         FROM categories
         WHERE parent_id IS NULL
           AND is_active = 1
@@ -306,7 +320,8 @@ export class CategoryRepository implements BaseRepository<Category> {
             c.non_remittable,
             c.effective_date,
             NULL AS parent_name,
-            c.name AS path
+            c.name AS path,
+            c.other_offerings
           FROM categories c
           WHERE c.parent_id IS NULL
 
@@ -321,7 +336,8 @@ export class CategoryRepository implements BaseRepository<Category> {
             child.non_remittable,
             child.effective_date,
             parent.name AS parent_name,
-            ct.path || ' / ' || child.name AS path
+            ct.path || ' / ' || child.name AS path,
+            child.other_offerings
           FROM categories child
           JOIN category_tree ct ON child.parent_id = ct.id
           JOIN categories parent ON parent.id = child.parent_id
@@ -335,7 +351,8 @@ export class CategoryRepository implements BaseRepository<Category> {
           non_remittable,
           effective_date,
           parent_name,
-          path
+          path,
+          other_offerings
         FROM category_tree
         WHERE LOWER(category_name) LIKE ?
           OR LOWER(COALESCE(parent_name, '')) LIKE ?
@@ -401,7 +418,8 @@ export class CategoryRepository implements BaseRepository<Category> {
           parent_id,
           non_remittable,
           effective_date,
-          transaction_type
+          transaction_type,
+          other_offerings
         FROM categories
         WHERE other_offerings = 1
         ORDER BY name ASC

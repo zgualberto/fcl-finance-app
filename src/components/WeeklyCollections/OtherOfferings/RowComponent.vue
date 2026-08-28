@@ -1,32 +1,19 @@
 <template>
-  <div class="row q-col-gutter-md">
-    <div class="col-12 col-sm-4">
+  <div v-if="localEntries.length === 0" class="text-body2 text-grey-7">
+    No other offerings categories are available yet.
+  </div>
+  <div v-else class="row q-col-gutter-md">
+    <div v-for="(entry, index) in localEntries" :key="entry.categoryId ?? entry.categoryName ?? index" class="col-12 col-sm-4">
       <div>
-        <div class="text-body1 text-grey-7 q-mb-xs">Everybody's Birthday</div>
+        <div class="text-body1 text-grey-7 q-mb-xs">{{ entry.categoryName }}</div>
         <q-input
-          v-model.number="localEverybodysBirthday"
+          :model-value="entry.amount"
           type="number"
           outlined
           dense
           prefix="₱"
-          :rules="[
-            (val) => (val !== null && val !== undefined && val !== '') || 'This field is required',
-          ]"
-        />
-      </div>
-    </div>
-    <div class="col-12 col-sm-4">
-      <div>
-        <div class="text-body1 text-grey-7 q-mb-xs">Special Funding</div>
-        <q-input
-          v-model.number="localSpecialFunding"
-          type="number"
-          outlined
-          dense
-          prefix="₱"
-          :rules="[
-            (val) => (val !== null && val !== undefined && val !== '') || 'This field is required',
-          ]"
+          :rules="[(val) => (val !== null && val !== undefined && val !== '') || 'This field is required']"
+          @update:model-value="(value: string | number | null) => updateEntryAmount(index, value)"
         />
       </div>
     </div>
@@ -36,23 +23,36 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+interface OtherOfferingEntry {
+  categoryId: number | null;
+  categoryName: string;
+  amount: number;
+}
+
 const props = defineProps<{
-  everybodysBirthday: number;
-  specialFunding: number;
+  entries: OtherOfferingEntry[];
 }>();
 
 const emit = defineEmits<{
-  (event: 'update:everybodysBirthday', value: number): void;
-  (event: 'update:specialFunding', value: number): void;
+  (event: 'update:entries', value: OtherOfferingEntry[]): void;
 }>();
 
-const localEverybodysBirthday = computed({
-  get: () => props.everybodysBirthday,
-  set: (value) => emit('update:everybodysBirthday', value),
+const localEntries = computed({
+  get: () => props.entries,
+  set: (value: OtherOfferingEntry[]) => emit('update:entries', value),
 });
 
-const localSpecialFunding = computed({
-  get: () => props.specialFunding,
-  set: (value) => emit('update:specialFunding', value),
-});
+function updateEntryAmount(index: number, value: string | number | null) {
+  const nextEntries = [...props.entries];
+  const currentEntry = nextEntries[index] ?? {
+    categoryId: null,
+    categoryName: '',
+    amount: 0,
+  };
+  nextEntries[index] = {
+    ...currentEntry,
+    amount: Number(value),
+  };
+  emit('update:entries', nextEntries);
+}
 </script>

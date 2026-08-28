@@ -82,10 +82,7 @@
     >
       <div class="text-h6 text-weight-medium">Other Offerings</div>
       <q-separator class="q-mb-md"></q-separator>
-      <OtherOfferingsRow
-        v-model:everybodys-birthday="formData.everybodysBirthday"
-        v-model:special-funding="formData.specialFunding"
-      />
+      <OtherOfferingsRow v-model:entries="formData.otherOfferings" />
     </section>
 
     <!-- Tithes -->
@@ -199,7 +196,6 @@ import { useCategoriesStore } from 'src/stores/categories-store';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 import { WeeklyOfferingCategoryName } from 'src/enums/weekly_offering_category';
 import { CollectionsCategoryName } from 'src/enums/collections_category';
-import { OtherOfferingCategoryName } from 'src/enums/other_offering_category';
 import { TransactionType } from 'src/enums/transaction_type';
 import type { Transaction } from 'src/databases/entities/transaction';
 import type { Category } from 'src/databases/entities/category';
@@ -217,13 +213,18 @@ interface Tithe {
   searchTerm: string;
 }
 
+interface OtherOfferingEntry {
+  categoryId: number | null;
+  categoryName: string;
+  amount: number;
+}
+
 interface FormData {
   collectionDate: string;
   sundayOffering: number;
   midweekOffering: number;
   sundaySchoolOffering: number;
-  everybodysBirthday: number;
-  specialFunding: number;
+  otherOfferings: OtherOfferingEntry[];
   tithes: Tithe[];
 }
 
@@ -239,8 +240,7 @@ const createDefaultFormData = (): FormData => ({
   sundayOffering: 0,
   midweekOffering: 0,
   sundaySchoolOffering: 0,
-  everybodysBirthday: 0,
-  specialFunding: 0,
+  otherOfferings: [],
   tithes: [createDefaultTithe()],
 });
 
@@ -262,15 +262,17 @@ const totalAmount = computed(() => {
   const offerings =
     (formData.value.sundayOffering || 0) +
     (formData.value.midweekOffering || 0) +
-    (formData.value.sundaySchoolOffering || 0) +
-    (formData.value.everybodysBirthday || 0) +
-    (formData.value.specialFunding || 0);
+    (formData.value.sundaySchoolOffering || 0);
+
+  const otherOfferingsTotal = formData.value.otherOfferings.reduce((sum, entry) => {
+    return sum + (entry.amount || 0);
+  }, 0);
 
   const tithesTotal = formData.value.tithes.reduce((sum, tithe) => {
     return sum + (tithe.amount || 0);
   }, 0);
 
-  return offerings + tithesTotal;
+  return offerings + otherOfferingsTotal + tithesTotal;
 });
 
 const memberStore = useMembersStore();
@@ -316,10 +318,6 @@ const offeringCategoryNames: WeeklyOfferingCategoryName[] = [
   WeeklyOfferingCategoryName.SUNDAY_SERVICE_OFFERING,
   WeeklyOfferingCategoryName.TITHES,
 ];
-const otherOfferingCategoryNames: OtherOfferingCategoryName[] = [
-  OtherOfferingCategoryName.EVERYBODYS_BIRTHDAY,
-  OtherOfferingCategoryName.SPECIAL_FUNDING,
-];
 type HierarchyGroup = {
   parentName: CollectionsCategoryName;
   childNames: string[];
@@ -332,7 +330,7 @@ const categoryHierarchyGroups: HierarchyGroup[] = [
   },
   {
     parentName: CollectionsCategoryName.OTHER_COLLECTIONS,
-    childNames: [...otherOfferingCategoryNames],
+    childNames: [],
   },
 ];
 const allCategoryNames: string[] = [
@@ -340,7 +338,7 @@ const allCategoryNames: string[] = [
   ...categoryHierarchyGroups.flatMap((group) => group.childNames),
 ];
 const offeringCategoryIds = ref<Record<string, number>>({});
-const otherOfferingCategoryIds = ref<Record<string, number>>({});
+const otherOfferingCategories = ref<Category[]>([]);
 const isSaving = ref(false);
 
 function buildCategoryMap(categories: Category[]): Record<string, Category> {
@@ -348,6 +346,33 @@ function buildCategoryMap(categories: Category[]): Record<string, Category> {
     acc[category.category_name] = category;
     return acc;
   }, {});
+}
+
+function buildOtherOfferingEntries(transactions: Transaction[] = []): OtherOfferingEntry[] {
+  const existingEntries = formData.value.otherOfferings ?? [];
+  const transactionTotals = new Map<string, number>();
+
+  transactions.forEach((transaction) => {
+    const key = transaction.category_name?.trim() || `category:${transaction.category_id ?? ''}`;
+    if (!key) {
+      return;
+    }
+
+    transactionTotals.set(key, (transactionTotals.get(key) ?? 0) + (transaction.amount || 0));
+  });
+
+  return otherOfferingCategories.value.map((category) => {
+    const existingEntry = existingEntries.find(
+      (entry) => entry.categoryId === category.id || entry.categoryName === category.category_name,
+    );
+    const amount = transactionTotals.get(category.category_name) ?? existingEntry?.amount ?? 0;
+
+    return {
+      categoryId: category.id ?? null,
+      categoryName: category.category_name,
+      amount,
+    };
+  });
 }
 
 function getHierarchyIssues(categoryMap: Record<string, Category>) {
@@ -405,14 +430,6 @@ function getOfferingCategoryId(name: WeeklyOfferingCategoryName): number {
   return id;
 }
 
-function getOtherOfferingCategoryId(name: OtherOfferingCategoryName): number {
-  const id = otherOfferingCategoryIds.value[name];
-  if (id == null) {
-    throw new Error(`Missing other offering category: ${name}`);
-  }
-  return id;
-}
-
 function handleOpenSummary() {
   console.log('Opening summary for:', formData.value);
   // Open $q.dialog with QTable showing summary of transactions just added.
@@ -456,19 +473,18 @@ function buildTransactions(): Partial<Transaction>[] {
       description: WeeklyOfferingCategoryName.SUNDAY_SCHOOL_OFFERING,
       date: collectionDate,
     },
-    {
-      category_id: getOtherOfferingCategoryId(OtherOfferingCategoryName.EVERYBODYS_BIRTHDAY),
-      amount: formData.value.everybodysBirthday,
-      description: OtherOfferingCategoryName.EVERYBODYS_BIRTHDAY,
-      date: collectionDate,
-    },
-    {
-      category_id: getOtherOfferingCategoryId(OtherOfferingCategoryName.SPECIAL_FUNDING),
-      amount: formData.value.specialFunding,
-      description: OtherOfferingCategoryName.SPECIAL_FUNDING,
-      date: collectionDate,
-    },
   ];
+
+  formData.value.otherOfferings
+    .filter((entry) => (entry.amount || 0) > 0 && entry.categoryId != null)
+    .forEach((entry) => {
+      transactions.push({
+        category_id: entry.categoryId ?? null,
+        amount: entry.amount,
+        description: entry.categoryName,
+        date: collectionDate,
+      });
+    });
 
   formData.value.tithes.forEach((tithe) => {
     const memberId = tithe.memberId as number;
@@ -644,6 +660,7 @@ async function ensureCategoryHierarchy(): Promise<void> {
 
 async function loadOfferingCategories(skipDialog = false) {
   await categoriesStore.init(false);
+  await categoriesStore.fetchAllOtherOfferingsCategories();
   const categories = await categoriesStore.fetchCategoriesByNames(allCategoryNames);
   const categoryMap = buildCategoryMap(categories);
   const { missingParents, missingChildren, invalidParents, mismatchedChildren, invalidChildTypes } =
@@ -657,16 +674,8 @@ async function loadOfferingCategories(skipDialog = false) {
     return acc;
   }, {});
 
-  otherOfferingCategoryIds.value = otherOfferingCategoryNames.reduce<Record<string, number>>(
-    (acc, name) => {
-      const category = categoryMap[name];
-      if (category?.id) {
-        acc[name] = category.id;
-      }
-      return acc;
-    },
-    {},
-  );
+  otherOfferingCategories.value = categoriesStore.otherOfferingsCategories;
+  formData.value.otherOfferings = buildOtherOfferingEntries();
 
   const hasIssues =
     missingParents.length > 0 ||
@@ -812,6 +821,7 @@ function transformTransactionsToFormData(transactions: Transaction[]): FormData 
   const data = createDefaultFormData();
 
   if (transactions.length === 0) {
+    data.otherOfferings = buildOtherOfferingEntries();
     return data;
   }
 
@@ -837,12 +847,6 @@ function transformTransactionsToFormData(transactions: Transaction[]): FormData 
       case 'Sunday School Offering':
         data.sundaySchoolOffering += transaction.amount || 0;
         break;
-      case "Everybody's Birthday":
-        data.everybodysBirthday += transaction.amount || 0;
-        break;
-      case 'Special Funding':
-        data.specialFunding += transaction.amount || 0;
-        break;
       case 'Tithes': {
         // Tithes have individual member entries
         const memberId = transaction.member_id ?? null;
@@ -857,6 +861,8 @@ function transformTransactionsToFormData(transactions: Transaction[]): FormData 
       }
     }
   });
+
+  data.otherOfferings = buildOtherOfferingEntries(transactions);
 
   return data;
 }
@@ -882,6 +888,7 @@ async function loadCollectionByDate() {
       return;
     }
 
+    await loadOfferingCategories(true);
     formData.value = transformTransactionsToFormData(transactions);
     void nextTick(() => {
       formRef.value?.resetValidation();
