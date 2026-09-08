@@ -16,9 +16,7 @@
         <div class="col">
           <div class="col-12">
             <div class="text-h5 text-weight-bold">Annual Collections Dashboard</div>
-            <div class="text-body1 text-grey-7">
-              Overall totals across all years • Filter table by year using selector
-            </div>
+            <div class="text-body1 text-grey-7">All-time totals • Data table shows all years</div>
           </div>
 
           <div class="col-12">
@@ -43,20 +41,6 @@
               </div>
             </div>
           </div>
-        </div>
-        <div class="col-auto row items-center q-col-gutter-sm">
-          <q-icon name="fa-regular fa-calendar" size="24px" class="text-grey-6" />
-          <div>Filter:</div>
-          <q-select
-            v-model="selectedYear"
-            :options="yearOptions"
-            outlined
-            dense
-            emit-value
-            map-options
-            options-dense
-            style="min-width: 100px"
-          />
         </div>
       </div>
 
@@ -201,7 +185,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { date as dateUtils, useQuasar, type QTableColumn } from 'quasar';
 import {
   computeNetCollection,
@@ -244,18 +228,8 @@ const summaryTotalsData = ref({
   centralFundExpenses: 0,
 });
 
-const currentYear = new Date().getFullYear();
-const selectedYear = ref(currentYear);
-const yearOptions = Array.from({ length: 50 }, (_, index) => {
-  const year = currentYear - index;
-  return {
-    label: String(year),
-    value: year,
-  };
-});
-
-const tableStartDate = computed(() => `${selectedYear.value}-01-01`);
-const tableEndDate = computed(() => `${selectedYear.value}-12-31`);
+const tableStartDate = computed(() => `1900-01-01`);
+const tableEndDate = computed(() => `${new Date().getFullYear()}-12-31`);
 const hasActiveRemittanceConfiguration = computed(
   () => remittanceConfigurationsStore.activeConfiguration !== null,
 );
@@ -271,7 +245,6 @@ const nationalRateLabel = computed(() => `${Math.round(settingsStore.nationalPer
 const districtRateLabel = computed(() => `${Math.round(settingsStore.districtPercent * 100)}%`);
 
 const columns = computed<QTableColumn<YtdTableRow>[]>(() => [
-  { name: 'id', label: 'ID', field: 'id', align: 'left', classes: 'text-weight-bold' },
   { name: 'date', label: 'Date', field: 'date', align: 'left' },
   { name: 'collection', label: 'Gross', field: 'collection', align: 'right' },
   { name: 'expenses', label: 'Expenses', field: 'expenses', align: 'right' },
@@ -457,22 +430,6 @@ async function onTableRequest(props: { pagination: { page: number; rowsPerPage: 
     isLoading.value = false;
   }
 }
-
-watch(selectedYear, () => {
-  void (async () => {
-    isLoading.value = true;
-    try {
-      await remittanceConfigurationsStore.fetchActiveConfigurationByDateRange(
-        tableStartDate.value,
-        tableEndDate.value,
-      );
-      await loadYtdSummary();
-      await loadYtdPage(1, pagination.value.rowsPerPage);
-    } finally {
-      isLoading.value = false;
-    }
-  })();
-});
 
 function goToCollectionForm(date: string): void {
   void router.push({
