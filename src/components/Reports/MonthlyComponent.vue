@@ -233,7 +233,8 @@
             <div>
               <div class="text-subtitle2 q-mb-sm">Collections after Remittances</div>
               <div class="text-caption q-mb-sm">
-                (Total Collection - National 15% - District 3%)
+                (Gross Collection - National {{ Math.round(settingsStore.nationalPercent * 100) }} -
+                District {{ Math.round(settingsStore.districtPercent * 100) }})
               </div>
               <div class="text-h4" style="font-weight: 700">
                 ₱{{ formatCurrency(collectionsAfterRemittances) }}
