@@ -113,7 +113,7 @@
         </template>
         <template v-slot:body-cell-nonRemittableExpenses="props">
           <q-td :props="props" class="text-deep-orange text-weight-medium text-right">
-            {{ toPeso(props.row.nonRemittableExpenses) }}
+            {{ isRemittanceConfigActive ? '0.00' : toPeso(props.row.nonRemittableExpenses) }}
           </q-td>
         </template>
         <template v-slot:body-cell-gross="props">
