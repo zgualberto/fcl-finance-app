@@ -108,7 +108,7 @@
         </template>
         <template v-slot:body-cell-car="props">
           <q-td :props="props" class="text-blue text-weight-bold text-right">
-            {{ isRemittanceConfigActive ? toPeso(props.row.car) : '0.00' }}
+            {{ props.row.isLegacy ? '₱0.00' : (isRemittanceConfigActive ? toPeso(props.row.car) : '0.00') }}
           </q-td>
         </template>
         <template v-slot:body-cell-nonRemittableExpenses="props">
@@ -118,17 +118,17 @@
         </template>
         <template v-slot:body-cell-gross="props">
           <q-td :props="props" class="text-weight-bold text-right">
-            {{ toPeso(props.row.gross) }}
+            {{ props.row.isLegacy ? '₱0.00' : toPeso(props.row.gross) }}
           </q-td>
         </template>
         <template v-slot:body-cell-national="props">
           <q-td :props="props" class="text-grey-8 text-weight-medium text-right">
-            {{ toPeso(props.row.national) }}
+            {{ props.row.isLegacy ? '₱0.00' : toPeso(props.row.national) }}
           </q-td>
         </template>
         <template v-slot:body-cell-district="props">
           <q-td :props="props" class="text-grey-8 text-weight-medium text-right">
-            {{ toPeso(props.row.district) }}
+            {{ props.row.isLegacy ? '₱0.00' : toPeso(props.row.district) }}
           </q-td>
         </template>
         <template v-slot:body-cell-net="props">
@@ -207,6 +207,8 @@ interface YtdTableRow {
   national: number;
   district: number;
   net: number;
+  legacyCollection: number;
+  isLegacy: boolean;
 }
 
 const transactionsStore = useTransactionsStore();
@@ -356,6 +358,7 @@ function mapPaginatedRows(
   total: number,
 ): YtdTableRow[] {
   return rows.map((row, index) => {
+    const isLegacy = row.legacyCollection > 0;
     const gross = row.normalCollection - row.remittableExpenses;
     const remittanceBase = isRemittanceConfigActive.value ? row.collection : gross;
     const { national, district } = computeRemittanceDeductions(
@@ -380,12 +383,14 @@ function mapPaginatedRows(
       date: row.date,
       collection: row.collection,
       expenses: row.expenses,
-      car,
+      car: isLegacy ? 0 : car,
       nonRemittableExpenses: row.nonRemittableExpenses,
-      gross,
-      national,
-      district,
+      gross: isLegacy ? 0 : gross,
+      national: isLegacy ? 0 : national,
+      district: isLegacy ? 0 : district,
       net,
+      legacyCollection: row.legacyCollection,
+      isLegacy,
     };
   });
 }
