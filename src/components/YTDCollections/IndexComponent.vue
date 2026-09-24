@@ -108,7 +108,13 @@
         </template>
         <template v-slot:body-cell-car="props">
           <q-td :props="props" class="text-blue text-weight-bold text-right">
-            {{ props.row.isLegacy ? '₱0.00' : (isRemittanceConfigActive ? toPeso(props.row.car) : '0.00') }}
+            {{
+              props.row.isLegacy
+                ? '₱0.00'
+                : isRemittanceConfigActive
+                  ? toPeso(props.row.car)
+                  : '0.00'
+            }}
           </q-td>
         </template>
         <template v-slot:body-cell-nonRemittableExpenses="props">
@@ -140,7 +146,7 @@
                 : 'text-negative text-weight-bold text-right'
             "
           >
-            {{ toPeso(props.row.net) }}
+            {{ props.row.isLegacy ? toPeso(props.row.collection) : toPeso(props.row.net) }}
           </q-td>
         </template>
         <template v-slot:body-cell-actions="props">
