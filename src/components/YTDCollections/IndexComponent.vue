@@ -82,6 +82,7 @@
       </div>
 
       <q-table
+        class="ytd-sticky-header-table"
         :rows="tableRows"
         :columns="columns"
         row-key="date"
@@ -234,6 +235,7 @@ const summaryTotalsData = ref({
   remittableExpenses: 0,
   nonRemittableExpenses: 0,
   centralFundExpenses: 0,
+  isLegacy: 0,
 });
 
 const tableStartDate = computed(() => `1900-01-01`);
@@ -288,6 +290,7 @@ const summaryTotals = computed(() => {
   const remittableExpenses = summaryTotalsData.value.remittableExpenses;
   const nonRemittableExpenses = summaryTotalsData.value.nonRemittableExpenses;
   const centralFundExpenses = summaryTotalsData.value.centralFundExpenses;
+  const isLegacy = summaryTotalsData.value.isLegacy > 0;
 
   const gross = normalCollections - remittableExpenses;
   const remittanceBase = isRemittanceConfigActive.value ? collections : gross;
@@ -297,14 +300,16 @@ const summaryTotals = computed(() => {
     settingsStore.districtPercent,
   );
   const car = remittanceBase - national - district;
-  const net = isRemittanceConfigActive.value
-    ? car - expenses
-    : computeNetCollection({
-        grossCollection: legacyCollections + gross,
-        national,
-        district,
-        nonRemittableExpenses,
-      }) - centralFundExpenses;
+  const net = isLegacy
+    ? normalCollections
+    : isRemittanceConfigActive.value
+      ? car - expenses
+      : computeNetCollection({
+          grossCollection: legacyCollections + gross,
+          national,
+          district,
+          nonRemittableExpenses,
+        }) - centralFundExpenses;
 
   return {
     collections,
@@ -346,6 +351,7 @@ async function loadYtdSummary(): Promise<void> {
   summaryTotalsData.value.remittableExpenses = totals.remittableExpenses;
   summaryTotalsData.value.nonRemittableExpenses = totals.nonRemittableExpenses;
   summaryTotalsData.value.centralFundExpenses = totals.centralFundExpenses;
+  summaryTotalsData.value.isLegacy = totals.isLegacy;
 }
 
 function mapPaginatedRows(
@@ -502,5 +508,19 @@ onMounted(async () => {
 
 .summary-card-net {
   background: linear-gradient(135deg, #1b8f3a 0%, #0bbf4f 100%);
+}
+
+.ytd-sticky-header-table {
+  max-height: 65vh;
+}
+
+:deep(.ytd-sticky-header-table thead tr th) {
+  position: sticky;
+  z-index: 2;
+}
+
+:deep(.ytd-sticky-header-table thead tr:first-child th) {
+  top: 0;
+  background-color: #fff;
 }
 </style>

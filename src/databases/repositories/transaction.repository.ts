@@ -348,6 +348,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
     remittableExpenses: number;
     nonRemittableExpenses: number;
     centralFundExpenses: number;
+    isLegacy: number;
   }> {
     const res = await database.query(
       `SELECT
@@ -413,7 +414,8 @@ export class TransactionRepository implements BaseRepository<Transaction> {
              END
            ),
            0
-         ) AS nonRemittableExpenses
+         ) AS nonRemittableExpenses,
+         t.is_legacy as isLegacy
        FROM transactions t
        LEFT JOIN categories c ON c.id = t.category_id
        WHERE t.date >= ? AND t.date <= ?`,
@@ -440,6 +442,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
       remittableExpenses: (res.values?.[0]?.remittableExpenses as number) ?? 0,
       nonRemittableExpenses: (res.values?.[0]?.nonRemittableExpenses as number) ?? 0,
       centralFundExpenses: (res.values?.[0]?.centralFundExpenses as number) ?? 0,
+      isLegacy: (res.values?.[0]?.isLegacy as number) ?? 0,
     };
   }
 
