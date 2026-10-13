@@ -272,12 +272,13 @@ import {
   computeRemittanceDeductions,
 } from 'src/services/financial-calculations.service';
 import { isNonRemittableActive } from 'src/utils/non-remittable';
-import { isNonCentralFundExpense } from 'src/utils/expense-filters';
+import { isCentralFundExpense, isNonCentralFundExpense } from 'src/utils/expense-filters';
 import { TransactionType } from 'src/enums/transaction_type';
 import type { Transaction } from 'src/databases/entities/transaction';
 import { useAnalyticsStore } from 'src/stores/analytics-store';
 import { useSettingsStore } from 'src/stores/settings-store';
 import { useTransactionsStore } from 'src/stores/transactions-store';
+import { useRemittanceConfigurationsStore } from 'src/stores/remittance-configurations-store';
 
 interface MonthlyTotals {
   monthIndex: number;
@@ -318,12 +319,15 @@ interface YearComparison {
 const transactionsStore = useTransactionsStore();
 const settingsStore = useSettingsStore();
 const analyticsStore = useAnalyticsStore();
+const remittanceConfigurationsStore = useRemittanceConfigurationsStore();
 const $q = useQuasar();
 
 const isLoading = ref(false);
 const isSharingReport = ref(false);
 const rawTransactions = ref<Transaction[]>([]);
 const previousYearTransactions = ref<Transaction[]>([]);
+const isCurrentYearRemittanceActive = ref(false);
+const isPreviousYearRemittanceActive = ref(false);
 const reportRef = ref<HTMLElement | null>(null);
 
 const loadReportDelayMs = 300;
@@ -388,7 +392,7 @@ function getMonthEndDateString(year: number, monthIndex: number): string {
   return `${monthEnd.getFullYear()}-${month}-${day}`;
 }
 
-function buildYearTotals(transactions: Transaction[]) {
+function buildYearTotals(transactions: Transaction[], isRemittanceActive = false) {
   const legacyCollections = transactions
     .filter(
       (transaction) =>
@@ -407,8 +411,16 @@ function buildYearTotals(transactions: Transaction[]) {
     .filter((transaction) => transaction.transaction_type === TransactionType.COLLECTIONS)
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
+  const allExpenses = transactions
+    .filter((transaction) => transaction.transaction_type === TransactionType.EXPENSES)
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+
   const expenses = transactions
     .filter((transaction) => isNonCentralFundExpense(transaction))
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+
+  const centralFundExpenses = transactions
+    .filter((transaction) => isCentralFundExpense(transaction))
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
   const nonRemittableExpenses = transactions
@@ -423,32 +435,46 @@ function buildYearTotals(transactions: Transaction[]) {
   const remittableExpenses = expenses - nonRemittableExpenses;
 
   const gross = normalCollections - remittableExpenses;
+  const remittanceBase = isRemittanceActive ? collections : gross;
   const { national, district } = computeRemittanceDeductions(
-    gross,
+    remittanceBase,
     settingsStore.nationalPercent,
     settingsStore.districtPercent,
   );
-  const net = computeNetCollection({
-    grossCollection: legacyCollections + gross,
-    national,
-    district,
-    nonRemittableExpenses,
-  });
+  const car = remittanceBase - national - district;
+
+  // Mirrors YTDCollections IndexComponent summaryTotals. YTD derives isLegacy from a
+  // sampled row flag; using the summed legacy collections is the equivalent intent here.
+  const isLegacy = legacyCollections > 0;
+
+  const net = isLegacy
+    ? normalCollections
+    : isRemittanceActive
+      ? car - expenses
+      : computeNetCollection({
+          grossCollection: legacyCollections + gross,
+          national,
+          district,
+          nonRemittableExpenses,
+        }) - centralFundExpenses;
 
   return {
     collections,
     expenses,
+    allExpenses,
+    centralFundExpenses,
     remittableExpenses,
     nonRemittableExpenses,
     gross,
     national,
     district,
+    car,
     net,
   };
 }
 
 const summaryTotals = computed(() => {
-  return buildYearTotals(rawTransactions.value);
+  return buildYearTotals(rawTransactions.value, isCurrentYearRemittanceActive.value);
 });
 
 const latestSelectedYearMonthIndex = computed(() => {
@@ -500,11 +526,17 @@ const previousYearComparisonTransactions = computed(() => {
 });
 
 const currentYearComparisonTotals = computed(() => {
-  return buildYearTotals(currentYearComparisonTransactions.value);
+  return buildYearTotals(
+    currentYearComparisonTransactions.value,
+    isCurrentYearRemittanceActive.value,
+  );
 });
 
 const previousYearTotals = computed(() => {
-  return buildYearTotals(previousYearComparisonTransactions.value);
+  return buildYearTotals(
+    previousYearComparisonTransactions.value,
+    isPreviousYearRemittanceActive.value,
+  );
 });
 
 function buildYearComparison(
@@ -853,6 +885,8 @@ async function loadDashboardData(): Promise<void> {
   if (!selectedYearNumber.value) {
     rawTransactions.value = [];
     previousYearTransactions.value = [];
+    isCurrentYearRemittanceActive.value = false;
+    isPreviousYearRemittanceActive.value = false;
     return;
   }
 
@@ -870,6 +904,18 @@ async function loadDashboardData(): Promise<void> {
       transactionsStore.fetchTransactionsByDateRange(previousYearStartDate, previousYearEndDate),
     ]);
 
+    // Fetch previous year first so the store's activeConfiguration ends on the selected year.
+    await remittanceConfigurationsStore.fetchActiveConfigurationByDateRange(
+      previousYearStartDate,
+      previousYearEndDate,
+    );
+    isPreviousYearRemittanceActive.value =
+      remittanceConfigurationsStore.activeConfiguration !== null;
+
+    await remittanceConfigurationsStore.fetchActiveConfigurationByDateRange(startDate, endDate);
+    isCurrentYearRemittanceActive.value =
+      remittanceConfigurationsStore.activeConfiguration !== null;
+
     rawTransactions.value = currentYearTransactions;
     previousYearTransactions.value = previousYearData;
 
@@ -883,6 +929,8 @@ async function loadDashboardData(): Promise<void> {
   } catch {
     rawTransactions.value = [];
     previousYearTransactions.value = [];
+    isCurrentYearRemittanceActive.value = false;
+    isPreviousYearRemittanceActive.value = false;
     $q.notify({
       type: 'negative',
       message: 'Failed to load dashboard data. Please try again.',
@@ -1022,6 +1070,7 @@ watch(
 onMounted(async () => {
   await settingsStore.init();
   await transactionsStore.init();
+  await remittanceConfigurationsStore.init(false);
 });
 
 onBeforeUnmount(() => {
