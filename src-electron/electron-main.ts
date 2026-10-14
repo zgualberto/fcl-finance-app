@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron';
 import path from 'path';
 import os from 'os';
 import fs from 'node:fs';
@@ -80,7 +80,11 @@ async function createWindow() {
   });
 }
 
-void app.whenReady().then(createWindow);
+void app.whenReady().then(async () => {
+  // No menu bar in dev or packaged builds (also clears the macOS app menu).
+  Menu.setApplicationMenu(null);
+  await createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (platform !== 'darwin') {

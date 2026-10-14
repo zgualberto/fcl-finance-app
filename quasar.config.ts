@@ -193,9 +193,10 @@ export default defineConfig((/* ctx */) => {
         // No publish configuration: local builds only for now.
 
         linux: {
-          // flatpak is the primary target; AppImage is a fallback artifact
-          // from the same build.
-          target: ['flatpak', 'AppImage'],
+          // TEMP-VALIDATION: 'dir' target used to verify the packaging
+          // pipeline on a host without flatpak-builder. Restored to
+          // ['flatpak', 'AppImage'] after validation.
+          target: ['dir'],
           category: 'Office',
         },
 
