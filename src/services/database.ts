@@ -1,8 +1,20 @@
 import type { SQLiteDBConnection } from '@capacitor-community/sqlite';
 import { CapacitorSQLite, SQLiteConnection } from '@capacitor-community/sqlite';
+import { Capacitor } from '@capacitor/core';
 import { runMigrations, getMigrationHistory, getCurrentVersion } from './migrations/runner';
 
 const DATABASE_NAME = 'fcl';
+
+const isWeb = () => !Capacitor.isNativePlatform();
+
+async function persistWebStore(): Promise<void> {
+  if (!isWeb()) return;
+  try {
+    await CapacitorSQLite.saveToStore({ database: DATABASE_NAME });
+  } catch (error) {
+    console.warn('[Database] Web store save failed (non-fatal):', error);
+  }
+}
 
 let db: SQLiteDBConnection | null = null;
 let sqlite: SQLiteConnection | null = null;
@@ -160,6 +172,13 @@ export async function initializeDatabase(): Promise<void> {
     try {
       const sqliteConn = ensureSQLiteConnectionInstance();
 
+      // On web (Quasar dev/build SPA, Playwright), the plugin is backed by
+      // the jeep-sqlite element + IndexedDB. Must be initialized first.
+      if (isWeb()) {
+        console.log('[Database] Initializing web store...');
+        await CapacitorSQLite.initWebStore();
+      }
+
       try {
         await sqliteConn.checkConnectionsConsistency();
       } catch (error) {
@@ -210,6 +229,9 @@ export async function initializeDatabase(): Promise<void> {
 
       const currentVersion = await getCurrentVersion(db);
       console.log('[Database] Database version:', currentVersion);
+
+      // Persist the in-memory web database to IndexedDB so reloads keep data.
+      await persistWebStore();
     } catch (error) {
       console.error('[Database] Initialization error:', error);
       throw error;
@@ -306,6 +328,10 @@ export async function importFromBackup(jsonData: string): Promise<void> {
   try {
     const sqliteConn = ensureSQLiteConnectionInstance();
 
+    if (isWeb()) {
+      await CapacitorSQLite.initWebStore();
+    }
+
     console.log('[Database] Preparing restore: closing connection and deleting existing database');
     if (db) {
       try {
@@ -335,6 +361,8 @@ export async function importFromBackup(jsonData: string): Promise<void> {
 
     const verification = await verifyRestoreIntegrity();
     console.log('[Database] Restore verification:', verification);
+
+    await persistWebStore();
 
     console.log('[Database] Database restored from backup');
   } catch (error) {

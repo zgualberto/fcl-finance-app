@@ -50,3 +50,8 @@ yarn-error.log*
 
 # Android local SDK path
 local.properties
+
+# Playwright (local-only E2E)
+/test-results/
+/playwright-report/
+/playwright/.cache/

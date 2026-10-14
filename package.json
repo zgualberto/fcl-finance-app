@@ -10,6 +10,9 @@
     "lint": "eslint -c ./eslint.config.js \"./src*/**/*.{ts,js,cjs,mjs,vue}\"",
     "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
     "test": "echo \"No test specified\" && exit 0",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
     "dev": "quasar dev",
     "dev:android": "quasar dev -m capacitor -T android",
     "build:android": "quasar build -m capacitor -T android && xdg-open src-capacitor/android/app/build/outputs/apk/release",
@@ -18,7 +21,7 @@
     "cap:sync:android": "cd src-capacitor && npx cap sync android",
     "cap:open:android": "cd src-capacitor && npx cap open android",
     "build": "quasar build",
-    "postinstall": "quasar prepare"
+    "postinstall": "quasar prepare && mkdir -p public/assets && cp node_modules/sql.js/dist/sql-wasm.wasm public/assets/sql-wasm.wasm"
   },
   "dependencies": {
     "@capacitor-community/sqlite": "^8.0.0",
@@ -30,9 +33,11 @@
     "axios": "^1.2.1",
     "html2canvas": "^1.4.1",
     "idb": "^8.0.3",
+    "jeep-sqlite": "^2.8.0",
     "jspdf": "^4.1.0",
     "pinia": "^3.0.1",
     "quasar": "^2.16.0",
+    "sql.js": "1.12.0",
     "vue": "^3.5.22",
     "vue-router": "^4.0.12"
   },
@@ -40,6 +45,7 @@
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.0.2",
     "@eslint/js": "^9.14.0",
+    "@playwright/test": "^1.64.0",
     "@quasar/app-vite": "^2.1.0",
     "@types/node": "^20.5.9",
     "@vue/eslint-config-prettier": "^10.1.0",
