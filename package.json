@@ -15,12 +15,16 @@
     "test:e2e:headed": "playwright test --headed",
     "dev": "quasar dev",
     "dev:android": "quasar dev -m capacitor -T android",
+    "dev:electron": "quasar dev -m electron",
     "build:android": "quasar build -m capacitor -T android && xdg-open src-capacitor/android/app/build/outputs/apk/release",
     "build:android:gradle-release": "cd src-capacitor/android && ./gradlew assembleRelease",
     "cap": "cd src-capacitor && npx cap",
     "cap:sync:android": "cd src-capacitor && npx cap sync android",
     "cap:open:android": "cd src-capacitor && npx cap open android",
     "build": "quasar build",
+    "build:electron": "quasar build -m electron",
+    "build:electron:linux": "quasar build -m electron -T linux",
+    "build:electron:mac": "quasar build -m electron -T mac",
     "postinstall": "quasar prepare && mkdir -p public/assets && cp node_modules/sql.js/dist/sql-wasm.wasm public/assets/sql-wasm.wasm"
   },
   "dependencies": {
@@ -44,6 +48,7 @@
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.0.2",
+    "@electron/packager": "^18.3.2",
     "@eslint/js": "^9.14.0",
     "@playwright/test": "^1.64.0",
     "@quasar/app-vite": "^2.1.0",
@@ -52,6 +57,8 @@
     "@vue/eslint-config-typescript": "^14.4.0",
     "apexcharts": "^5.6.0",
     "autoprefixer": "^10.4.2",
+    "electron": "^44.7.2",
+    "electron-builder": "^26.15.3",
     "eslint": "^9.14.0",
     "eslint-plugin-vue": "^10.4.0",
     "globals": "^16.4.0",

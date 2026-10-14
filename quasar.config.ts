@@ -183,23 +183,37 @@ export default defineConfig((/* ctx */) => {
       // specify the debugging port to use for the Electron app when running in development mode
       inspectPort: 5858,
 
-      bundler: 'packager', // 'packager' or 'builder'
-
-      packager: {
-        // https://github.com/electron-userland/electron-packager/blob/master/docs/api.md#options
-        // OS X / Mac App Store
-        // appBundleId: '',
-        // appCategoryType: '',
-        // osxSign: '',
-        // protocol: 'myapp://path',
-        // Windows only
-        // win32metadata: { ... }
-      },
+      bundler: 'builder', // 'packager' or 'builder'
 
       builder: {
         // https://www.electron.build/configuration/configuration
 
-        appId: 'fcl-finance-app',
+        appId: 'app.fclfinance.desktop',
+        productName: 'FCL Finance App',
+        // No publish configuration: local builds only for now.
+
+        linux: {
+          // flatpak is the primary target; AppImage is a fallback artifact
+          // from the same build.
+          target: ['flatpak', 'AppImage'],
+          category: 'Office',
+        },
+
+        flatpak: {
+          runtime: 'org.freedesktop.Platform',
+          sdk: 'org.freedesktop.Sdk',
+          runtimeVersion: '26.08',
+          branch: 'stable',
+          finishArgs: ['--share=ipc', '--socket=x11', '--socket=wayland', '--device=dri'],
+          useWaylandFlags: true,
+        },
+
+        mac: {
+          // Built on a Mac host (Apple Silicon). Unsigned for now, so
+          // Gatekeeper warnings on other Macs are expected.
+          target: ['dmg', 'zip'],
+          category: 'public.app-category.finance',
+        },
       },
     },
 

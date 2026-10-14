@@ -1,5 +1,6 @@
 import { Directory, Filesystem } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+import { isDesktop, saveFileDesktop } from 'src/utils/desktop-files';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
@@ -99,6 +100,15 @@ async function writeAndShareFile(
   shareText: string,
   dialogTitle: string,
 ): Promise<void> {
+  // Desktop: native save dialog instead of Capacitor cache write + share
+  // sheet. base64Data is already base64 (PDF) or raw base64 PNG payload.
+  if (isDesktop()) {
+    const fileName = filePath.split('/').pop() ?? filePath;
+    const savedPath = await saveFileDesktop(fileName, base64Data);
+    console.log('[Print] File saved successfully:', savedPath);
+    return;
+  }
+
   await ensureReportsDirectory();
 
   await Filesystem.writeFile({

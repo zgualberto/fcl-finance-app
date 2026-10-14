@@ -10,6 +10,12 @@ import {
   type RestoreVerification,
 } from './database';
 import { setRecovered } from 'src/composables/useRecoveryWarning';
+import {
+  isDesktop,
+  saveFileDesktop,
+  showInFolderDesktop,
+  utf8ToBase64,
+} from 'src/utils/desktop-files';
 
 const BACKUP_STORE_NAME = 'fcl-backup-store';
 const BACKUP_DB_NAME = 'fcl-backup-db';
@@ -241,6 +247,13 @@ export async function downloadBackupToLocalStorage(backupKey: string): Promise<s
   const timestamp = buildTimestampWithSeconds(new Date(backup.timestamp));
   const fileName = `fcl-backup-${timestamp}.json`;
 
+  // Desktop: native save dialog instead of the Capacitor Documents write.
+  if (isDesktop()) {
+    const filePath = await saveFileDesktop(fileName, utf8ToBase64(backup.data));
+    console.log('[Backup] File saved successfully:', filePath);
+    return filePath;
+  }
+
   try {
     await Filesystem.writeFile({
       path: fileName,
@@ -264,10 +277,20 @@ export async function exportBackupToShare(backupKey: string): Promise<void> {
     throw new Error('Backup not found');
   }
 
-  await ensureBackupsDirectory();
-
   const timestamp = buildTimestampWithSeconds(new Date(backup.timestamp));
   const fileName = `fcl-backup-${timestamp}.json`;
+
+  // Desktop: no share sheet exists, so save via native dialog and reveal
+  // the file in the OS file manager (closest equivalent to sharing).
+  if (isDesktop()) {
+    const filePath = await saveFileDesktop(fileName, utf8ToBase64(backup.data));
+    await showInFolderDesktop(filePath);
+    console.log('[Backup] File saved successfully:', filePath);
+    return;
+  }
+
+  await ensureBackupsDirectory();
+
   const filePath = `${BACKUP_DIR}/${fileName}`;
 
   await Filesystem.writeFile({

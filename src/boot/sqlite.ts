@@ -12,6 +12,14 @@ export default defineBoot(async (/* { app, router, ... } */) => {
     if (!Capacitor.isNativePlatform()) {
       const { defineCustomElements: defineJeepSqliteElements } = await import('jeep-sqlite/loader');
       defineJeepSqliteElements(window);
+      await customElements.whenDefined('jeep-sqlite');
+
+      // Packaged Electron loads the renderer over file://, where the
+      // jeep-sqlite default absolute wasmPath ("/assets") does not resolve.
+      // Use a relative path there; http(s) dev/build keeps the default.
+      if (window.location.protocol === 'file:') {
+        document.querySelector('jeep-sqlite')?.setAttribute('wasm-path', './assets');
+      }
     }
 
     console.log('[SQLite Boot] Initializing SQLite database...');

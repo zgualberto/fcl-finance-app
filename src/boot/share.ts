@@ -1,7 +1,13 @@
 import { defineBoot } from '#q-app/wrappers';
 import { Share } from '@capacitor/share';
+import { isDesktop } from 'src/utils/desktop-files';
 
 export default defineBoot(async () => {
+  // Desktop has no share sheet; files are saved via native dialog instead.
+  if (isDesktop()) {
+    console.log('[Share Boot] Desktop mode detected, skipping Capacitor probe');
+    return;
+  }
   try {
     console.log('[Share Boot] Initializing Share plugin...');
 
