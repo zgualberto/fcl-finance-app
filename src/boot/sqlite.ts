@@ -14,10 +14,12 @@ export default defineBoot(async (/* { app, router, ... } */) => {
       defineJeepSqliteElements(window);
       await customElements.whenDefined('jeep-sqlite');
 
-      // Packaged Electron loads the renderer over file://, where the
-      // jeep-sqlite default absolute wasmPath ("/assets") does not resolve.
-      // Use a relative path there; http(s) dev/build keeps the default.
-      if (window.location.protocol === 'file:') {
+      // Packaged Electron serves the renderer over the custom `app://`
+      // scheme (see src-electron/electron-main.ts), where the jeep-sqlite
+      // default absolute wasmPath ("/assets") does not resolve. Use a
+      // relative path there; http(s) dev/build keeps the default.
+      const protocol = window.location.protocol;
+      if (protocol !== 'http:' && protocol !== 'https:') {
         document.querySelector('jeep-sqlite')?.setAttribute('wasm-path', './assets');
       }
     }

@@ -227,13 +227,14 @@ export const useTransactionsStore = defineStore('transactions', {
       nonRemittableExpenses: number;
       centralFundExpenses: number;
       isLegacy: number;
+      hasActiveRemittanceConfig: number;
     }> {
       if (!this.transactionRepository) {
         await this.init(false);
       }
       if (!this.transactionRepository) throw new Error('Repository not initialized');
       try {
-        return await this.transactionRepository.getYtdSummaryTotals(startDate, endDate);
+        return await this.transactionRepository.getYtdSummaryTotalsWithRemittanceFlag(startDate, endDate);
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         this.activityLogService?.logErrActivity(message);
@@ -246,6 +247,7 @@ export const useTransactionsStore = defineStore('transactions', {
           nonRemittableExpenses: 0,
           centralFundExpenses: 0,
           isLegacy: 0,
+          hasActiveRemittanceConfig: 0,
         };
       }
     },
@@ -264,6 +266,7 @@ export const useTransactionsStore = defineStore('transactions', {
         remittableExpenses: number;
         nonRemittableExpenses: number;
         centralFundExpenses: number;
+        hasActiveRemittanceConfig: number;
       }>;
       total: number;
     }> {
@@ -273,7 +276,7 @@ export const useTransactionsStore = defineStore('transactions', {
       if (!this.transactionRepository) throw new Error('Repository not initialized');
       try {
         const [rows, total] = await Promise.all([
-          this.transactionRepository.findYtdByDatePaginated(startDate, endDate, page, limit),
+          this.transactionRepository.findYtdByDatePaginatedWithRemittanceFlag(startDate, endDate, page, limit),
           this.transactionRepository.countYtdDates(startDate, endDate),
         ]);
 

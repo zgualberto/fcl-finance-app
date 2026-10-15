@@ -337,7 +337,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
     return (res.values?.[0]?.count as number) ?? 0;
   }
 
-  async getYtdSummaryTotals(
+  async getYtdSummaryTotalsWithRemittanceFlag(
     startDate: string,
     endDate: string,
   ): Promise<{
@@ -349,6 +349,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
     nonRemittableExpenses: number;
     centralFundExpenses: number;
     isLegacy: number;
+    hasActiveRemittanceConfig: number;
   }> {
     const res = await database.query(
       `SELECT
@@ -382,7 +383,8 @@ export class TransactionRepository implements BaseRepository<Transaction> {
                WHEN c.transaction_type = ?
                  AND (t.budget_source IS NULL OR t.budget_source != ?)
                  AND (
-                   c.non_remittable IS NULL
+                   rc.id IS NOT NULL
+                   OR c.non_remittable IS NULL
                    OR c.non_remittable != 1
                    OR (c.effective_date IS NOT NULL AND c.effective_date > t.date)
                  )
@@ -406,6 +408,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          COALESCE(
            SUM(
              CASE
+               WHEN rc.id IS NOT NULL THEN 0
                WHEN c.transaction_type = ?
                  AND c.non_remittable = 1
                  AND (c.effective_date IS NULL OR c.effective_date <= t.date)
@@ -415,9 +418,12 @@ export class TransactionRepository implements BaseRepository<Transaction> {
            ),
            0
          ) AS nonRemittableExpenses,
+         COALESCE(MAX(CASE WHEN rc.id IS NOT NULL THEN 1 ELSE 0 END), 0) AS hasActiveRemittanceConfig,
          t.is_legacy as isLegacy
        FROM transactions t
        LEFT JOIN categories c ON c.id = t.category_id
+       LEFT JOIN remittance_configurations rc
+         ON rc.status = 1 AND rc.start_date <= t.date AND rc.end_date >= t.date
        WHERE t.date >= ? AND t.date <= ?`,
       [
         TransactionType.COLLECTIONS,
@@ -443,10 +449,11 @@ export class TransactionRepository implements BaseRepository<Transaction> {
       nonRemittableExpenses: (res.values?.[0]?.nonRemittableExpenses as number) ?? 0,
       centralFundExpenses: (res.values?.[0]?.centralFundExpenses as number) ?? 0,
       isLegacy: (res.values?.[0]?.isLegacy as number) ?? 0,
+      hasActiveRemittanceConfig: (res.values?.[0]?.hasActiveRemittanceConfig as number) ?? 0,
     };
   }
 
-  async findYtdByDatePaginated(
+  async findYtdByDatePaginatedWithRemittanceFlag(
     startDate: string,
     endDate: string,
     page: number = 1,
@@ -461,6 +468,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
       remittableExpenses: number;
       nonRemittableExpenses: number;
       centralFundExpenses: number;
+      hasActiveRemittanceConfig: number;
     }>
   > {
     const offset = (page - 1) * limit;
@@ -498,7 +506,8 @@ export class TransactionRepository implements BaseRepository<Transaction> {
                WHEN c.transaction_type = ?
                  AND (t.budget_source IS NULL OR t.budget_source != ?)
                  AND (
-                   c.non_remittable IS NULL
+                   rc.id IS NOT NULL
+                   OR c.non_remittable IS NULL
                    OR c.non_remittable != 1
                    OR (c.effective_date IS NOT NULL AND c.effective_date > t.date)
                  )
@@ -522,6 +531,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
          COALESCE(
            SUM(
              CASE
+               WHEN rc.id IS NOT NULL THEN 0
                WHEN c.transaction_type = ?
                  AND c.non_remittable = 1
                  AND (c.effective_date IS NULL OR c.effective_date <= t.date)
@@ -530,9 +540,12 @@ export class TransactionRepository implements BaseRepository<Transaction> {
              END
            ),
            0
-         ) AS nonRemittableExpenses
+         ) AS nonRemittableExpenses,
+         COALESCE(MAX(CASE WHEN rc.id IS NOT NULL THEN 1 ELSE 0 END), 0) AS hasActiveRemittanceConfig
        FROM transactions t
        LEFT JOIN categories c ON c.id = t.category_id
+       LEFT JOIN remittance_configurations rc
+         ON rc.status = 1 AND rc.start_date <= t.date AND rc.end_date >= t.date
        WHERE t.date >= ? AND t.date <= ?
        GROUP BY t.date
        HAVING
@@ -569,6 +582,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
         remittableExpenses: number;
         nonRemittableExpenses: number;
         centralFundExpenses: number;
+        hasActiveRemittanceConfig: number;
       }>) ?? []
     );
   }

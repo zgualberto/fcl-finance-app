@@ -1,8 +1,64 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, shell } from 'electron';
 import path from 'path';
 import os from 'os';
 import fs from 'node:fs';
 import { fileURLToPath } from 'url';
+
+// Custom scheme serving the packaged renderer (app.asar) over `app://`.
+// Unlike file://, it supports the Fetch API, which the SQLite WASM loader
+// (jeep-sqlite) requires. Dev mode keeps using the http dev server.
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+]);
+
+const APP_SCHEME_HOST = 'local';
+
+const mimeByExtension: Record<string, string> = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.mjs': 'text/javascript',
+  '.cjs': 'text/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.map': 'application/json',
+  '.wasm': 'application/wasm',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon',
+  '.svg': 'image/svg+xml',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+};
+
+function resolvePackagedFile(requestUrl: string): string | null {
+  const root = path.join(process.resourcesPath, 'app.asar');
+  const pathname = decodeURIComponent(new URL(requestUrl).pathname);
+  const relative = path.normalize(pathname).replace(/^[/\\]+/, '');
+  const filePath = path.join(root, relative === '' ? 'index.html' : relative);
+  // Block path traversal outside the packaged app.
+  if (path.relative(root, filePath).startsWith('..')) {
+    return null;
+  }
+  return filePath;
+}
+
+function registerAppProtocol(): void {
+  protocol.handle('app', async (request) => {
+    try {
+      const filePath = resolvePackagedFile(request.url);
+      if (!filePath) {
+        return new Response('Forbidden', { status: 403 });
+      }
+      const data = await fs.promises.readFile(filePath);
+      const extension = path.extname(filePath).toLowerCase();
+      return new Response(new Uint8Array(data), {
+        headers: { 'content-type': mimeByExtension[extension] ?? 'application/octet-stream' },
+      });
+    } catch {
+      return new Response('Not found', { status: 404 });
+    }
+  });
+}
 
 // needed in case process is undefined under Linux
 const platform = process.platform || os.platform();
@@ -62,7 +118,7 @@ async function createWindow() {
   if (process.env.DEV) {
     await mainWindow.loadURL(process.env.APP_URL);
   } else {
-    await mainWindow.loadFile('index.html');
+    await mainWindow.loadURL(`app://${APP_SCHEME_HOST}/index.html`);
   }
 
   if (process.env.DEBUGGING) {
@@ -83,6 +139,9 @@ async function createWindow() {
 void app.whenReady().then(async () => {
   // No menu bar in dev or packaged builds (also clears the macOS app menu).
   Menu.setApplicationMenu(null);
+  if (!process.env.DEV) {
+    registerAppProtocol();
+  }
   await createWindow();
 });
 

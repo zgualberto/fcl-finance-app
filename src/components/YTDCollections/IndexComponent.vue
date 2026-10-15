@@ -112,7 +112,7 @@
             {{
               props.row.isLegacy
                 ? '₱0.00'
-                : isRemittanceConfigActive
+                : Number(props.row.hasActiveRemittanceConfig) === 1
                   ? toPeso(props.row.car)
                   : '0.00'
             }}
@@ -120,7 +120,7 @@
         </template>
         <template v-slot:body-cell-nonRemittableExpenses="props">
           <q-td :props="props" class="text-deep-orange text-weight-medium text-right">
-            {{ isRemittanceConfigActive ? '0.00' : toPeso(props.row.nonRemittableExpenses) }}
+            {{ Number(props.row.hasActiveRemittanceConfig) === 1 ? '0.00' : toPeso(props.row.nonRemittableExpenses) }}
           </q-td>
         </template>
         <template v-slot:body-cell-gross="props">
@@ -216,6 +216,7 @@ interface YtdTableRow {
   net: number;
   legacyCollection: number;
   isLegacy: boolean;
+  hasActiveRemittanceConfig: number;
 }
 
 const transactionsStore = useTransactionsStore();
@@ -236,6 +237,7 @@ const summaryTotalsData = ref({
   nonRemittableExpenses: 0,
   centralFundExpenses: 0,
   isLegacy: 0,
+  hasActiveRemittanceConfig: 0,
 });
 
 const tableStartDate = computed(() => `1900-01-01`);
@@ -243,7 +245,6 @@ const tableEndDate = computed(() => `${new Date().getFullYear()}-12-31`);
 const hasActiveRemittanceConfiguration = computed(
   () => remittanceConfigurationsStore.activeConfiguration !== null,
 );
-const isRemittanceConfigActive = computed(() => hasActiveRemittanceConfiguration.value);
 
 const pagination = ref({
   page: 1,
@@ -291,9 +292,10 @@ const summaryTotals = computed(() => {
   const nonRemittableExpenses = summaryTotalsData.value.nonRemittableExpenses;
   const centralFundExpenses = summaryTotalsData.value.centralFundExpenses;
   const isLegacy = summaryTotalsData.value.isLegacy > 0;
+  const isSummaryCovered = summaryTotalsData.value.hasActiveRemittanceConfig === 1;
 
   const gross = normalCollections - remittableExpenses;
-  const remittanceBase = isRemittanceConfigActive.value ? collections : gross;
+  const remittanceBase = isSummaryCovered ? collections : gross;
   const { national, district } = computeRemittanceDeductions(
     remittanceBase,
     settingsStore.nationalPercent,
@@ -302,7 +304,7 @@ const summaryTotals = computed(() => {
   const car = remittanceBase - national - district;
   const net = isLegacy
     ? normalCollections
-    : isRemittanceConfigActive.value
+    : isSummaryCovered
       ? car - expenses
       : computeNetCollection({
           grossCollection: legacyCollections + gross,
@@ -352,6 +354,7 @@ async function loadYtdSummary(): Promise<void> {
   summaryTotalsData.value.nonRemittableExpenses = totals.nonRemittableExpenses;
   summaryTotalsData.value.centralFundExpenses = totals.centralFundExpenses;
   summaryTotalsData.value.isLegacy = totals.isLegacy;
+  summaryTotalsData.value.hasActiveRemittanceConfig = totals.hasActiveRemittanceConfig;
 }
 
 function mapPaginatedRows(
@@ -364,6 +367,7 @@ function mapPaginatedRows(
     remittableExpenses: number;
     nonRemittableExpenses: number;
     centralFundExpenses: number;
+    hasActiveRemittanceConfig: number;
   }>,
   page: number,
   rowsPerPage: number,
@@ -371,15 +375,16 @@ function mapPaginatedRows(
 ): YtdTableRow[] {
   return rows.map((row, index) => {
     const isLegacy = row.legacyCollection > 0;
+    const isRowCovered = Number(row.hasActiveRemittanceConfig) === 1;
     const gross = row.normalCollection - row.remittableExpenses;
-    const remittanceBase = isRemittanceConfigActive.value ? row.collection : gross;
+    const remittanceBase = isRowCovered ? row.collection : gross;
     const { national, district } = computeRemittanceDeductions(
       remittanceBase,
       settingsStore.nationalPercent,
       settingsStore.districtPercent,
     );
     const car = remittanceBase - national - district;
-    const net = isRemittanceConfigActive.value
+    const net = isRowCovered
       ? car - row.expenses
       : computeNetCollection({
           grossCollection: row.legacyCollection + gross,
@@ -403,6 +408,7 @@ function mapPaginatedRows(
       net,
       legacyCollection: row.legacyCollection,
       isLegacy,
+      hasActiveRemittanceConfig: Number(row.hasActiveRemittanceConfig) === 1 ? 1 : 0,
     };
   });
 }
