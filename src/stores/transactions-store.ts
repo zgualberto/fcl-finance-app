@@ -287,6 +287,34 @@ export const useTransactionsStore = defineStore('transactions', {
         return { rows: [], total: 0 };
       }
     },
+    async fetchYtdAll(
+      startDate: string,
+      endDate: string,
+    ): Promise<
+      Array<{
+        date: string;
+        collection: number;
+        legacyCollection: number;
+        normalCollection: number;
+        expenses: number;
+        remittableExpenses: number;
+        nonRemittableExpenses: number;
+        centralFundExpenses: number;
+        hasActiveRemittanceConfig: number;
+      }>
+    > {
+      if (!this.transactionRepository) {
+        await this.init(false);
+      }
+      if (!this.transactionRepository) throw new Error('Repository not initialized');
+      try {
+        return await this.transactionRepository.findYtdAllWithRemittanceFlag(startDate, endDate);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.activityLogService?.logErrActivity(message);
+        return [];
+      }
+    },
     async searchTransactions(
       keyword: string,
       page: number,

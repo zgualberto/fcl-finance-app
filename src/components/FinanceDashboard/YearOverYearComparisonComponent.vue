@@ -163,8 +163,8 @@ import { storeToRefs } from 'pinia';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { printReportAsPdf, printReportAsPng } from 'src/services/print.service';
 import {
-  computeNetCollection,
-  computeRemittanceDeductions,
+  sumYtdRowFinancials,
+  type YtdAggregateRow,
 } from 'src/services/financial-calculations.service';
 import { isNonRemittableActive } from 'src/utils/non-remittable';
 import { isNonCentralFundExpense } from 'src/utils/expense-filters';
@@ -228,6 +228,8 @@ const isSharingReport = ref(false);
 const loadReportTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 const currentYearTransactions = ref<Transaction[]>([]);
 const previousYearTransactions = ref<Transaction[]>([]);
+const currentYearAggregates = ref<YtdAggregateRow[]>([]);
+const previousYearAggregates = ref<YtdAggregateRow[]>([]);
 
 function formatCurrency(amount: number): string {
   return amount.toLocaleString('en-US', {
@@ -307,59 +309,21 @@ function buildMonthlyBuckets(transactions: Transaction[]): MonthlyBucket[] {
   return buckets;
 }
 
-function buildYearTotals(transactions: Transaction[]) {
-  const legacyCollections = transactions
-    .filter(
-      (transaction) =>
-        transaction.transaction_type === TransactionType.COLLECTIONS && transaction.is_legacy === 1,
-    )
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-  const normalCollections = transactions
-    .filter(
-      (transaction) =>
-        transaction.transaction_type === TransactionType.COLLECTIONS && transaction.is_legacy !== 1,
-    )
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-  const collections = transactions
-    .filter((transaction) => transaction.transaction_type === TransactionType.COLLECTIONS)
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-  const expenses = transactions
-    .filter((transaction) => isNonCentralFundExpense(transaction))
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-  const nonRemittableExpenses = transactions
-    .filter(
-      (transaction) =>
-        isNonCentralFundExpense(transaction) &&
-        transaction.non_remittable === 1 &&
-        isNonRemittableActive(transaction.effective_date, transaction.date),
-    )
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-  const remittableExpenses = expenses - nonRemittableExpenses;
-
-  const gross = normalCollections - remittableExpenses;
-  const { national, district } = computeRemittanceDeductions(
-    gross,
+function buildAggregateTotals(rows: YtdAggregateRow[]) {
+  const financials = sumYtdRowFinancials(
+    rows,
     settingsStore.nationalPercent,
     settingsStore.districtPercent,
   );
-  const net = computeNetCollection({
-    grossCollection: legacyCollections + gross,
-    national,
-    district,
-    nonRemittableExpenses,
-  });
+
+  const expenses = financials.expenses - financials.centralFundExpenses;
 
   return {
-    collections,
+    collections: financials.collections,
     expenses,
-    nonRemittableExpenses,
-    gross,
-    net,
+    nonRemittableExpenses: financials.nonRemittableExpenses,
+    gross: financials.gross,
+    net: financials.net,
   };
 }
 
@@ -433,40 +397,24 @@ const comparisonCutoffLabel = computed(() => {
   return `Growth is compared from January to ${cutoffMonthLabel} for both years`;
 });
 
-const currentYearComparisonTransactions = computed(() => {
-  const currentYear = selectedYearNumber.value;
-  const latestMonthIndex = latestSelectedYearMonthIndex.value;
-
-  if (!currentYear || latestMonthIndex === null) {
-    return [] as Transaction[];
-  }
-
-  const currentYearCutoffDate = getMonthEndDateString(currentYear, latestMonthIndex);
-  return currentYearTransactions.value.filter(
-    (transaction) => transaction.date && transaction.date <= currentYearCutoffDate,
-  );
-});
-
-const previousYearComparisonTransactions = computed(() => {
-  const currentYear = selectedYearNumber.value;
-  const latestMonthIndex = latestSelectedYearMonthIndex.value;
-
-  if (!currentYear || latestMonthIndex === null) {
-    return [] as Transaction[];
-  }
-
-  const previousYearCutoffDate = getMonthEndDateString(currentYear - 1, latestMonthIndex);
-  return previousYearTransactions.value.filter(
-    (transaction) => transaction.date && transaction.date <= previousYearCutoffDate,
-  );
-});
-
 const previousYearTotals = computed(() => {
-  return buildYearTotals(previousYearComparisonTransactions.value);
+  const currentYear = selectedYearNumber.value;
+  const latestMonthIndex = latestSelectedYearMonthIndex.value;
+  if (!currentYear || latestMonthIndex === null) {
+    return buildAggregateTotals([]);
+  }
+  const cutoff = getMonthEndDateString(currentYear - 1, latestMonthIndex);
+  return buildAggregateTotals(previousYearAggregates.value.filter((row) => row.date <= cutoff));
 });
 
 const currentYearTotals = computed(() => {
-  return buildYearTotals(currentYearComparisonTransactions.value);
+  const currentYear = selectedYearNumber.value;
+  const latestMonthIndex = latestSelectedYearMonthIndex.value;
+  if (!currentYear || latestMonthIndex === null) {
+    return buildAggregateTotals([]);
+  }
+  const cutoff = getMonthEndDateString(currentYear, latestMonthIndex);
+  return buildAggregateTotals(currentYearAggregates.value.filter((row) => row.date <= cutoff));
 });
 
 function hasMonthlyData(bucket: MonthlyBucket): boolean {
@@ -558,6 +506,8 @@ async function loadYearComparison(): Promise<void> {
   if (!selectedYearNumber.value) {
     currentYearTransactions.value = [];
     previousYearTransactions.value = [];
+    currentYearAggregates.value = [];
+    previousYearAggregates.value = [];
     return;
   }
 
@@ -570,16 +520,22 @@ async function loadYearComparison(): Promise<void> {
     const previousYearStartDate = `${currentYear - 1}-01-01`;
     const previousYearEndDate = `${currentYear - 1}-12-31`;
 
-    const [currentData, previousData] = await Promise.all([
+    const [currentData, previousData, currentAggregates, previousAggregates] = await Promise.all([
       transactionsStore.fetchTransactionsByDateRange(currentYearStartDate, currentYearEndDate),
       transactionsStore.fetchTransactionsByDateRange(previousYearStartDate, previousYearEndDate),
+      transactionsStore.fetchYtdAll(currentYearStartDate, currentYearEndDate),
+      transactionsStore.fetchYtdAll(previousYearStartDate, previousYearEndDate),
     ]);
 
     currentYearTransactions.value = currentData;
     previousYearTransactions.value = previousData;
+    currentYearAggregates.value = currentAggregates;
+    previousYearAggregates.value = previousAggregates;
   } catch {
     currentYearTransactions.value = [];
     previousYearTransactions.value = [];
+    currentYearAggregates.value = [];
+    previousYearAggregates.value = [];
     $q.notify({
       type: 'negative',
       message: 'Failed to load year-over-year data. Please try again.',

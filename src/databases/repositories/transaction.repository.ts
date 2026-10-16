@@ -419,7 +419,7 @@ export class TransactionRepository implements BaseRepository<Transaction> {
            0
          ) AS nonRemittableExpenses,
          COALESCE(MAX(CASE WHEN rc.id IS NOT NULL THEN 1 ELSE 0 END), 0) AS hasActiveRemittanceConfig,
-         t.is_legacy as isLegacy
+         COALESCE(MAX(t.is_legacy), 0) as isLegacy
        FROM transactions t
        LEFT JOIN categories c ON c.id = t.category_id
        LEFT JOIN remittance_configurations rc
@@ -569,6 +569,133 @@ export class TransactionRepository implements BaseRepository<Transaction> {
         TransactionType.EXPENSES,
         limit,
         offset,
+      ],
+    );
+
+    return (
+      (res.values as Array<{
+        date: string;
+        collection: number;
+        legacyCollection: number;
+        normalCollection: number;
+        expenses: number;
+        remittableExpenses: number;
+        nonRemittableExpenses: number;
+        centralFundExpenses: number;
+        hasActiveRemittanceConfig: number;
+      }>) ?? []
+    );
+  }
+
+  async findYtdAllWithRemittanceFlag(
+    startDate: string,
+    endDate: string,
+  ): Promise<
+    Array<{
+      date: string;
+      collection: number;
+      legacyCollection: number;
+      normalCollection: number;
+      expenses: number;
+      remittableExpenses: number;
+      nonRemittableExpenses: number;
+      centralFundExpenses: number;
+      hasActiveRemittanceConfig: number;
+    }>
+  > {
+    const res = await database.query(
+      `SELECT
+         t.date AS date,
+         COALESCE(
+           SUM(
+             CASE
+               WHEN c.transaction_type = ?
+                 AND t.is_legacy = 1
+               THEN t.amount
+               ELSE 0
+             END
+           ),
+           0
+         ) AS legacyCollection,
+         COALESCE(
+           SUM(
+             CASE
+               WHEN c.transaction_type = ?
+                 AND (t.is_legacy IS NULL OR t.is_legacy != 1)
+               THEN t.amount
+               ELSE 0
+             END
+           ),
+           0
+         ) AS normalCollection,
+         COALESCE(SUM(CASE WHEN c.transaction_type = ? THEN t.amount ELSE 0 END), 0) AS collection,
+         COALESCE(SUM(CASE WHEN c.transaction_type = ? THEN t.amount ELSE 0 END), 0) AS expenses,
+         COALESCE(
+           SUM(
+             CASE
+               WHEN c.transaction_type = ?
+                 AND (t.budget_source IS NULL OR t.budget_source != ?)
+                 AND (
+                   rc.id IS NOT NULL
+                   OR c.non_remittable IS NULL
+                   OR c.non_remittable != 1
+                   OR (c.effective_date IS NOT NULL AND c.effective_date > t.date)
+                 )
+               THEN t.amount
+               ELSE 0
+             END
+           ),
+           0
+         ) AS remittableExpenses,
+         COALESCE(
+           SUM(
+             CASE
+               WHEN c.transaction_type = ?
+                 AND t.budget_source = ?
+               THEN t.amount
+               ELSE 0
+             END
+           ),
+           0
+         ) AS centralFundExpenses,
+         COALESCE(
+           SUM(
+             CASE
+               WHEN rc.id IS NOT NULL THEN 0
+               WHEN c.transaction_type = ?
+                 AND c.non_remittable = 1
+                 AND (c.effective_date IS NULL OR c.effective_date <= t.date)
+               THEN t.amount
+               ELSE 0
+             END
+           ),
+           0
+         ) AS nonRemittableExpenses,
+         COALESCE(MAX(CASE WHEN rc.id IS NOT NULL THEN 1 ELSE 0 END), 0) AS hasActiveRemittanceConfig
+       FROM transactions t
+       LEFT JOIN categories c ON c.id = t.category_id
+       LEFT JOIN remittance_configurations rc
+         ON rc.status = 1 AND rc.start_date <= t.date AND rc.end_date >= t.date
+       WHERE t.date >= ? AND t.date <= ?
+       GROUP BY t.date
+       HAVING
+         COALESCE(SUM(CASE WHEN c.transaction_type = ? THEN t.amount ELSE 0 END), 0) > 0
+         OR COALESCE(SUM(CASE WHEN c.transaction_type = ? THEN t.amount ELSE 0 END), 0) > 0
+       ORDER BY t.date DESC`,
+      [
+        TransactionType.COLLECTIONS,
+        TransactionType.COLLECTIONS,
+        TransactionType.COLLECTIONS,
+        TransactionType.EXPENSES,
+        TransactionType.EXPENSES,
+        ExpenseBudgetSource.CENTRAL_FUND,
+        TransactionType.EXPENSES,
+        ExpenseBudgetSource.CENTRAL_FUND,
+        TransactionType.EXPENSES,
+        startDate,
+        endDate,
+        TransactionType.COLLECTIONS,
+        TransactionType.EXPENSES,
       ],
     );
 

@@ -268,11 +268,11 @@ import { storeToRefs } from 'pinia';
 import { date as dateUtils, useQuasar } from 'quasar';
 import { printReportAsPdf, printReportAsPng } from 'src/services/print.service';
 import {
-  computeNetCollection,
-  computeRemittanceDeductions,
+  sumYtdRowFinancials,
+  type YtdAggregateRow,
 } from 'src/services/financial-calculations.service';
 import { isNonRemittableActive } from 'src/utils/non-remittable';
-import { isCentralFundExpense, isNonCentralFundExpense } from 'src/utils/expense-filters';
+import { isNonCentralFundExpense } from 'src/utils/expense-filters';
 import { TransactionType } from 'src/enums/transaction_type';
 import type { Transaction } from 'src/databases/entities/transaction';
 import { useAnalyticsStore } from 'src/stores/analytics-store';
@@ -326,6 +326,8 @@ const isLoading = ref(false);
 const isSharingReport = ref(false);
 const rawTransactions = ref<Transaction[]>([]);
 const previousYearTransactions = ref<Transaction[]>([]);
+const currentYearAggregates = ref<YtdAggregateRow[]>([]);
+const previousYearAggregates = ref<YtdAggregateRow[]>([]);
 const isCurrentYearRemittanceActive = ref(false);
 const isPreviousYearRemittanceActive = ref(false);
 const reportRef = ref<HTMLElement | null>(null);
@@ -392,89 +394,31 @@ function getMonthEndDateString(year: number, monthIndex: number): string {
   return `${monthEnd.getFullYear()}-${month}-${day}`;
 }
 
-function buildYearTotals(transactions: Transaction[], isRemittanceActive = false) {
-  const legacyCollections = transactions
-    .filter(
-      (transaction) =>
-        transaction.transaction_type === TransactionType.COLLECTIONS && transaction.is_legacy === 1,
-    )
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-  const normalCollections = transactions
-    .filter(
-      (transaction) =>
-        transaction.transaction_type === TransactionType.COLLECTIONS && transaction.is_legacy !== 1,
-    )
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-  const collections = transactions
-    .filter((transaction) => transaction.transaction_type === TransactionType.COLLECTIONS)
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-  const allExpenses = transactions
-    .filter((transaction) => transaction.transaction_type === TransactionType.EXPENSES)
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-  const expenses = transactions
-    .filter((transaction) => isNonCentralFundExpense(transaction))
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-  const centralFundExpenses = transactions
-    .filter((transaction) => isCentralFundExpense(transaction))
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-  const nonRemittableExpenses = transactions
-    .filter(
-      (transaction) =>
-        isNonCentralFundExpense(transaction) &&
-        transaction.non_remittable === 1 &&
-        isNonRemittableActive(transaction.effective_date, transaction.date),
-    )
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-  const remittableExpenses = expenses - nonRemittableExpenses;
-
-  const gross = normalCollections - remittableExpenses;
-  const remittanceBase = isRemittanceActive ? collections : gross;
-  const { national, district } = computeRemittanceDeductions(
-    remittanceBase,
+function buildFinancialTotals(rows: YtdAggregateRow[]) {
+  const financials = sumYtdRowFinancials(
+    rows,
     settingsStore.nationalPercent,
     settingsStore.districtPercent,
   );
-  const car = remittanceBase - national - district;
-
-  // Mirrors YTDCollections IndexComponent summaryTotals. YTD derives isLegacy from a
-  // sampled row flag; using the summed legacy collections is the equivalent intent here.
-  const isLegacy = legacyCollections > 0;
-
-  const net = isLegacy
-    ? normalCollections
-    : isRemittanceActive
-      ? car - expenses
-      : computeNetCollection({
-          grossCollection: legacyCollections + gross,
-          national,
-          district,
-          nonRemittableExpenses,
-        }) - centralFundExpenses;
+  const expenses = financials.expenses - financials.centralFundExpenses;
 
   return {
-    collections,
+    collections: financials.collections,
     expenses,
-    allExpenses,
-    centralFundExpenses,
-    remittableExpenses,
-    nonRemittableExpenses,
-    gross,
-    national,
-    district,
-    car,
-    net,
+    allExpenses: financials.expenses,
+    centralFundExpenses: financials.centralFundExpenses,
+    remittableExpenses: financials.remittableExpenses,
+    nonRemittableExpenses: financials.nonRemittableExpenses,
+    gross: financials.gross,
+    national: financials.national,
+    district: financials.district,
+    car: financials.car,
+    net: financials.net,
   };
 }
 
 const summaryTotals = computed(() => {
-  return buildYearTotals(rawTransactions.value, isCurrentYearRemittanceActive.value);
+  return buildFinancialTotals(currentYearAggregates.value);
 });
 
 const latestSelectedYearMonthIndex = computed(() => {
@@ -497,46 +441,24 @@ const comparisonCutoffLabel = computed(() => {
   return `Data shown is from January to ${cutoffMonthLabel} for both years`;
 });
 
-const currentYearComparisonTransactions = computed(() => {
-  const currentYear = selectedYearNumber.value;
-  const latestMonthIndex = latestSelectedYearMonthIndex.value;
-
-  if (!currentYear || latestMonthIndex === null) {
-    return [] as Transaction[];
-  }
-
-  const currentYearCutoffDate = getMonthEndDateString(currentYear, latestMonthIndex);
-  return rawTransactions.value.filter(
-    (transaction) => transaction.date && transaction.date <= currentYearCutoffDate,
-  );
-});
-
-const previousYearComparisonTransactions = computed(() => {
-  const currentYear = selectedYearNumber.value;
-  const latestMonthIndex = latestSelectedYearMonthIndex.value;
-
-  if (!currentYear || latestMonthIndex === null) {
-    return [] as Transaction[];
-  }
-
-  const previousYearCutoffDate = getMonthEndDateString(currentYear - 1, latestMonthIndex);
-  return previousYearTransactions.value.filter(
-    (transaction) => transaction.date && transaction.date <= previousYearCutoffDate,
-  );
-});
-
 const currentYearComparisonTotals = computed(() => {
-  return buildYearTotals(
-    currentYearComparisonTransactions.value,
-    isCurrentYearRemittanceActive.value,
-  );
+  const currentYear = selectedYearNumber.value;
+  const latestMonthIndex = latestSelectedYearMonthIndex.value;
+  if (!currentYear || latestMonthIndex === null) {
+    return buildFinancialTotals([]);
+  }
+  const cutoff = getMonthEndDateString(currentYear, latestMonthIndex);
+  return buildFinancialTotals(currentYearAggregates.value.filter((row) => row.date <= cutoff));
 });
 
 const previousYearTotals = computed(() => {
-  return buildYearTotals(
-    previousYearComparisonTransactions.value,
-    isPreviousYearRemittanceActive.value,
-  );
+  const currentYear = selectedYearNumber.value;
+  const latestMonthIndex = latestSelectedYearMonthIndex.value;
+  if (!currentYear || latestMonthIndex === null) {
+    return buildFinancialTotals([]);
+  }
+  const cutoff = getMonthEndDateString(currentYear - 1, latestMonthIndex);
+  return buildFinancialTotals(previousYearAggregates.value.filter((row) => row.date <= cutoff));
 });
 
 function buildYearComparison(
@@ -885,6 +807,8 @@ async function loadDashboardData(): Promise<void> {
   if (!selectedYearNumber.value) {
     rawTransactions.value = [];
     previousYearTransactions.value = [];
+    currentYearAggregates.value = [];
+    previousYearAggregates.value = [];
     isCurrentYearRemittanceActive.value = false;
     isPreviousYearRemittanceActive.value = false;
     return;
@@ -899,10 +823,13 @@ async function loadDashboardData(): Promise<void> {
     const previousYearStartDate = `${currentYear - 1}-01-01`;
     const previousYearEndDate = `${currentYear - 1}-12-31`;
 
-    const [currentYearTransactions, previousYearData] = await Promise.all([
-      transactionsStore.fetchTransactionsByDateRange(startDate, endDate),
-      transactionsStore.fetchTransactionsByDateRange(previousYearStartDate, previousYearEndDate),
-    ]);
+    const [currentYearTransactions, previousYearData, currentAggregates, previousAggregates] =
+      await Promise.all([
+        transactionsStore.fetchTransactionsByDateRange(startDate, endDate),
+        transactionsStore.fetchTransactionsByDateRange(previousYearStartDate, previousYearEndDate),
+        transactionsStore.fetchYtdAll(startDate, endDate),
+        transactionsStore.fetchYtdAll(previousYearStartDate, previousYearEndDate),
+      ]);
 
     // Fetch previous year first so the store's activeConfiguration ends on the selected year.
     await remittanceConfigurationsStore.fetchActiveConfigurationByDateRange(
@@ -918,6 +845,8 @@ async function loadDashboardData(): Promise<void> {
 
     rawTransactions.value = currentYearTransactions;
     previousYearTransactions.value = previousYearData;
+    currentYearAggregates.value = currentAggregates;
+    previousYearAggregates.value = previousAggregates;
 
     if (rawTransactions.value.length === 0) {
       $q.notify({
@@ -929,6 +858,8 @@ async function loadDashboardData(): Promise<void> {
   } catch {
     rawTransactions.value = [];
     previousYearTransactions.value = [];
+    currentYearAggregates.value = [];
+    previousYearAggregates.value = [];
     isCurrentYearRemittanceActive.value = false;
     isPreviousYearRemittanceActive.value = false;
     $q.notify({

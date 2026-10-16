@@ -195,8 +195,9 @@
 import { computed, onMounted, ref } from 'vue';
 import { date as dateUtils, useQuasar, type QTableColumn } from 'quasar';
 import {
-  computeNetCollection,
-  computeRemittanceDeductions,
+  computeYtdRowFinancials,
+  sumYtdRowFinancials,
+  type YtdAggregateRow,
 } from 'src/services/financial-calculations.service';
 import { useRouter } from 'vue-router';
 import { useSettingsStore } from 'src/stores/settings-store';
@@ -238,6 +239,11 @@ const summaryTotalsData = ref({
   centralFundExpenses: 0,
   isLegacy: 0,
   hasActiveRemittanceConfig: 0,
+  summedGross: 0,
+  summedNational: 0,
+  summedDistrict: 0,
+  summedCar: 0,
+  summedNet: 0,
 });
 
 const tableStartDate = computed(() => `1900-01-01`);
@@ -285,44 +291,23 @@ const columns = computed<QTableColumn<YtdTableRow>[]>(() => [
 
 const summaryTotals = computed(() => {
   const collections = summaryTotalsData.value.collections;
-  const legacyCollections = summaryTotalsData.value.legacyCollections;
-  const normalCollections = summaryTotalsData.value.normalCollections;
   const expenses = summaryTotalsData.value.expenses;
-  const remittableExpenses = summaryTotalsData.value.remittableExpenses;
   const nonRemittableExpenses = summaryTotalsData.value.nonRemittableExpenses;
   const centralFundExpenses = summaryTotalsData.value.centralFundExpenses;
-  const isLegacy = summaryTotalsData.value.isLegacy > 0;
-  const isSummaryCovered = summaryTotalsData.value.hasActiveRemittanceConfig === 1;
 
-  const gross = normalCollections - remittableExpenses;
-  const remittanceBase = isSummaryCovered ? collections : gross;
-  const { national, district } = computeRemittanceDeductions(
-    remittanceBase,
-    settingsStore.nationalPercent,
-    settingsStore.districtPercent,
-  );
-  const car = remittanceBase - national - district;
-  const net = isLegacy
-    ? normalCollections
-    : isSummaryCovered
-      ? car - expenses
-      : computeNetCollection({
-          grossCollection: legacyCollections + gross,
-          national,
-          district,
-          nonRemittableExpenses,
-        }) - centralFundExpenses;
-
+  // Net (and gross/national/district/car) is the sum of per-date row values.
+  // A single aggregate formula cannot represent mixed legacy + covered/uncovered
+  // regimes, which previously caused ~600k when legacy rows existed.
   return {
     collections,
     expenses,
-    car,
+    car: summaryTotalsData.value.summedCar,
     nonRemittableExpenses,
     centralFundExpenses,
-    gross,
-    national,
-    district,
-    net,
+    gross: summaryTotalsData.value.summedGross,
+    national: summaryTotalsData.value.summedNational,
+    district: summaryTotalsData.value.summedDistrict,
+    net: summaryTotalsData.value.summedNet,
   };
 });
 
@@ -342,10 +327,10 @@ function toPeso(amount: number): string {
 }
 
 async function loadYtdSummary(): Promise<void> {
-  const totals = await transactionsStore.fetchYtdSummaryTotals(
-    tableStartDate.value,
-    tableEndDate.value,
-  );
+  const [totals, allRows] = await Promise.all([
+    transactionsStore.fetchYtdSummaryTotals(tableStartDate.value, tableEndDate.value),
+    transactionsStore.fetchYtdAll(tableStartDate.value, tableEndDate.value),
+  ]);
   summaryTotalsData.value.collections = totals.collections;
   summaryTotalsData.value.legacyCollections = totals.legacyCollections;
   summaryTotalsData.value.normalCollections = totals.normalCollections;
@@ -355,43 +340,34 @@ async function loadYtdSummary(): Promise<void> {
   summaryTotalsData.value.centralFundExpenses = totals.centralFundExpenses;
   summaryTotalsData.value.isLegacy = totals.isLegacy;
   summaryTotalsData.value.hasActiveRemittanceConfig = totals.hasActiveRemittanceConfig;
+
+  // Single query for all date aggregates (not N+1): sum per-date financials so the
+  // Overall Net card matches the sum of table NET values and the Sheet TOTAL.
+  const summed = sumYtdRowFinancials(
+    allRows,
+    settingsStore.nationalPercent,
+    settingsStore.districtPercent,
+  );
+  summaryTotalsData.value.summedGross = summed.gross;
+  summaryTotalsData.value.summedNational = summed.national;
+  summaryTotalsData.value.summedDistrict = summed.district;
+  summaryTotalsData.value.summedCar = summed.car;
+  summaryTotalsData.value.summedNet = summed.net;
 }
 
 function mapPaginatedRows(
-  rows: Array<{
-    date: string;
-    collection: number;
-    legacyCollection: number;
-    normalCollection: number;
-    expenses: number;
-    remittableExpenses: number;
-    nonRemittableExpenses: number;
-    centralFundExpenses: number;
-    hasActiveRemittanceConfig: number;
-  }>,
+  rows: YtdAggregateRow[],
   page: number,
   rowsPerPage: number,
   total: number,
 ): YtdTableRow[] {
   return rows.map((row, index) => {
-    const isLegacy = row.legacyCollection > 0;
-    const isRowCovered = Number(row.hasActiveRemittanceConfig) === 1;
-    const gross = row.normalCollection - row.remittableExpenses;
-    const remittanceBase = isRowCovered ? row.collection : gross;
-    const { national, district } = computeRemittanceDeductions(
-      remittanceBase,
+    const isLegacy = row.legacyCollection > 0 && row.normalCollection === 0;
+    const { gross, national, district, car, net } = computeYtdRowFinancials(
+      row,
       settingsStore.nationalPercent,
       settingsStore.districtPercent,
     );
-    const car = remittanceBase - national - district;
-    const net = isRowCovered
-      ? car - row.expenses
-      : computeNetCollection({
-          grossCollection: row.legacyCollection + gross,
-          national,
-          district,
-          nonRemittableExpenses: row.nonRemittableExpenses,
-        }) - row.centralFundExpenses;
 
     const rowPosition = (page - 1) * rowsPerPage + index;
 

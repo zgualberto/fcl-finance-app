@@ -219,12 +219,9 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useQuasar } from 'quasar';
 import { printReportAsPdf, printReportAsPng } from 'src/services/print.service';
 import {
-  computeNetCollection,
-  computeRemittanceDeductions,
+  sumYtdRowFinancials,
+  type YtdAggregateRow,
 } from 'src/services/financial-calculations.service';
-import { isNonCentralFundExpense } from 'src/utils/expense-filters';
-import { isNonRemittableActive } from 'src/utils/non-remittable';
-import { TransactionType } from 'src/enums/transaction_type';
 import { useTransactionsStore } from 'src/stores/transactions-store';
 import { useSettingsStore } from 'src/stores/settings-store';
 import type { Transaction } from 'src/databases/entities/transaction';
@@ -256,6 +253,7 @@ const loadReportTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 const isLoading = ref(false);
 const isSharingReport = ref(false);
 const rawTransactions = ref<Transaction[]>([]);
+const periodAggregates = ref<YtdAggregateRow[]>([]);
 const reportRef = ref<HTMLElement | null>(null);
 
 function formatCurrency(amount: number): string {
@@ -266,59 +264,22 @@ function formatCurrency(amount: number): string {
 }
 
 const summaryTotals = computed(() => {
-  const legacyCollections = rawTransactions.value
-    .filter((t) => t.transaction_type === TransactionType.COLLECTIONS && t.is_legacy === 1)
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const normalCollections = rawTransactions.value
-    .filter((t) => t.transaction_type === TransactionType.COLLECTIONS && t.is_legacy !== 1)
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const collections = rawTransactions.value
-    .filter((t) => t.transaction_type === TransactionType.COLLECTIONS)
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const expenses = rawTransactions.value
-    .filter((t) => isNonCentralFundExpense(t))
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const nonRemittableExpenses = rawTransactions.value
-    .filter(
-      (t) =>
-        isNonCentralFundExpense(t) &&
-        t.non_remittable === 1 &&
-        isNonRemittableActive(t.effective_date, t.date),
-    )
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const remittableExpenses = expenses - nonRemittableExpenses;
-
-  const gross = normalCollections - remittableExpenses;
-
-  const nationalPercentDec = settingsStore.nationalPercent;
-  const districtPercentDec = settingsStore.districtPercent;
-
-  const { national: national15, district: district3 } = computeRemittanceDeductions(
-    gross,
-    nationalPercentDec,
-    districtPercentDec,
+  const financials = sumYtdRowFinancials(
+    periodAggregates.value,
+    settingsStore.nationalPercent,
+    settingsStore.districtPercent,
   );
-  const net = computeNetCollection({
-    grossCollection: legacyCollections + gross,
-    national: national15,
-    district: district3,
-    nonRemittableExpenses,
-  });
+  const expenses = financials.expenses - financials.centralFundExpenses;
 
   return {
-    collections,
+    collections: financials.collections,
     expenses,
-    remittableExpenses,
-    nonRemittableExpenses,
-    gross,
-    national15,
-    district3,
-    net,
+    remittableExpenses: financials.remittableExpenses,
+    nonRemittableExpenses: financials.nonRemittableExpenses,
+    gross: financials.gross,
+    national15: financials.national,
+    district3: financials.district,
+    net: financials.net,
   };
 });
 
@@ -337,13 +298,13 @@ const deductions = computed((): Deduction[] => {
   return [
     {
       name: `National ${nationalPercent}%`,
-      description: `${nationalPercent}% of GROSS Collection`,
+      description: `${nationalPercent}% per Sunday (Gross when covered, CAE otherwise)`,
       percentage: nationalPercent,
       amount: summaryTotals.value.national15,
     },
     {
       name: `District ${districtPercent}%`,
-      description: `${districtPercent}% of GROSS Collection`,
+      description: `${districtPercent}% per Sunday (Gross when covered, CAE otherwise)`,
       percentage: districtPercent,
       amount: summaryTotals.value.district3,
     },
@@ -491,10 +452,12 @@ async function loadReport() {
     const startDate = `${year}-01-01`;
     const endDate = `${year}-12-31`;
 
-    rawTransactions.value = await transactionsStore.fetchTransactionsByDateRange(
-      startDate,
-      endDate,
-    );
+    const [transactions, aggregates] = await Promise.all([
+      transactionsStore.fetchTransactionsByDateRange(startDate, endDate),
+      transactionsStore.fetchYtdAll(startDate, endDate),
+    ]);
+    rawTransactions.value = transactions;
+    periodAggregates.value = aggregates;
 
     if (rawTransactions.value.length === 0) {
       $q.notify({

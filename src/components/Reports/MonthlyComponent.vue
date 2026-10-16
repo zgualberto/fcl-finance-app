@@ -307,8 +307,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { date as dateUtils, useQuasar } from 'quasar';
 import { printReportAsPdf, printReportAsPng } from 'src/services/print.service';
 import {
-  computeNetCollection,
-  computeRemittanceDeductions,
+  sumYtdRowFinancials,
+  type YtdAggregateRow,
 } from 'src/services/financial-calculations.service';
 import { isNonCentralFundExpense } from 'src/utils/expense-filters';
 import { isNonRemittableActive } from 'src/utils/non-remittable';
@@ -378,6 +378,7 @@ const loadReportTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 const isLoading = ref(false);
 const isSharingReport = ref(false);
 const rawTransactions = ref<Transaction[]>([]);
+const periodAggregates = ref<YtdAggregateRow[]>([]);
 const reportRef = ref<HTMLElement | null>(null);
 
 function formatCurrency(amount: number): string {
@@ -457,98 +458,38 @@ function buildCategoryGroups(transactionType: TransactionType): CategoryGroup[] 
   return Array.from(groupMap.values());
 }
 
-const activeRemittanceConfiguration = computed(() => {
-  const config = remittanceStore.activeConfiguration;
-  if (!config || !selectedDate.value) {
-    return null;
-  }
+const isRemittanceConfigActive = computed(() =>
+  periodAggregates.value.some((row) => Number(row.hasActiveRemittanceConfig) === 1),
+);
 
-  const selectedDateValue = new Date(`${selectedDate.value}-01`);
-  const configStart = new Date(config.start_date);
-  const configEnd = new Date(config.end_date);
+const periodFinancials = computed(() =>
+  sumYtdRowFinancials(
+    periodAggregates.value,
+    settingsStore.nationalPercent,
+    settingsStore.districtPercent,
+  ),
+);
 
-  return selectedDateValue >= configStart && selectedDateValue <= configEnd ? config : null;
-});
-
-const isRemittanceConfigActive = computed(() => activeRemittanceConfiguration.value !== null);
-
-const collectionsAfterRemittances = computed(() => {
-  const nationalPercentDec = settingsStore.nationalPercent;
-  const districtPercentDec = settingsStore.districtPercent;
-  return (
-    summaryTotals.value.collections -
-    summaryTotals.value.collections * nationalPercentDec -
-    summaryTotals.value.collections * districtPercentDec
-  );
-});
+const collectionsAfterRemittances = computed(() => periodFinancials.value.car);
 
 const remittanceDeductionsActive = computed(() => {
-  const nationalPercentDec = settingsStore.nationalPercent;
-  const districtPercentDec = settingsStore.districtPercent;
-  const nationalAmount = summaryTotals.value.collections * nationalPercentDec;
-  const districtAmount = summaryTotals.value.collections * districtPercentDec;
-  return { national: nationalAmount, district: districtAmount };
+  return { national: periodFinancials.value.national, district: periodFinancials.value.district };
 });
 
 const summaryTotals = computed(() => {
-  const legacyCollections = rawTransactions.value
-    .filter((t) => t.transaction_type === TransactionType.COLLECTIONS && t.is_legacy === 1)
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const normalCollections = rawTransactions.value
-    .filter((t) => t.transaction_type === TransactionType.COLLECTIONS && t.is_legacy !== 1)
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const collections = rawTransactions.value
-    .filter((t) => t.transaction_type === TransactionType.COLLECTIONS)
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const expenses = rawTransactions.value
-    .filter((t) => isNonCentralFundExpense(t))
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const actualNonRemittableExpenses = rawTransactions.value
-    .filter(
-      (t) =>
-        isNonCentralFundExpense(t) &&
-        t.non_remittable === 1 &&
-        isNonRemittableActive(t.effective_date, t.date),
-    )
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const nonRemittableExpenses = isRemittanceConfigActive.value ? 0 : actualNonRemittableExpenses;
-  const remittableExpenses = expenses - nonRemittableExpenses;
-
-  const gross = normalCollections - remittableExpenses;
-
-  const nationalPercentDec = settingsStore.nationalPercent;
-  const districtPercentDec = settingsStore.districtPercent;
-
-  const remittanceBase = isRemittanceConfigActive.value ? collections : gross;
-  const { national, district } = computeRemittanceDeductions(
-    remittanceBase,
-    nationalPercentDec,
-    districtPercentDec,
-  );
-
-  const net = isRemittanceConfigActive.value
-    ? collections - national - district - expenses
-    : computeNetCollection({
-        grossCollection: legacyCollections + gross,
-        national,
-        district,
-        nonRemittableExpenses,
-      });
+  const financials = periodFinancials.value;
+  // Non-central expenses only, matching the on-screen breakdowns.
+  const expenses = financials.expenses - financials.centralFundExpenses;
 
   return {
-    collections,
+    collections: financials.collections,
     expenses,
-    remittableExpenses,
-    nonRemittableExpenses,
-    gross,
-    national,
-    district,
-    net,
+    remittableExpenses: financials.remittableExpenses,
+    nonRemittableExpenses: financials.nonRemittableExpenses,
+    gross: financials.gross,
+    national: financials.national,
+    district: financials.district,
+    net: financials.net,
   };
 });
 
@@ -607,10 +548,12 @@ async function loadReport() {
     const lastDay = new Date(parseInt(year, 10), parseInt(month, 10), 0).getDate();
     const endDate = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
 
-    rawTransactions.value = await transactionsStore.fetchTransactionsByDateRange(
-      startDate,
-      endDate,
-    );
+    const [transactions, aggregates] = await Promise.all([
+      transactionsStore.fetchTransactionsByDateRange(startDate, endDate),
+      transactionsStore.fetchYtdAll(startDate, endDate),
+    ]);
+    rawTransactions.value = transactions;
+    periodAggregates.value = aggregates;
 
     if (rawTransactions.value.length === 0) {
       $q.notify({
