@@ -58,7 +58,7 @@
       <div class="row">
         <!-- Left Sidebar -->
         <div class="col-12 col-md-4 q-pr-md">
-          <!-- Total Collection Card -->
+          <!-- Total Gross Collection Card -->
           <q-card
             class="bg-primary text-white rounded-borders q-mb-lg"
             style="min-height: 120px"
@@ -68,7 +68,7 @@
             <q-card-section class="column justify-between full-height">
               <div class="row justify-between items-start full-width">
                 <div>
-                  <div class="text-subtitle2 q-mb-sm">Total Collection</div>
+                  <div class="text-subtitle2 q-mb-sm">Total Gross Collection</div>
                   <div class="text-h5" style="font-weight: 700">
                     ₱{{ formatCurrency(summaryTotals.collections) }}
                   </div>
@@ -102,8 +102,9 @@
             </q-card-section>
           </q-card>
 
-          <!-- Gross Collection Card -->
+          <!-- Hidden per ticket: Gross Collection card (v-if keeps code for re-enable) -->
           <q-card
+            v-if="showGrossCollection"
             class="text-white rounded-borders q-mb-lg"
             style="background-color: #7b1fa2; min-height: 120px"
             bordered
@@ -114,7 +115,7 @@
                 <div>
                   <div class="text-subtitle2 q-mb-sm">GROSS Collection</div>
                   <div class="text-caption q-mb-sm" style="opacity: 0.8">
-                    (Total Collection - Remittable Expenses)
+                    (Total Gross Collection - Remittable Expenses)
                   </div>
                   <div class="text-h5" style="font-weight: 700">
                     ₱{{ formatCurrency(summaryTotals.gross) }}
@@ -138,7 +139,9 @@
               >
                 <div>
                   <div style="font-weight: 600">{{ deduction.name }}</div>
-                  <div class="text-caption">{{ deduction.description }}</div>
+                  <div v-if="deduction.description" class="text-caption">
+                    {{ deduction.description }}
+                  </div>
                 </div>
                 <div style="font-weight: 600; color: #d32f2f">
                   ₱{{ formatCurrency(deduction.amount) }}
@@ -158,11 +161,6 @@
               <div class="row justify-between items-start full-width">
                 <div>
                   <div class="text-subtitle2 q-mb-sm">NET Collection</div>
-                  <div class="text-caption q-mb-sm" style="opacity: 0.8">
-                    (GROSS - National {{ Math.round(settingsStore.nationalPercent * 100) }}% -
-                    District {{ Math.round(settingsStore.districtPercent * 100) }}% - Non-remittable
-                    Expenses)
-                  </div>
                   <div class="text-h5" style="font-weight: 700">
                     ₱{{ formatCurrency(summaryTotals.net) }}
                   </div>
@@ -228,7 +226,7 @@ import type { Transaction } from 'src/databases/entities/transaction';
 
 interface Deduction {
   name: string;
-  description: string;
+  description: string | null;
   percentage: number;
   amount: number;
 }
@@ -252,6 +250,10 @@ const loadReportTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 
 const isLoading = ref(false);
 const isSharingReport = ref(false);
+// Hidden per ticket: flip to true to re-show Gross Collection card + breakdown entry.
+const showGrossCollection = ref(false);
+// Hidden per ticket: flip to true to re-show Non-remittable Expenses deduction entry.
+const showNonRemittableExpenses = ref(false);
 const rawTransactions = ref<Transaction[]>([]);
 const periodAggregates = ref<YtdAggregateRow[]>([]);
 const reportRef = ref<HTMLElement | null>(null);
@@ -295,16 +297,16 @@ const deductions = computed((): Deduction[] => {
   const nationalPercent = Math.round(nationalPercentDec * 100);
   const districtPercent = Math.round(districtPercentDec * 100);
 
-  return [
+  const items: (Deduction & { hidden?: boolean })[] = [
     {
       name: `National ${nationalPercent}%`,
-      description: `${nationalPercent}% per Sunday (Gross when covered, CAE otherwise)`,
+      description: null,
       percentage: nationalPercent,
       amount: summaryTotals.value.national15,
     },
     {
       name: `District ${districtPercent}%`,
-      description: `${districtPercent}% per Sunday (Gross when covered, CAE otherwise)`,
+      description: null,
       percentage: districtPercent,
       amount: summaryTotals.value.district3,
     },
@@ -313,23 +315,43 @@ const deductions = computed((): Deduction[] => {
       description: 'Excluded from GROSS Collection and deducted after remittances',
       percentage: 0,
       amount: summaryTotals.value.nonRemittableExpenses,
+      hidden: !showNonRemittableExpenses.value,
     },
   ];
+  return items.filter((item) => !('hidden' in item && item.hidden));
 });
 
 // Bar Chart Configuration (Financial Breakdown)
-const barChartCategories = computed(() => {
+// Hidden per ticket: Gross Collection entry stays in code with hidden:true so it can
+// be re-shown by flipping showGrossCollection without touching the chart logic.
+const breakdownItems = computed(() => {
   const nationalPercent = Math.round(settingsStore.nationalPercent * 100);
   const districtPercent = Math.round(settingsStore.districtPercent * 100);
-  return [
-    'Total Collection',
-    'Expenses',
-    'Gross Collection',
-    `National (${nationalPercent}%)`,
-    `District (${districtPercent}%)`,
-    'NET Collection',
+  const items = [
+    { label: 'Total Gross Collection', color: '#1976d2', value: summaryTotals.value.collections },
+    { label: 'Expenses', color: '#d32f2f', value: summaryTotals.value.expenses },
+    {
+      label: 'Gross Collection',
+      color: '#7b1fa2',
+      value: summaryTotals.value.gross,
+      hidden: !showGrossCollection.value,
+    },
+    {
+      label: `National (${nationalPercent}%)`,
+      color: '#d32f2f',
+      value: summaryTotals.value.national15,
+    },
+    {
+      label: `District (${districtPercent}%)`,
+      color: '#d32f2f',
+      value: summaryTotals.value.district3,
+    },
+    { label: 'NET Collection', color: '#388e3c', value: summaryTotals.value.net },
   ];
+  return items.filter((item) => !('hidden' in item && item.hidden));
 });
+
+const barChartCategories = computed(() => breakdownItems.value.map((item) => item.label));
 
 const barChartOptions = computed(() => ({
   chart: {
@@ -358,7 +380,7 @@ const barChartOptions = computed(() => ({
   xaxis: {
     categories: barChartCategories.value,
   },
-  colors: ['#1976d2', '#d32f2f', '#7b1fa2', '#d32f2f', '#d32f2f', '#388e3c'],
+  colors: breakdownItems.value.map((item) => item.color),
   grid: {
     borderColor: '#e5e7eb',
     strokeDashArray: 4,
@@ -368,14 +390,7 @@ const barChartOptions = computed(() => ({
 const barChartSeries = computed(() => [
   {
     name: 'Amount',
-    data: [
-      summaryTotals.value.collections,
-      summaryTotals.value.expenses,
-      summaryTotals.value.gross,
-      summaryTotals.value.national15,
-      summaryTotals.value.district3,
-      summaryTotals.value.net,
-    ],
+    data: breakdownItems.value.map((item) => item.value),
   },
 ]);
 
