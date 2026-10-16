@@ -281,7 +281,8 @@ const summaryTotals = computed(() => {
     gross: financials.gross,
     national15: financials.national,
     district3: financials.district,
-    net: financials.net,
+    // Scoped per ticket: Previous Year NET (central-fund expenses) must not reduce Annual NET.
+    net: financials.net + financials.centralFundExpenses,
   };
 });
 

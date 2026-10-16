@@ -168,6 +168,7 @@ import {
 } from 'src/services/financial-calculations.service';
 import { isNonRemittableActive } from 'src/utils/non-remittable';
 import { isNonCentralFundExpense } from 'src/utils/expense-filters';
+import { getMonthEndDateString } from 'src/utils/date';
 import { TransactionType } from 'src/enums/transaction_type';
 import type { Transaction } from 'src/databases/entities/transaction';
 import { useAnalyticsStore } from 'src/stores/analytics-store';
@@ -263,13 +264,6 @@ function getLatestTransactionMonthIndex(transactions: Transaction[]): number | n
   return monthFromDate;
 }
 
-function getMonthEndDateString(year: number, monthIndex: number): string {
-  const monthEnd = new Date(year, monthIndex + 1, 0);
-  const month = `${monthEnd.getMonth() + 1}`.padStart(2, '0');
-  const day = `${monthEnd.getDate()}`.padStart(2, '0');
-  return `${monthEnd.getFullYear()}-${month}-${day}`;
-}
-
 function buildMonthlyBuckets(transactions: Transaction[]): MonthlyBucket[] {
   const buckets = Array.from({ length: 12 }, (_, monthIndex) => ({
     monthIndex,
@@ -323,7 +317,8 @@ function buildAggregateTotals(rows: YtdAggregateRow[]) {
     expenses,
     nonRemittableExpenses: financials.nonRemittableExpenses,
     gross: financials.gross,
-    net: financials.net,
+    // Scoped per ticket: Previous Year NET (central-fund) must not reduce YoY NET.
+    net: financials.net + financials.centralFundExpenses,
   };
 }
 

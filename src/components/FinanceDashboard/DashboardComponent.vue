@@ -273,6 +273,7 @@ import {
 } from 'src/services/financial-calculations.service';
 import { isNonRemittableActive } from 'src/utils/non-remittable';
 import { isNonCentralFundExpense } from 'src/utils/expense-filters';
+import { getMonthEndDateString } from 'src/utils/date';
 import { TransactionType } from 'src/enums/transaction_type';
 import type { Transaction } from 'src/databases/entities/transaction';
 import { useAnalyticsStore } from 'src/stores/analytics-store';
@@ -387,13 +388,6 @@ function getLatestTransactionMonthIndex(transactions: Transaction[]): number | n
   return monthFromDate;
 }
 
-function getMonthEndDateString(year: number, monthIndex: number): string {
-  const monthEnd = new Date(year, monthIndex + 1, 0);
-  const month = `${monthEnd.getMonth() + 1}`.padStart(2, '0');
-  const day = `${monthEnd.getDate()}`.padStart(2, '0');
-  return `${monthEnd.getFullYear()}-${month}-${day}`;
-}
-
 function buildFinancialTotals(rows: YtdAggregateRow[]) {
   const financials = sumYtdRowFinancials(
     rows,
@@ -413,7 +407,9 @@ function buildFinancialTotals(rows: YtdAggregateRow[]) {
     national: financials.national,
     district: financials.district,
     car: financials.car,
-    net: financials.net,
+    // Scoped per ticket: Previous Year NET (central-fund expenses) funds from accumulated
+    // prior-year NET, so it must not reduce the current-year NET card.
+    net: financials.net + financials.centralFundExpenses,
   };
 }
 
